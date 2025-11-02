@@ -1,4 +1,6 @@
-# bun-react-tailwind-template
+# Documents generator
+
+Project is using bun to run.
 
 To install dependencies:
 
