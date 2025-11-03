@@ -7,6 +7,7 @@ export type Lesson = {
 
 export type DisciplineLessons = {
   discipline: string;
+  authors: string[];
   lessons: Lesson[];
 }
 
@@ -22,7 +23,7 @@ export type QuizQuestion = {
 export type Topic = {
   title: string,
   index: number,
-  keywords: string,
+  keywords: string[],
   selfQuestions: string[],
   referats: string[],
   quiz: QuizQuestion[]
@@ -31,7 +32,16 @@ export type Topic = {
 
 export type MethodData = {
   discipline: string,
+  authors: string[],
+  disciplineQuestions: string[],
   topics: Topic[]
+}
+
+export type ProgramData = {
+  discipline: string,
+  author: string,
+  specialty: string,
+  area: string
 }
 
 const model = "gpt-4o";
@@ -103,7 +113,7 @@ export async function generate(course: string, lesson: Lesson, index: number): P
   return { 
     title: lesson.title,
     index,
-    keywords: results['keywords'].terms.join(", ") + ".",
+    keywords: results['keywords'].terms,
     selfQuestions: results['topics'].questions,
     referats: results['referats'].topics,
     quiz: results['tests'].questions.map((q: any, idx: number) => 
@@ -120,5 +130,7 @@ export async function generateAll(info: DisciplineLessons): Promise<MethodData> 
     lessons.map(async (lesson, idx) => await generate(discipline, lesson, idx+1)) 
   );
 
-  return { discipline, topics } as MethodData;
+  const disciplineQuestions = topics.flatMap(t => t.keyQuestions)
+
+  return { discipline, topics, disciplineQuestions } as MethodData;
 }

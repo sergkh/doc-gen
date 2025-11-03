@@ -12,12 +12,15 @@
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
     "@fortawesome/react-fontawesome": "^3.1.0",
+    "angular-expressions": "^1.5.1",
     "bun-plugin-tailwind": "^0.1.2",
     "docxtemplater": "^3.67.1",
     "openai": "^6.7.0",
     "pizzip": "^3.2.0",
     "react": "^19",
     "react-dom": "^19",
+    "react-router": "^7.9.5",
+    "react-router-dom": "^7.9.5",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
