@@ -1,48 +1,5 @@
 import OpenAI from "openai";
-
-export type Lesson = {
-  title: string;
-  text: string;
-}
-
-export type DisciplineLessons = {
-  discipline: string;
-  authors: string[];
-  lessons: Lesson[];
-}
-
-export type QuizQuestion = {
-  question: string,
-  index: number,
-  option1: string,
-  option2: string,
-  option3: string,
-  option4: string
-}
-
-export type Topic = {
-  title: string,
-  index: number,
-  keywords: string[],
-  selfQuestions: string[],
-  referats: string[],
-  quiz: QuizQuestion[]
-  keyQuestions: string[]
-}
-
-export type MethodData = {
-  discipline: string,
-  authors: string[],
-  disciplineQuestions: string[],
-  topics: Topic[]
-}
-
-export type ProgramData = {
-  discipline: string,
-  author: string,
-  specialty: string,
-  area: string
-}
+import type { Course } from "./courses";
 
 const model = "gpt-4o";
 
@@ -81,7 +38,7 @@ export const prompts = [
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export async function generate(course: string, lesson: Lesson, index: number): Promise<Topic> {
+export async function generateMethod(course: string, course: Course, index: number): Promise<Topic> {
   const results = {} as Record<string, any>;
 
   for (const { name, prompt } of prompts) {

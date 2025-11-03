@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faDownload } from "@fortawesome/free-solid-svg-icons";
-import type { DisciplineLessons, Lesson } from "./generator";
+import type { DisciplineLessons } from "@/stores/models";
 
 interface LessonItem {
   title: string;

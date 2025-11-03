@@ -1,9 +1,9 @@
-import { Routes, Route, Link, useLocation } from "react-router-dom";
-import MethodGenerator from "./MethodGenerator";
-import ProgramGenerator from "./ProgramGenerator";
-import CoursesList from "./CoursesList";
-import CourseEdit from "./CourseEdit";
 import "./index.css";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
+import MethodGenerator from "./client/pages/MethodGenerator";
+import ProgramGenerator from "./client/pages/ProgramGenerator";
+import CoursesList from "./client/pages/CoursesList";
+import CourseEdit from "./client/pages/CourseEdit";
 
 function Navigation() {
   const location = useLocation();
@@ -39,7 +39,7 @@ function Navigation() {
               : "text-[#fbf0df] hover:bg-[#2a2a2a]"
           }`}
         >
-          Курси
+          Дисципліни
         </Link>
       </div>
     </nav>

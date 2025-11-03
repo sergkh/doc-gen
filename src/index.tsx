@@ -1,7 +1,11 @@
-import { serve } from "bun";
+import { serve, type BunRequest } from "bun";
 import index from "./index.html";
-import { generateAll, type DisciplineLessons, type ProgramData, type QuizQuestion } from "./generator";
+import { generateAll } from "./generator";
 import { renderProgram, renderSelfMethod } from "./docx/docx";
+import { MethodTestData } from "./stores/test-data";
+import type { Course, DisciplineLessons, ProgramGenerationData } from "./stores/models";
+import { teachers } from "./stores/db";
+const { courses } = await import("./stores/db");
 
 function wordResp(file: ArrayBuffer, name: string): Response {
   return new Response(file, { 
@@ -12,137 +16,70 @@ function wordResp(file: ArrayBuffer, name: string): Response {
   });
 }
 
+const teachersApi = {
+  "/api/teachers": {
+      async GET() {
+        console.log("Fetching all teachers");
+        return Response.json(await teachers.all());
+      }
+  }
+};
+
+const coursesApi = {
+  "/api/courses": {
+      async GET() {
+        console.log("Fetching all courses");
+        return Response.json(await courses.all());
+      },
+      async POST(req: BunRequest) {
+        const course = await req.json() as Course;
+        console.log("Adding new course", course);
+        await courses.add(course);
+        return Response.json({ success: true });
+      }
+  },
+  "/api/courses/:id": {
+    async GET(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      console.log("Fetching course with ID:", id);
+      const course = await courses.get(Number(id));
+      if (!course) {
+        return new Response("Course not found", { status: 404 });
+      }
+      return Response.json(course);
+    },
+    async PUT(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const course = await req.json() as Course;
+      console.log("Updating course with ID:", id, course);
+      await courses.add(course); // Assuming add works for both insert and update
+      return Response.json({ success: true });
+    }
+  }
+};
 
 const server = serve({
   routes: {    
-    "/*": index, // Serve index.html for all unmatched routes.
-
+    "/*": index, // Serve index.html for all unmatched routes.    
+    
     "/api/generate/self-method": {
       async POST(req) {
         const discipline = await req.json() as DisciplineLessons;
         // const data = await generateAll(discipline);
 
-        const doc = await renderSelfMethod({
-          discipline: "Обʼєктно-орієнтоване програмування",
-          authors: ["Хрущак Сергій Вікторович"],
-          disciplineQuestions: [
-            "Що таке інверсія керування (IoC) у контексті розробки програмного забезпечення?",
-            "Які проблеми виникають через сильну зв’язаність між класами?",
-            "Як принцип інверсії керування допомагає зменшити зв’язаність між компонентами?",
-            "Що таке ін’єкція залежностей (Dependency Injection, DI)?",
-            "Які основні типи ін’єкції залежностей існують?",
-            "Що таке інверсія керування (IoC) у контексті розробки програмного забезпечення?",
-            "Які проблеми виникають через сильну зв’язаність між класами?",
-            "Як принцип інверсії керування допомагає зменшити зв’язаність між компонентами?",
-            "Що таке ін’єкція залежностей (Dependency Injection, DI)?",
-            "Які основні типи ін’єкції залежностей існують?"
-          ],
-          topics: [
-            {
-              title: "Тестовий урок",
-              index: 1,
-              keywords: ["Inversion of Control", "IoC", "Dependency Injection", "DI", "C#", "coupling"],
-              selfQuestions: [
-                "Порівняння IoC та DI з іншими патернами проектування, такими як Factory та Service Locator.",
-                "Історія розвитку IoC та DI: як ці концепції еволюціонували в програмуванні.",
-                "Вплив IoC та DI на архітектуру мікросервісів.",
-                "Роль IoC та DI у забезпеченні принципів SOLID, окрім Dependency Inversion Principle.",
-                "Порівняння різних IoC контейнерів: переваги та недоліки кожного.",
-                "Використання IoC та DI у тестуванні: підходи та інструменти."
-              ],
-              referats: [
-                "Вступ до інверсії керування (IoC) та ін’єкції залежностей (DI) в C#",
-                "Проблема сильної зв’язаності в об’єктно-орієнтованому програмуванні",
-                "Принцип інверсії керування (IoC) та його реалізація в C#",
-                "Типи ін’єкції залежностей: конструктор, властивість, метод",
-                "Переваги використання ін’єкції залежностей у C#"
-              ],
-              quiz: [
-                {
-                  "index": 1,
-                  "question": "Що таке інверсія керування (IoC) в контексті ООП?",                
-                  "option1": "Процес, коли об'єкт сам створює свої залежності",
-                  "option2": "Процес, коли об'єкт отримує залежності ззовні",
-                  "option3": "Процес, коли об'єкт не має жодних залежностей",
-                  "option4": "Процес, коли об'єкт створює залежності для інших об'єктів"
-              
-                },
-                {
-                  "index": 2,
-                  "question": "Яка з наведених реалізацій є прикладом ін’єкції залежностей через конструктор?",
-                  "option1": "public void Notify(string message, IMessageService service)",
-                  "option2": "public IMessageService MessageService { get; set; }",
-                  "option3": "public NotificationManager(IMessageService messageService)",
-                  "option4": "public void SendEmail(string message)"
-                }
-              ] as QuizQuestion[],
-              keyQuestions: [
-                "Що таке інверсія керування (IoC) у контексті розробки програмного забезпечення?",
-                "Які проблеми виникають через сильну зв’язаність між класами?",
-                "Як принцип інверсії керування допомагає зменшити зв’язаність між компонентами?",
-                "Що таке ін’єкція залежностей (Dependency Injection, DI)?",
-                "Які основні типи ін’єкції залежностей існують?"
-              ]
-            },
-            {
-              title: "Другий тестовий урок",
-              index: 2,
-              keywords: ["Dependency Injection", "DI", "C#", "coupling"],
-              selfQuestions: [
-                "Роль IoC та DI у забезпеченні принципів SOLID, окрім Dependency Inversion Principle.",
-                "Порівняння різних IoC контейнерів: переваги та недоліки кожного.",
-                "Використання IoC та DI у тестуванні: підходи та інструменти.",
-                "Порівняння IoC та DI з іншими патернами проектування, такими як Factory та Service Locator.",
-                "Історія розвитку IoC та DI: як ці концепції еволюціонували в програмуванні.",
-                "Вплив IoC та DI на архітектуру мікросервісів."                
-              ],
-              referats: [
-                "Вступ до інверсії керування (IoC) та ін’єкції залежностей (DI) в C#",
-                "Проблема сильної зв’язаності в об’єктно-орієнтованому програмуванні",
-                "Принцип інверсії керування (IoC) та його реалізація в C#",
-                "Типи ін’єкції залежностей: конструктор, властивість, метод",
-                "Переваги використання ін’єкції залежностей у C#"
-              ],
-              quiz: [
-                {
-                  "index": 1,
-                  "question": "Що таке інверсія керування (IoC) в контексті ООП?",                
-                  "option1": "Процес, коли об'єкт сам створює свої залежності",
-                  "option2": "Процес, коли об'єкт отримує залежності ззовні",
-                  "option3": "Процес, коли об'єкт не має жодних залежностей",
-                  "option4": "Процес, коли об'єкт створює залежності для інших об'єктів"
-              
-                },
-                {
-                  "index": 2,
-                  "question": "Яка з наведених реалізацій є прикладом ін’єкції залежностей через конструктор?",
-                  "option1": "public void Notify(string message, IMessageService service)",
-                  "option2": "public IMessageService MessageService { get; set; }",
-                  "option3": "public NotificationManager(IMessageService messageService)",
-                  "option4": "public void SendEmail(string message)"
-                }
-              ] as QuizQuestion[],
-              keyQuestions: [
-                "Що таке інверсія керування (IoC) у контексті розробки програмного забезпечення?",
-                "Які проблеми виникають через сильну зв’язаність між класами?",
-                "Як принцип інверсії керування допомагає зменшити зв’язаність між компонентами?",
-                "Що таке ін’єкція залежностей (Dependency Injection, DI)?",
-                "Які основні типи ін’єкції залежностей існують?"
-              ]
-            }
-          ]
-        })
-
+        const doc = await renderSelfMethod(MethodTestData)
         return wordResp(doc, "method-sam.docx")
       }
     },
     "/api/generate/program": {
       async POST(req) {
-        const program = await req.json() as ProgramData;
+        const program = await req.json() as ProgramGenerationData;
         const doc = await renderProgram(program)
         return wordResp(doc, "program.docx")
       }
-    }
+    },
+    ...coursesApi,
+    ...teachersApi
   },
 
   development: process.env.NODE_ENV !== "production" && {
