@@ -91,15 +91,15 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
 
   console.log(`Generated data for topic ${topic.index} ${topic.name}`, results);
   
-  const quiz = results['quiz'].questions.map((q: any, idx: number) => 
-    Object.assign(q, { index: idx+1, option1: q.options[0], option2: q.options[1], option3: q.options[2], option4: q.options[2] })
+  const quiz = (results['quiz'].questions ?? results['quiz']).map((q: any, idx: number) => 
+    Object.assign(q, { index: idx+1 } as QuizQuestion)
   ) as QuizQuestion[]
 
   return {
     ...topic,
     generated: {
       ...topic.generated,
-      ...quiz,
+      quiz,
       subtopics: results['subtopics'].terms,
       keywords: results['keywords'].terms,
       selfQuestions: results['selfQuestions'].questions,
@@ -122,7 +122,6 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
     if (!deepEqual(updated, topic)) {
       await courseTopics.update(updated);  
     }
-  
     updatedTopics.push(updated);
   }
 

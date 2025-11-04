@@ -62,10 +62,7 @@ export type CourseTopic = {
 export type QuizQuestion = {
   question: string,
   index: number,
-  option1: string,
-  option2: string,
-  option3: string,
-  option4: string
+  options: string[]
 }
 
 export type Topic = {
