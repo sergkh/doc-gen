@@ -15,6 +15,7 @@
     "angular-expressions": "^1.5.1",
     "bun-plugin-tailwind": "^0.1.2",
     "docxtemplater": "^3.67.1",
+    "motion": "^12.23.24",
     "openai": "^6.7.0",
     "pizzip": "^3.2.0",
     "react": "^19",
