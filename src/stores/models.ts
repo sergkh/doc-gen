@@ -48,7 +48,7 @@ export type GenerateTopicData = {
   referats: string[],
   quiz: QuizQuestion[],
   keyQuestions: string[]
-}
+} & Record<string, any>;
 
 export type CourseTopic = {
   id: number,

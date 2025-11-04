@@ -41,7 +41,9 @@ async function loadFullCourseInfo(
   
   // Generate course info - this is the slow part (AI generation)
   // Progress from 5% to 70% (65% for AI generation)
-  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(course, topics);
+  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(course, topics, (progress: number) => {
+    onProgress?.(5 + progress * 0.65); // Scale progress to 65%
+  });
   
   // Estimate progress: if we have N topics, each topic is roughly 65% / N
   // For now, we'll report 70% after generation completes

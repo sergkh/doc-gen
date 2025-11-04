@@ -3,7 +3,12 @@ import { sql } from "bun";
 import type { Course, CourseResult, CourseTopic, ShortCourseInfo } from "./models";
 
 // Initialize the database connection
-await sql.file(path.resolve(__dirname, "schema.sql"));
+try {
+  await sql.file(path.resolve(__dirname, "schema.sql"));
+} catch (error) {
+  console.error("Failed to initialize database schema. Check if PostgreSQL connection set using DATABASE_URL env variable\n\n", error);
+  process.exit(1);
+}
 
 const courses = {
   all: async (): Promise<Course[]> => {

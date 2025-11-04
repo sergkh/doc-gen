@@ -1,8 +1,16 @@
 import OpenAI from "openai";
-import type { Course, CourseTopic, GeneratedCourseData, GenerateTopicData, QuizQuestion } from "@/stores/models";
-import { courses, courseTopics } from "@/stores/db";
+import type { Course, CourseTopic, GeneratedCourseData, GenerateTopicData, QuizQuestion } from "@/stores/models.ts";
+import { courses, courseTopics } from "@/stores/db.ts";
 
 const model = "gpt-4o";
+
+function deepEqual(a: any, b: any): boolean {
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch (e) {
+    return false;
+  }
+}
 
 export const prompts = [
   {
@@ -49,6 +57,14 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
   console.log(`Processing topic ${topic.index} ${topic.name}`);
 
   for (const { name, prompt } of prompts) {
+    if (topic.generated && topic.generated[name]) {
+      console.log(`Skipping ${name} for topic ${topic.index} ${topic.name} as it is already generated`);
+      results[name] = topic.generated[name];
+      continue;
+    }
+
+    console.log(`Generating prompt ${name} for topic ${topic.index} ${topic.name}`);
+
     try {
       const response = await client.chat.completions.create({
         model: model,
@@ -72,6 +88,8 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
       console.error(err);     
     }
   }
+
+  console.log(`Generated data for topic ${topic.index} ${topic.name}`, results);
   
   const quiz = results['quiz'].questions.map((q: any, idx: number) => 
     Object.assign(q, { index: idx+1, option1: q.options[0], option2: q.options[1], option3: q.options[2], option4: q.options[2] })
@@ -91,16 +109,22 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
   } as CourseTopic
 }
 
-export async function generateCourseInfo(course: Course, topics: CourseTopic[]): Promise<{ course: Course, topics: CourseTopic[] }> {
-  const updatedTopics = await Promise.all(
-    topics
-    .filter(t => t.generated === null) // do not regenerate
-    .map(async topic => {
-      const updated = await generateCourseTopic(course, topic);
-      await courseTopics.update(updated);
-      return updated;
-    })
-  );
+export async function generateCourseInfo(course: Course, topics: CourseTopic[], progress: (progress: number) => void): Promise<{ course: Course, topics: CourseTopic[] }> {
+  
+  let updatedTopics = [] as CourseTopic[]
+  
+  // do not parallelize as it might be rate limited by the OpenAI API
+  for (const topic of topics) {
+    const updated = await generateCourseTopic(course, topic);
+
+    progress((updatedTopics.length + 1)/ topics.length * 100);
+    
+    if (!deepEqual(updated, topic)) {
+      await courseTopics.update(updated);  
+    }
+  
+    updatedTopics.push(updated);
+  }
 
   const disciplineQuestions = updatedTopics.flatMap(t => t.generated?.keyQuestions || []);
 

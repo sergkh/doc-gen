@@ -300,6 +300,10 @@ export default function GeneratorPage() {
             <FontAwesomeIcon icon={faDownload} />
             {isGeneratingProgram ? "Генерую..." : "Згенерувати програму"}
           </button>
+          { isGeneratingProgram || isGeneratingMethod ? (
+            <span>Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу</span>
+            ) : <></>
+          }
         </div>
       </div>
     </div>

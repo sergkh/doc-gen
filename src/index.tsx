@@ -1,9 +1,9 @@
 import { serve } from "bun";
 
 import index from "./index.html";
-import teachersApi from "@/api/teachers";
-import coursesApi from "@/api/courses";
-import generationApi from "@/api/generation";
+import teachersApi from "@/api/teachers.ts";
+import coursesApi from "@/api/courses.ts";
+import generationApi from "@/api/generation.ts";
 
 const server = serve({
   routes: {    
