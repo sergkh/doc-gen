@@ -44,7 +44,7 @@ export default function TeacherEdit() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto text-center relative z-10">
+    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">{item.id >= 0 ? "Редагувати викладача" : "Додати викладача"}</h1>
 

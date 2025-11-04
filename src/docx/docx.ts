@@ -74,9 +74,10 @@ async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {
 }
 
 export function renderSelfMethod(data: CourseGenerationData): Promise<ArrayBuffer> {
-  return renderDoc("method.docx", data);
+  // temp hack with authors before allowing multiple authors
+  return renderDoc("method.docx", {...data,  authors: [ data.course.teacher ]} );
 }
 
 export function renderProgram(data: CourseGenerationData): Promise<ArrayBuffer> {
-  return renderDoc("program.docx", data);
+  return renderDoc("program.docx", {...data,  authors: [ data.course.teacher ]} );
 }

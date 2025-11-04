@@ -36,7 +36,7 @@ const coursesApi = {
       const { id } = req.params as { id: string };
       const course = await req.json() as Course;
       console.log("Updating course with ID:", id, course);
-      await courses.add(course); // Assuming add works for both insert and update
+      await courses.update(course);
       return Response.json({ success: true });
     }
   },

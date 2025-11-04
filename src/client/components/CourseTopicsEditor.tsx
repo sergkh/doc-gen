@@ -12,6 +12,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topics, setTopics] = useState<CourseTopic[]>([]);
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [topicName, setTopicName] = useState("");
+  const [topicSubtopics, setTopicSubtopics] = useState("");
   const [topicLection, setTopicLection] = useState("");
   const [isDragging, setIsDragging] = useState(false);
 
@@ -43,18 +44,22 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       generated: null
     });
     setTopicName("");
+    setTopicSubtopics("");
     setTopicLection("");
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
     setEditingTopic(topic);
     setTopicName(topic.name || "");
+    const subtopics = topic.generated?.subtopics || [];
+    setTopicSubtopics(subtopics.join("\n"));
     setTopicLection(topic.lection || "");
   };
 
   const handleCancelEdit = () => {
     setEditingTopic(null);
     setTopicName("");
+    setTopicSubtopics("");
     setTopicLection("");
   };
 
@@ -66,10 +71,19 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     }
 
     try {
+      const subtopicsArray = topicSubtopics
+        .split("\n")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
       const topicData: CourseTopic = {
         ...editingTopic,
         name: topicName.trim(),
         lection: topicLection.trim(),
+        generated: {
+          ...(editingTopic.generated || {}),
+          subtopics: subtopicsArray
+        }
       };
 
       let response;
@@ -200,7 +214,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         </button>
       </div>
 
-      {topics.length === 0 ? (
+      {topics.length === 0 && !editingTopic ? (
         <div className="text-[#fbf0df] opacity-60">Немає тем</div>
       ) : (
         <Reorder.Group
@@ -209,47 +223,120 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
           onReorder={handleReorder}
           className="flex flex-col gap-3"
         >
-          {topics.map((topic) => (
-            <Reorder.Item
-              key={topic.id}
-              value={topic}
-              className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-2 flex-1">
-                  <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing">
-                    <FontAwesomeIcon icon={faGripVertical} />
+          {topics.map((topic) => {
+            // If this topic is being edited, show the editor instead
+            if (editingTopic && editingTopic.id === topic.id) {
+              return (
+                <div
+                  key={topic.id}
+                  className="bg-[#2a2a2a] border-2 border-[#f3d5a3] rounded-lg p-4 flex flex-col gap-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[#fbf0df] font-bold">
+                      Редагувати тему
+                    </h3>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="text-[#fbf0df] hover:text-white"
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-[#f3d5a3] mb-1">
-                      {topic.index}. {topic.name || `Тема ${topic.index}`}
-                    </div>
-                    <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
-                      {topic.lection}
-                    </div>
+                  <div>
+                    <label className="block text-[#fbf0df] font-bold mb-2">Назва теми:</label>
+                    <input
+                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      value={topicName}
+                      onChange={(e) => setTopicName(e.target.value)}
+                      placeholder="Введіть назву теми"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#fbf0df] font-bold mb-2">Підтеми (по одній на рядок):</label>
+                    <textarea
+                      rows={3}
+                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+                      value={topicSubtopics}
+                      onChange={(e) => setTopicSubtopics(e.target.value)}
+                      placeholder="Введіть підтеми, по одній на рядок"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#fbf0df] font-bold mb-2">Текст лекції:</label>
+                    <textarea
+                      rows={5}
+                      onDrop={handleFileDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      className={`w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
+                        isDragging ? "bg-[#2a2a2a] border-[#f3d5a3] border-dashed" : ""
+                      }`}
+                      value={topicLection}
+                      onChange={(e) => setTopicLection(e.target.value)}
+                      placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveTopic}
+                      className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
+                    >
+                      Зберегти
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="bg-gray-600 hover:bg-gray-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
+                    >
+                      Скасувати
+                    </button>
                   </div>
                 </div>
-                <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => handleEditTopic(topic)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
-                  >
-                    <FontAwesomeIcon icon={faPen} size="xs" /> Редагувати
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTopic(topic.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
-                  >
-                    <FontAwesomeIcon icon={faTrash} size="xs" /> Видалити
-                  </button>
+              );
+            }
+            
+            // Otherwise show the normal topic item
+            return (
+              <Reorder.Item
+                key={topic.id}
+                value={topic}
+                className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-2 flex-1">
+                    <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing">
+                      <FontAwesomeIcon icon={faGripVertical} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-[#f3d5a3] mb-1">
+                        {topic.index}. {topic.name || `Тема ${topic.index}`}
+                      </div>
+                      <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
+                        {topic.lection}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => handleEditTopic(topic)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
+                    >
+                      <FontAwesomeIcon icon={faPen} size="xs" /> Редагувати
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTopic(topic.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
+                    >
+                      <FontAwesomeIcon icon={faTrash} size="xs" /> Видалити
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </Reorder.Item>
-          ))}
+              </Reorder.Item>
+            );
+          })}
         </Reorder.Group>
       )}
 
-      {editingTopic && (
+      {editingTopic && editingTopic.id === 0 && (
         <div className="bg-[#2a2a2a] border-2 border-[#f3d5a3] rounded-lg p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-[#fbf0df] font-bold">
@@ -269,6 +356,16 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
               value={topicName}
               onChange={(e) => setTopicName(e.target.value)}
               placeholder="Введіть назву теми"
+            />
+          </div>
+          <div>
+            <label className="block text-[#fbf0df] font-bold mb-2">Підтеми (по одній на рядок):</label>
+            <textarea
+              rows={3}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              value={topicSubtopics}
+              onChange={(e) => setTopicSubtopics(e.target.value)}
+              placeholder="Введіть підтеми, по одній на рядок"
             />
           </div>
           <div>

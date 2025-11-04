@@ -15,25 +15,25 @@ function deepEqual(a: any, b: any): boolean {
 export const prompts = [
   {
     name: "subtopics",
-    prompt: "вибери підтеми що розглядаються в наданій лекції українською мовою. Виведи тільки підтеми без нумерації в JSON формату {terms: string[]}"
+    prompt: "вибери підтеми що розглядаються в наданій лекції українською мовою. Виведи тільки підтеми без нумерації в JSON формату {items: string[]}"
   },
   {
     name: "keywords",
-    prompt: "придумай ключові слова та терміни до цієї лекції українською мовою. виведи тільки ключові слова та терміни без нумерації в JSON формату {terms: string[]}"
+    prompt: "придумай ключові слова та терміни до цієї лекції українською мовою. виведи тільки ключові слова та терміни без нумерації в JSON формату {items: string[]}"
   },
   {
     name: "selfQuestions",
-    prompt: "придумай 15 теоретичних тем для самостійної роботи студентів з лекції, які будуть дотичні до цієї лекції але бажано не присутні в ній. Поверни тільки JSON формату {questions: string[]}"
+    prompt: "придумай 15 теоретичних тем для самостійної роботи студентів з лекції, які будуть дотичні до цієї лекції але бажано не присутні в ній. Поверни тільки JSON формату {items: string[]}"
   },
   {
     name: "referats",
-    prompt: "зроби 15 тем рефератів що відносяться до тем цієї лекції. Поверни тільки JSON формату {topics: string[]}"
+    prompt: "зроби 15 тем рефератів що відносяться до тем цієї лекції. Поверни тільки JSON формату {items: string[]}"
   },
   {
     name: "quiz",
     prompt: `зроби 20 тестових завдань на 4 варіанти відповіді по цій лекції. Поверни тільки JSON який чітко відповідає формату: 
     {
-      "questions": [
+      "items": [
         {
           "question": "string",
           "options": ["string", "string", "string", "string"],
@@ -45,7 +45,7 @@ export const prompts = [
   },
   {
     name: "keyQuestions",
-    prompt: "зроби 20 запитань без варіантів відповіді по цій лекції. Поверни тільки JSON as {questions: string[]}"
+    prompt: "зроби 20 запитань без варіантів відповіді по цій лекції. Поверни тільки JSON as {items: string[]}"
   }
 ];
 
@@ -59,7 +59,7 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
   for (const { name, prompt } of prompts) {
     if (topic.generated && topic.generated[name]) {
       console.log(`Skipping ${name} for topic ${topic.index} ${topic.name} as it is already generated`);
-      results[name] = topic.generated[name];
+      results[name] = { items: topic.generated[name] };
       continue;
     }
 
@@ -89,9 +89,7 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
     }
   }
 
-  console.log(`Generated data for topic ${topic.index} ${topic.name}`, results);
-  
-  const quiz = (results['quiz'].questions ?? results['quiz']).map((q: any, idx: number) => 
+  const quiz = results['quiz'].items.map((q: any, idx: number) => 
     Object.assign(q, { index: idx+1 } as QuizQuestion)
   ) as QuizQuestion[]
 
@@ -99,12 +97,12 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
     ...topic,
     generated: {
       ...topic.generated,
-      quiz,
-      subtopics: results['subtopics'].terms,
-      keywords: results['keywords'].terms,
-      selfQuestions: results['selfQuestions'].questions,
-      referats: results['referats'].topics,    
-      keyQuestions: results['keyQuestions'].questions
+      quiz: quiz,
+      subtopics: results['subtopics'].items,
+      keywords: results['keywords'].items,
+      selfQuestions: results['selfQuestions'].items,
+      referats: results['referats'].items,    
+      keyQuestions: results['keyQuestions'].items
     } as GenerateTopicData
   } as CourseTopic
 }
