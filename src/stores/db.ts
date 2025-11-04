@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, ShortCourseInfo } from "./models";
+import type { Course, CourseResult, CourseTopic, ShortCourseInfo, Teacher } from "./models";
 
 // Initialize the database connection
 try {
@@ -42,7 +42,31 @@ const courses = {
 };
 
 const teachers = {
-  all: async () => await sql`SELECT * FROM teachers ORDER BY name`,
+  all: async (): Promise<Teacher[]> => {
+    return await sql`SELECT * FROM teachers ORDER BY name`;
+  },
+
+  get: async (id: number): Promise<Teacher | null> => {
+    const result = await sql`SELECT * FROM teachers WHERE id = ${id}`;
+    return result[0] || null;
+  },
+
+  add: async (teacher: Teacher) => {
+    return await sql`INSERT INTO teachers (name, email) VALUES (${teacher.name}, ${teacher.email})`;
+  },
+
+  update: async (teacher: Teacher) => {
+    return await sql`UPDATE teachers 
+      SET name = ${teacher.name}, 
+          email = ${teacher.email}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${teacher.id}
+      RETURNING *`;
+  },
+
+  delete: async (id: number) => {
+    return await sql`DELETE FROM teachers WHERE id = ${id}`;
+  },
 };
 
 const courseTopics = {

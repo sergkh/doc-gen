@@ -3,6 +3,8 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import CoursesList from "./client/pages/CoursesList";
 import CourseEdit from "./client/pages/CourseEdit";
 import GeneratorPage from "./client/pages/GeneratorPage";
+import TeachersList from "./client/pages/TeachersList";
+import TeacherEdit from "./client/pages/TeacherEdit";
 
 function Navigation() {
   const location = useLocation();
@@ -30,6 +32,16 @@ function Navigation() {
         >
           Дисципліни
         </Link>
+        <Link
+          to="/teachers"
+          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
+            location.pathname.startsWith("/teachers")
+              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
+              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+          }`}
+        >
+          Викладачі
+        </Link>
       </div>
     </nav>
   );
@@ -46,6 +58,8 @@ export function App() {
         />
         <Route path="/courses" element={<CoursesList />} />
         <Route path="/courses/:id" element={<CourseEdit />} />
+        <Route path="/teachers" element={<TeachersList />} />
+        <Route path="/teachers/:id" element={<TeacherEdit />} />
       </Routes>
     </div>
   );

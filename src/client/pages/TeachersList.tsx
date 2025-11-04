@@ -1,0 +1,73 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import type { Teacher } from "@/stores/models";
+import { loadAllTeachers, deleteTeacher } from "../teachers";
+
+export default function TeachersList() {
+  const navigate = useNavigate();
+
+  const [items, setItems] = useState<Teacher[]>([]);
+
+  useEffect(() => {
+    loadAllTeachers().then(setItems).catch(console.error);
+  }, []);
+
+  const handleDelete = async (teacher: Teacher) => {
+    if (!confirm(`Ви впевнені, що хочете видалити викладача "${teacher.name}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteTeacher(teacher.id);
+      setItems(items.filter(t => t.id !== teacher.id));
+    } catch (error) {
+      console.error("Error deleting teacher:", error);
+      alert("Не вдалося видалити викладача");
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto text-center relative z-10">
+      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
+        <h1 className="font-mono">Викладачі</h1>
+
+        <div className="flex justify-between items-center">
+          <button
+            onClick={() => navigate("/teachers/new")}
+            className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+          >
+            <FontAwesomeIcon icon={faPlus} /> Додати викладача
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {items.length === 0 ? (
+            <div className="text-[#fbf0df] font-mono">Немає викладачів</div>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {items.map(t => (
+                <li key={t.id} className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 text-[#fbf0df] font-mono flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="font-bold">{t.name}</div>
+                    <div className="text-sm opacity-80">{t.email}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => navigate(`/teachers/${t.id}`)} className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
+                      <FontAwesomeIcon icon={faPen} /> Редагувати
+                    </button>
+                    <button onClick={() => handleDelete(t)} className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
+                      <FontAwesomeIcon icon={faTrash} /> Видалити
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
