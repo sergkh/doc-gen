@@ -32,7 +32,6 @@ const parser = expressionParser.configure({
           return input.toUpperCase();
       },
       join(input) {
-        console.log("join", input);
         if (!input || !Array.isArray(input)) return input;
         return input.join(", ")
       },
@@ -40,17 +39,18 @@ const parser = expressionParser.configure({
         if (!input) return input;
         
         if (Array.isArray(input)) {
-          console.log("Short name arr", input)
           return input.map(n => shortenName(n))
         }
 
-        console.log("Short name not arr:", input)
         return shortenName(input);
       }
   },
 });
 
-async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {  
+async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {
+
+  console.log("Rendering docx", template, data);
+
   const content = await readFile(
     path.resolve(__dirname, "templates", template),
     "binary"

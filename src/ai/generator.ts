@@ -46,6 +46,8 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export async function generateCourseTopic(course: Course, topic: CourseTopic): Promise<CourseTopic> {
   const results = {} as Record<string, any>;
 
+  console.log(`Processing topic ${topic.index} ${topic.name}`);
+
   for (const { name, prompt } of prompts) {
     try {
       const response = await client.chat.completions.create({
@@ -65,14 +67,13 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
       });
 
       const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
-      console.log(jsonResponse);
       results[name] = jsonResponse;
     } catch (err) { 
       console.error(err);     
     }
   }
   
-  const quiz = results['tests'].questions.map((q: any, idx: number) => 
+  const quiz = results['quiz'].questions.map((q: any, idx: number) => 
     Object.assign(q, { index: idx+1, option1: q.options[0], option2: q.options[1], option3: q.options[2], option4: q.options[2] })
   ) as QuizQuestion[]
 
@@ -103,13 +104,14 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[]):
 
   const disciplineQuestions = updatedTopics.flatMap(t => t.generated?.keyQuestions || []);
 
-
   const updatedCourse = {
     ...course,
     generated: {
       disciplineQuestions: disciplineQuestions
     } as GeneratedCourseData
   }
+
+  console.log("Done generating AI course info");
 
   if (!course.generated) {
     await courses.update(updatedCourse);

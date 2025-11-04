@@ -1,6 +1,6 @@
 import { courses, courseTopics } from "@/stores/db";
 import type { Course, CourseTopic } from "@/stores/models";
-import type { BunRequest } from "bun";
+import type { BunRequest, Serve } from "bun";
 import path from "path";
 
 async function parseSylabus(filePath: string): Promise<Course> {
@@ -11,7 +11,7 @@ async function parseSylabus(filePath: string): Promise<Course> {
 
 const coursesApi = {
   "/api/courses": {
-      async GET() {
+      async GET() {      
         console.log("Fetching all courses");
         return Response.json(await courses.all());
       },
@@ -122,7 +122,31 @@ const coursesApi = {
       await courseTopics.delete(Number(id));
       return Response.json({ success: true });
     }
-  }
-};
+  },
+  "/api/courses/:courseId/topics/order": {
+    async PUT(req: BunRequest) {
+      const { courseId } = req.params as { courseId: string };
+      const topicIds = await req.json() as number[];
+      
+      if (!Array.isArray(topicIds)) {
+        return new Response("Invalid request body. Expected array of topic IDs", { status: 400 });
+      }
 
-export default coursesApi;
+      if (topicIds.length === 0) {
+        return new Response("Topic IDs array cannot be empty", { status: 400 });
+      }
+
+      console.log("Reordering topics for course ID:", courseId, "with IDs:", topicIds);
+      
+      try {
+        await courseTopics.updateOrdering(Number(courseId), topicIds);
+        return Response.json({ success: true });
+      } catch (error) {
+        console.error("Error reordering topics:", error);
+        return new Response(`Error reordering topics: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+      }
+    }
+  }
+}
+
+export default coursesApi satisfies Serve;

@@ -67,6 +67,14 @@ const courseTopics = {
       RETURNING *`;
   },
 
+  updateOrdering: async (courseId: number, topics: number[]) => {    
+    await Promise.all(
+      topics.map(async (topicId, index) => 
+        await sql`UPDATE course_topics SET index=${index+1} WHERE id=${topicId} AND course_id=${courseId}`
+      )
+    );
+  },
+
   delete: async (id: number) => {
     return await sql`DELETE FROM course_topics WHERE id = ${id}`;
   },

@@ -16,7 +16,8 @@ const server = serve({
   development: process.env.NODE_ENV !== "production" && {
     hmr: true, // Enable browser hot reloading in development
     console: true, // Echo console logs from the browser to the server
-  }
+  },
+  idleTimeout: 255 // 25 min
 });
 
 console.log(`Server is running at ${server.url}`);
