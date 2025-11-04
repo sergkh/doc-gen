@@ -1,15 +1,20 @@
 import OpenAI from "openai";
-import type { Course } from "./courses";
+import type { Course, CourseTopic, GeneratedCourseData, GenerateTopicData, QuizQuestion } from "@/stores/models";
+import { courses, courseTopics } from "@/stores/db";
 
 const model = "gpt-4o";
 
 export const prompts = [
   {
+    name: "subtopics",
+    prompt: "вибери підтеми що розглядаються в наданій лекції українською мовою. Виведи тільки підтеми без нумерації в JSON формату {terms: string[]}"
+  },
+  {
     name: "keywords",
     prompt: "придумай ключові слова та терміни до цієї лекції українською мовою. виведи тільки ключові слова та терміни без нумерації в JSON формату {terms: string[]}"
   },
   {
-    name: "topics",
+    name: "selfQuestions",
     prompt: "придумай 15 теоретичних тем для самостійної роботи студентів з лекції, які будуть дотичні до цієї лекції але бажано не присутні в ній. Поверни тільки JSON формату {questions: string[]}"
   },
   {
@@ -17,7 +22,7 @@ export const prompts = [
     prompt: "зроби 15 тем рефератів що відносяться до тем цієї лекції. Поверни тільки JSON формату {topics: string[]}"
   },
   {
-    name: "tests",
+    name: "quiz",
     prompt: `зроби 20 тестових завдань на 4 варіанти відповіді по цій лекції. Поверни тільки JSON який чітко відповідає формату: 
     {
       "questions": [
@@ -38,7 +43,7 @@ export const prompts = [
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export async function generateMethod(course: string, course: Course, index: number): Promise<Topic> {
+export async function generateCourseTopic(course: Course, topic: CourseTopic): Promise<CourseTopic> {
   const results = {} as Record<string, any>;
 
   for (const { name, prompt } of prompts) {
@@ -54,7 +59,7 @@ export async function generateMethod(course: string, course: Course, index: numb
           },
           {
             role: "user",
-            content: `${prompt}:\n\n${lesson.text}`
+            content: `${prompt}:\n\n${topic.lection}`
           }
         ]
       });
@@ -66,28 +71,49 @@ export async function generateMethod(course: string, course: Course, index: numb
       console.error(err);     
     }
   }
+  
+  const quiz = results['tests'].questions.map((q: any, idx: number) => 
+    Object.assign(q, { index: idx+1, option1: q.options[0], option2: q.options[1], option3: q.options[2], option4: q.options[2] })
+  ) as QuizQuestion[]
 
-  return { 
-    title: lesson.title,
-    index,
-    keywords: results['keywords'].terms,
-    selfQuestions: results['topics'].questions,
-    referats: results['referats'].topics,
-    quiz: results['tests'].questions.map((q: any, idx: number) => 
-      Object.assign(q, { index: idx+1, option1: q.options[0], option2: q.options[1], option3: q.options[2], option4: q.options[2] })
-    ) as QuizQuestion[],
-    keyQuestions: results['keyQuestions'].questions
-  } as Topic
+  return {
+    ...topic,
+    generated: {
+      ...topic.generated,
+      ...quiz,
+      subtopics: results['subtopics'].terms,
+      keywords: results['keywords'].terms,
+      selfQuestions: results['selfQuestions'].questions,
+      referats: results['referats'].topics,    
+      keyQuestions: results['keyQuestions'].questions
+    } as GenerateTopicData
+  } as CourseTopic
 }
 
-export async function generateAll(info: DisciplineLessons): Promise<MethodData> {
-  const { discipline, lessons } = info;
-
-  const topics = await Promise.all(
-    lessons.map(async (lesson, idx) => await generate(discipline, lesson, idx+1)) 
+export async function generateCourseInfo(course: Course, topics: CourseTopic[]): Promise<{ course: Course, topics: CourseTopic[] }> {
+  const updatedTopics = await Promise.all(
+    topics
+    .filter(t => t.generated === null) // do not regenerate
+    .map(async topic => {
+      const updated = await generateCourseTopic(course, topic);
+      await courseTopics.update(updated);
+      return updated;
+    })
   );
 
-  const disciplineQuestions = topics.flatMap(t => t.keyQuestions)
+  const disciplineQuestions = updatedTopics.flatMap(t => t.generated?.keyQuestions || []);
 
-  return { discipline, topics, disciplineQuestions } as MethodData;
+
+  const updatedCourse = {
+    ...course,
+    generated: {
+      disciplineQuestions: disciplineQuestions
+    } as GeneratedCourseData
+  }
+
+  if (!course.generated) {
+    await courses.update(updatedCourse);
+  }
+  
+  return { course: updatedCourse, topics: updatedTopics };
 }

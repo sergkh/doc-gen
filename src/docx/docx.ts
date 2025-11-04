@@ -3,7 +3,7 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import path from "path";
 import expressionParser from "docxtemplater/expressions.js";
-import type { MethodGenerationData, ProgramGenerationData } from "@/stores/models";
+import type { CourseGenerationData } from "@/stores/models";
 
 const helpers = {
   pageBreak: `<w:p><w:br w:type="page" /></w:p>`,
@@ -73,10 +73,10 @@ async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {
   return doc.toArrayBuffer()
 }
 
-export function renderSelfMethod(data: MethodGenerationData): Promise<ArrayBuffer> {
+export function renderSelfMethod(data: CourseGenerationData): Promise<ArrayBuffer> {
   return renderDoc("method.docx", data);
 }
 
-export function renderProgram(data: ProgramGenerationData): Promise<ArrayBuffer> {
+export function renderProgram(data: CourseGenerationData): Promise<ArrayBuffer> {
   return renderDoc("program.docx", data);
 }

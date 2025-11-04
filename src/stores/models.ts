@@ -1,3 +1,16 @@
+export type CourseResult = {
+  id: number,
+  no: number,
+  type: string,
+  name: string
+}
+
+export type ShortCourseInfo = {
+  id: number,
+  name: string,
+  teacher: string
+}
+
 export type CourseData = {
   hours: number,
   credits: number,
@@ -9,12 +22,17 @@ export type CourseData = {
   results: number[]
 }
 
+export type GeneratedCourseData = {
+  disciplineQuestions: string[]
+}
+
 export type Course = {
   id: number,
   name: string,
   teacher_id: number,
   teacher?: string,
-  data: CourseData
+  data: CourseData,
+  generated: GeneratedCourseData | null
 }
 
 export type Teacher = {
@@ -23,15 +41,22 @@ export type Teacher = {
   email: string
 }
 
-export type Lesson = {
-  title: string;
-  text: string;
+export type GenerateTopicData = {
+  subtopics: string[],
+  keywords: string[],
+  topics: string[],
+  referats: string[],
+  quiz: QuizQuestion[],
+  keyQuestions: string[]
 }
 
-export type DisciplineLessons = {
-  discipline: string;
-  authors: string[];
-  lessons: Lesson[];
+export type CourseTopic = {
+  id: number,
+  course_id: number,
+  index: number,
+  name: string,
+  lection: string,
+  generated: GenerateTopicData | null
 }
 
 export type QuizQuestion = {
@@ -53,16 +78,12 @@ export type Topic = {
   keyQuestions: string[]
 }
 
-export type MethodGenerationData = {
-  discipline: string,
-  authors: string[],
-  disciplineQuestions: string[],
-  topics: Topic[]
-}
-
-export type ProgramGenerationData = {
-  discipline: string,
-  author: string,
-  specialty: string,
-  area: string
+export type CourseGenerationData = {
+  course: Course,
+  topics: CourseTopic[],
+  prerequisites: ShortCourseInfo[],
+  postrequisites: ShortCourseInfo[],
+  generalResults:CourseResult[],
+  specialResults:CourseResult[],
+  programResults:CourseResult[]
 }
