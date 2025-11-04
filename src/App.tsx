@@ -1,9 +1,8 @@
-import { Routes, Route, Link, useLocation } from "react-router-dom";
-import MethodGenerator from "./MethodGenerator";
-import ProgramGenerator from "./ProgramGenerator";
-import CoursesList from "./CoursesList";
-import CourseEdit from "./CourseEdit";
 import "./index.css";
+import { Routes, Route, Link, useLocation } from "react-router-dom";
+import CoursesList from "./client/pages/CoursesList";
+import CourseEdit from "./client/pages/CourseEdit";
+import GeneratorPage from "./client/pages/GeneratorPage";
 
 function Navigation() {
   const location = useLocation();
@@ -19,18 +18,8 @@ function Navigation() {
               : "text-[#fbf0df] hover:bg-[#2a2a2a]"
           }`}
         >
-          Методичка сам. робота
-        </Link>
-        <Link
-          to="/program"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname === "/program"
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Програма
-        </Link>
+          Генератор документів
+        </Link>        
         <Link
           to="/courses"
           className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
@@ -39,7 +28,7 @@ function Navigation() {
               : "text-[#fbf0df] hover:bg-[#2a2a2a]"
           }`}
         >
-          Курси
+          Дисципліни
         </Link>
       </div>
     </nav>
@@ -53,9 +42,8 @@ export function App() {
       <Routes>
         <Route
           path="/"
-          element={<MethodGenerator />}
+          element={<GeneratorPage />}
         />
-        <Route path="/program" element={<ProgramGenerator />} />
         <Route path="/courses" element={<CoursesList />} />
         <Route path="/courses/:id" element={<CourseEdit />} />
       </Routes>
