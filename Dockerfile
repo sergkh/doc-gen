@@ -25,7 +25,6 @@ ENV NODE_ENV=production
 # copy production dependencies and source code into final image
 FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
-COPY --from=prerelease /usr/src/app/dist ./dist
 COPY --from=prerelease /usr/src/app/tsconfig.json .
 COPY --from=prerelease /usr/src/app/bunfig.toml .
 COPY --from=prerelease /usr/src/app/package.json .
