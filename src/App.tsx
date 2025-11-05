@@ -1,5 +1,6 @@
 import "./index.css";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
@@ -62,6 +63,30 @@ function Navigation() {
 export function App() {
   return (
     <div className="w-full min-h-screen">
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#1a1a1a',
+            color: '#fbf0df',
+            border: '2px solid #fbf0df',
+            fontFamily: 'monospace',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fbf0df',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fbf0df',
+            },
+          },
+        }}
+      />
       <Navigation />
       <Routes>
         <Route

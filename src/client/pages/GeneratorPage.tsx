@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { loadAllCourses } from "../courses";
 import type { Course } from "@/stores/models";
+import toast from "react-hot-toast";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -68,30 +69,29 @@ export default function GeneratorPage() {
         if (status.status === "completed") {
           // Download the file
           const downloadResponse = await fetch(`/api/jobs/${jobId}/download`);
+          
           if (!downloadResponse.ok) {
             throw new Error("Failed to download file");
           }
 
           const blob = await downloadResponse.blob();
-          const filename = status.filename || (type === "method" ? "method-sam.docx" : "program.docx");
-          await handleDownload(blob, filename);
+          await handleDownload(blob, status.filename || "result.docx");
 
           // Cleanup
           clearJobState();
         } else if (status.status === "error") {
           // Error occurred
           clearJobState();
-          alert(`Помилка генерації: ${status.error || "Невідома помилка"}`);
+          toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
         }
       } catch (error) {
         console.error("Error polling job status:", error);
+        toast.error("Помилка генерації: " + error);
         clearJobState();        
       }
     };
 
-    // Initial poll
     poll();
-    // Poll every 2 seconds
     pollingIntervalRef.current = setInterval(poll, 2000) as unknown as number;
   };
 
@@ -102,7 +102,7 @@ export default function GeneratorPage() {
         setCourses(allCourses);
       } catch (error) {
         console.error("Failed to load courses:", error);
-        alert("Помилка завантаження дисциплін");
+        toast.error("Помилка завантаження дисциплін");
       } finally {
         setIsLoading(false);
       }
@@ -136,7 +136,7 @@ export default function GeneratorPage() {
                 }
                 clearJobState();
               } else if (status.status === "error") {
-                alert(`Помилка генерації: ${status.error || "Невідома помилка"}`);
+                toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
                 clearJobState();
               } else {
                 // Job still in progress, resume polling
@@ -176,7 +176,7 @@ export default function GeneratorPage() {
 
   const handleGenerateMethod = async () => {
     if (!selectedCourseId) {
-      alert("Будь ласка, оберіть дисципліну");
+      toast.error("Будь ласка, оберіть дисципліну");
       return;
     }
 
@@ -201,7 +201,7 @@ export default function GeneratorPage() {
       pollJobStatus(jobId, "method");
     } catch (error) {
       console.error("Error starting generation:", error);
-      alert("Помилка запуску генерації методички");
+      toast.error("Помилка запуску генерації методички");
       setIsGeneratingMethod(false);
       setProgress(0);
     }
@@ -209,7 +209,7 @@ export default function GeneratorPage() {
 
   const handleGenerateProgram = async () => {
     if (!selectedCourseId) {
-      alert("Будь ласка, оберіть дисципліну");
+      toast.error("Будь ласка, оберіть дисципліну");
       return;
     }
 
@@ -234,7 +234,7 @@ export default function GeneratorPage() {
       pollJobStatus(jobId, "program");
     } catch (error) {
       console.error("Error starting generation:", error);
-      alert("Помилка запуску генерації програми");
+      toast.error("Помилка запуску генерації програми");
       setIsGeneratingProgram(false);
       setProgress(0);
     }

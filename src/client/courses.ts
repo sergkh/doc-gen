@@ -16,6 +16,7 @@ export async function loadCourse(id: string): Promise<Course> {
       id: -1,
       name: "",
       teacher_id: 0,
+      generated: null,
       data: {
         hours: 0,
         credits: 0,

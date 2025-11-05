@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
+import toast from "react-hot-toast";
 import type { CourseResult } from "@/stores/models";
 import { loadAllResults, deleteResult, uploadResultsFromDocx } from "../results";
 
@@ -53,32 +54,42 @@ export default function ResultsList() {
       return;
     }
 
-    try {
-      await deleteResult(result.id);
-      setItems(items.filter(r => r.id !== result.id));
-    } catch (error) {
-      console.error("Error deleting result:", error);
-      alert("Не вдалося видалити результат");
-    }
+    toast.promise(deleteResult(result.id), {
+      loading: "Видалення результату...",
+      success: () => {
+        setItems(items.filter(r => r.id !== result.id));
+        return "Результат успішно видалено";
+      },
+      error: "Не вдалося видалити результат",
+    });
   };
 
   const processFile = async (file: File) => {
     // Validate file type
     if (!file.name.toLowerCase().endsWith(".docx")) {
-      alert("Будь ласка, виберіть файл .docx");
+      toast.error("Будь ласка, виберіть файл .docx");
       return;
     }
 
     setIsUploading(true);
-    try {
+    const uploadPromise = (async () => {
       const uploadedResults = await uploadResultsFromDocx(file);
       // Reload all results to show the newly uploaded ones
       const allResults = await loadAllResults();
       setItems(allResults);
-      alert(`Успішно завантажено ${uploadedResults.length} результатів`);
+      return uploadedResults;
+    })();
+
+    toast.promise(uploadPromise, {
+      loading: "Завантаження та обробка файлу...",
+      success: (uploadedResults) => `Успішно завантажено ${uploadedResults.length} результатів`,
+      error: "Не вдалося завантажити файл. Спробуйте ще раз.",
+    });
+
+    try {
+      await uploadPromise;
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Не вдалося завантажити файл. Спробуйте ще раз.");
     } finally {
       setIsUploading(false);
       // Reset file input
