@@ -1,5 +1,5 @@
 import { generateCourseInfo } from "@/ai/generator";
-import { renderProgram, renderSelfMethod } from "@/docx/docx";
+import { renderProgram, renderSelfMethod } from "@/docx/render";
 import { courseResults, courses, courseTopics } from "@/stores/db";
 import type { Course, CourseGenerationData, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
@@ -204,8 +204,7 @@ const generationApi = {
         return new Response("Job not completed", { status: 400 });
       }
 
-      // Clean up job after download (optional - you might want to keep it for a while)
-      // jobs.delete(jobId);
+      jobs.delete(jobId);
 
       return wordResp(job.result, job.filename);
     }

@@ -110,8 +110,36 @@ const courseTopics = {
 };
 
 const courseResults = {
+  all: async (): Promise<CourseResult[]> => {
+    return await sql`SELECT * FROM course_results ORDER BY type, no` as CourseResult[];
+  },
+
   list: async (ids: number[]): Promise<CourseResult[]> => {
     return await sql`SELECT * FROM course_results WHERE id IN (${ids}) ORDER BY type, no` as CourseResult[];
+  },
+
+  get: async (id: number): Promise<CourseResult | null> => {
+    const result = await sql`SELECT * FROM course_results WHERE id = ${id}`;
+    return result[0] || null;
+  },
+
+  add: async (result: CourseResult) => {
+    return await sql`INSERT INTO course_results 
+      (id, no, type, name) VALUES (${result.id}, ${result.no}, ${result.type}, ${result.name}) RETURNING *`;
+  },
+
+  update: async (result: CourseResult) => {
+    return await sql`UPDATE course_results 
+      SET no = ${result.no}, 
+          type = ${result.type}, 
+          name = ${result.name}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${result.id}
+      RETURNING *`;
+  },
+
+  delete: async (id: number) => {
+    return await sql`DELETE FROM course_results WHERE id = ${id}`;
   },
 };
 

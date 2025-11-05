@@ -4,13 +4,15 @@ import index from "./index.html";
 import teachersApi from "@/api/teachers.ts";
 import coursesApi from "@/api/courses.ts";
 import generationApi from "@/api/generation.ts";
+import resultsApi from "@/api/results.ts";
 
 const server = serve({
   routes: {    
     "/*": index, // Serve index.html for all unmatched routes.        
     ...generationApi,
     ...coursesApi,
-    ...teachersApi
+    ...teachersApi,
+    ...resultsApi
   },
 
   development: process.env.NODE_ENV !== "production" && {

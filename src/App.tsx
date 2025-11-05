@@ -5,6 +5,8 @@ import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
 import TeacherEdit from "./client/pages/TeacherEdit";
 import CourseEdit from "./client/pages/CourseEdit";
+import ResultsList from "./client/pages/ResultsList";
+import ResultEdit from "./client/pages/ResultEdit";
 
 function Navigation() {
   const location = useLocation();
@@ -42,6 +44,16 @@ function Navigation() {
         >
           Викладачі
         </Link>
+        <Link
+          to="/results"
+          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
+            location.pathname.startsWith("/results")
+              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
+              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+          }`}
+        >
+          Результати
+        </Link>
       </div>
     </nav>
   );
@@ -60,6 +72,8 @@ export function App() {
         <Route path="/courses/:id" element={<CourseEdit />} />
         <Route path="/teachers" element={<TeachersList />} />
         <Route path="/teachers/:id" element={<TeacherEdit />} />
+        <Route path="/results" element={<ResultsList />} />
+        <Route path="/results/:id" element={<ResultEdit />} />
       </Routes>
     </div>
   );
