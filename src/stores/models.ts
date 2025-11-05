@@ -59,6 +59,7 @@ export type CourseTopic = {
   lection: string,
   attestation: number,
   hours: number,
+  practical_hours: number,
   generated: GeneratedTopicData | null
 }
 
@@ -68,14 +69,10 @@ export type QuizQuestion = {
   options: string[]
 }
 
-export type Topic = {
-  title: string,
-  index: number,
-  keywords: string[],
-  selfQuestions: string[],
-  referats: string[],
-  quiz: QuizQuestion[]
-  keyQuestions: string[]
+export type CourseAttestation = {
+  no: number,
+  name: string,
+  topics: CourseTopic[]
 }
 
 export type CourseGenerationData = {
@@ -85,5 +82,6 @@ export type CourseGenerationData = {
   postrequisites: ShortCourseInfo[],
   generalResults:CourseResult[],
   specialResults:CourseResult[],
-  programResults:CourseResult[]
+  programResults:CourseResult[],
+  attestations: CourseAttestation[]
 }

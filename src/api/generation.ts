@@ -1,7 +1,7 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { renderProgram, renderSelfMethod } from "@/docx/render";
 import { courseResults, courses, courseTopics } from "@/stores/db";
-import type { Course, CourseGenerationData, CourseTopic } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
@@ -57,6 +57,15 @@ async function loadFullCourseInfo(
   const results = await courseResults.list(course.data.results);
   onProgress?.(90);
 
+  // group topics by attestation
+  const attestations = course.data.attestations.map((a, index) => ({
+    no: index+1,
+    name: a,
+    topics: updatedTopics.filter(t => t.attestation === index + 1)
+  } as CourseAttestation));
+
+  onProgress?.(95);
+  
   return {
     course: updatedCourse,
     topics: updatedTopics,
@@ -65,6 +74,7 @@ async function loadFullCourseInfo(
     generalResults: results.filter(r => r.type === "ЗК").sort((a, b) => a.no - b.no),
     specialResults: results.filter(r => r.type === "СК").sort((a, b) => a.no - b.no),
     programResults: results.filter(r => r.type === "РН").sort((a, b) => a.no - b.no),
+    attestations  
   } as CourseGenerationData
 }
 

@@ -31,9 +31,16 @@ const parser = expressionParser.configure({
           if (!input) return input;
           return input.toUpperCase();
       },
-      join(input) {
+      join(input, separator = ", ") {
         if (!input || !Array.isArray(input)) return input;
-        return input.join(", ")
+        return input.join(separator)
+      },
+      capitalize(input) {
+        if (!input) return input;
+        if (Array.isArray(input)) {
+          return input.map(i => i.charAt(0).toUpperCase() + i.slice(1));
+        }
+        return input.charAt(0).toUpperCase() + input.slice(1);
       },
       shortName(input) {
         if (!input) return input;

@@ -16,7 +16,10 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topicLection, setTopicLection] = useState("");
   const [topicHours, setTopicHours] = useState<number>(2);
   const [topicAttestation, setTopicAttestation] = useState<number>(1);
+  const [topicPracticalHours, setTopicPracticalHours] = useState<number>(2);
   const [isDragging, setIsDragging] = useState(false);
+  const [editingAttestationId, setEditingAttestationId] = useState<number | null>(null);
+  const [editingPracticalHoursId, setEditingPracticalHoursId] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId) {
@@ -45,6 +48,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       lection: "",
       hours: 2,
       attestation: 1,
+      practical_hours: 0,
       generated: null
     });
     setTopicName("");
@@ -52,6 +56,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicLection("");
     setTopicHours(2);
     setTopicAttestation(1);
+    setTopicPracticalHours(2);
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
@@ -62,6 +67,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicLection(topic.lection || "");
     setTopicHours(topic.hours || 2);
     setTopicAttestation(topic.attestation || 1);
+    setTopicPracticalHours(topic.practical_hours || 0);
   };
 
   const handleCancelEdit = () => {
@@ -71,6 +77,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicLection("");
     setTopicHours(2);
     setTopicAttestation(1);
+    setTopicPracticalHours(0);
   };
 
   const handleSaveTopic = async () => {
@@ -93,6 +100,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         lection: topicLection.trim(),
         hours: topicHours,
         attestation: topicAttestation,
+        practical_hours: topicPracticalHours,
         generated: {
           subtopics: subtopicsArray,
           keywords: existingGenerated?.keywords || [],
@@ -220,6 +228,58 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     }
   };
 
+  const handleUpdateAttestation = async (topic: CourseTopic, newAttestation: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        attestation: newAttestation
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setEditingAttestationId(null);
+      } else {
+        throw new Error("Failed to update attestation");
+      }
+    } catch (error) {
+      console.error("Error updating attestation:", error);
+      alert("Не вдалося оновити атестацію");
+      setEditingAttestationId(null);
+    }
+  };
+
+  const handleUpdatePracticalHours = async (topic: CourseTopic, newPracticalHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        practical_hours: newPracticalHours
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setEditingPracticalHoursId(null);
+      } else {
+        throw new Error("Failed to update practical hours");
+      }
+    } catch (error) {
+      console.error("Error updating practical hours:", error);
+      alert("Не вдалося оновити практичні години");
+      setEditingPracticalHoursId(null);
+    }
+  };
+
   return (
     <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -279,7 +339,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                       placeholder="Введіть підтеми, по одній на рядок"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
                       <select
@@ -287,6 +347,20 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         value={topicHours}
                         onChange={(e) => setTopicHours(Number(e.target.value))}
                       >
+                        <option value={2}>2 години</option>
+                        <option value={4}>4 години</option>
+                        <option value={6}>6 годин</option>
+                        <option value={8}>8 годин</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[#fbf0df] font-bold mb-2">Практичні години:</label>
+                      <select
+                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                        value={topicPracticalHours}
+                        onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
+                      >
+                        <option value={0}>0 годин</option>
                         <option value={2}>2 години</option>
                         <option value={4}>4 години</option>
                         <option value={6}>6 годин</option>
@@ -343,6 +417,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             // Otherwise show the normal topic item
             const attestation = topic.attestation || 1;
             const hours = topic.hours || 2;
+            const practicalHours = topic.practical_hours || 0;
             // Background colors based on attestation index
             const attestationBgColors = {
               1: "bg-[#2a2a2a]", // Default dark gray
@@ -372,9 +447,65 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                           <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">
                             {hours} год.
                           </span>
-                          <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">
-                            Атест. {attestation}
-                          </span>
+                          {editingPracticalHoursId === topic.id ? (
+                            <select
+                              value={practicalHours}
+                              onChange={(e) => {
+                                const newPracticalHours = Number(e.target.value);
+                                handleUpdatePracticalHours(topic, newPracticalHours);
+                              }}
+                              onBlur={() => setEditingPracticalHoursId(null)}
+                              autoFocus
+                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={0}>0 пр.</option>
+                              <option value={2}>2 пр.</option>
+                              <option value={4}>4 пр.</option>
+                              <option value={6}>6 пр.</option>
+                              <option value={8}>8 пр.</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPracticalHoursId(topic.id);
+                              }}
+                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                              title="Натисніть для зміни практичних годин"
+                            >
+                              {practicalHours} пр.
+                            </button>
+                          )}
+                          {editingAttestationId === topic.id ? (
+                            <select
+                              value={attestation}
+                              onChange={(e) => {
+                                const newAttestation = Number(e.target.value);
+                                handleUpdateAttestation(topic, newAttestation);
+                              }}
+                              onBlur={() => setEditingAttestationId(null)}
+                              autoFocus
+                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={1}>Атест. 1</option>
+                              <option value={2}>Атест. 2</option>
+                              <option value={3}>Атест. 3</option>
+                              <option value={4}>Атест. 4</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingAttestationId(topic.id);
+                              }}
+                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                              title="Натисніть для зміни атестації"
+                            >
+                              Атест. {attestation}
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
@@ -439,13 +570,26 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
               placeholder="Введіть підтеми, по одній на рядок"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
               <select
                 className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                 value={topicHours}
                 onChange={(e) => setTopicHours(Number(e.target.value))}
+              >
+                <option value={2}>2 години</option>
+                <option value={4}>4 години</option>
+                <option value={6}>6 годин</option>
+                <option value={8}>8 годин</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Практичні години:</label>
+              <select
+                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                value={topicPracticalHours}
+                onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
               >
                 <option value={2}>2 години</option>
                 <option value={4}>4 години</option>
