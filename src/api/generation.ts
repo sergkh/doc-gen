@@ -53,6 +53,7 @@ async function loadFullCourseInfo(
   onProgress?.(80);
   const postrequisites = await courses.getShortInfos(course.data.postrequisites);
   onProgress?.(85);
+
   const results = await courseResults.list(course.data.results);
   onProgress?.(90);
 
