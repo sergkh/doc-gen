@@ -33,7 +33,8 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
 export function parseResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
   const results: CourseResult[] = [];
 
-  const pattern = new RegExp(`${type}(\\d+)\\*?\\.?\\s{0,2}([\\s\\S]*?)\\.`, 'gs');
+  // They all ends with a dot or a newline.
+  const pattern = new RegExp(`${type}(\\d+)\\*?\\.?\\s{0,2}([ʼ\\s\\S]*?)(\\.|\\n)`, 'gs');
   
   let match;
   while ((match = pattern.exec(text)) !== null) {

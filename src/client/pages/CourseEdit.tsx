@@ -1,4 +1,4 @@
-import type { Course, Teacher, ShortCourseInfo } from "@/stores/models";
+import type { Course, Teacher, ShortCourseInfo, CourseResult } from "@/stores/models";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,7 +7,14 @@ import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
 import { loadAllTeachers } from "../teachers";
+import { loadAllResults } from "../results";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
+
+const RESULT_TYPES = {
+  "ЗК": "Загальні компетентності",
+  "СК": "Спеціальні компетентності",
+  "РН": "Результати навчання"
+};
 
 export default function CourseEdit() {
   const { id } = useParams();
@@ -17,17 +24,21 @@ export default function CourseEdit() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [prerequisiteInfos, setPrerequisiteInfos] = useState<ShortCourseInfo[]>([]);
   const [postrequisiteInfos, setPostrequisiteInfos] = useState<ShortCourseInfo[]>([]);
+  const [allResults, setAllResults] = useState<CourseResult[]>([]);
+  const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
   useEffect(() => { loadAllTeachers().then(setTeachers).catch(console.error); }, []);
   useEffect(() => { loadAllCourses().then(setAllCourses).catch(console.error); }, []);
+  useEffect(() => { loadAllResults().then(setAllResults).catch(console.error); }, []);
 
   // Load prerequisite and postrequisite info when item or prerequisites/postrequisites change
   useEffect(() => {
     if (!item || !item.id || item.id < 0) {
       setPrerequisiteInfos([]);
       setPostrequisiteInfos([]);
+      setSelectedResults([]);
       return;
     }
 
@@ -41,7 +52,11 @@ export default function CourseEdit() {
       .filter(c => item.data.postrequisites.includes(c.id))
       .map(c => ({ id: c.id, name: c.name, teacher: c.teacher || "" }));
     setPostrequisiteInfos(postreqInfos);
-  }, [item?.data.prerequisites, item?.data.postrequisites, allCourses, item?.id]);
+
+    // Load selected results
+    const selected = allResults.filter(r => item.data.results.includes(r.id));
+    setSelectedResults(selected);
+  }, [item?.data.prerequisites, item?.data.postrequisites, item?.data.results, allCourses, allResults, item?.id]);
 
   const update = (json: any) => {
     if (!item) return;
@@ -159,6 +174,35 @@ export default function CourseEdit() {
       c.id >= 0 && 
       !item.data.postrequisites.includes(c.id)
     );
+  };
+
+  const handleAddResult = (resultId: string) => {
+    if (!item || !resultId) return;
+    const id = Number(resultId);
+    if (item.data.results.includes(id)) return;
+    
+    const newResults = [...item.data.results, id];
+    updateData({ results: newResults });
+  };
+
+  const handleRemoveResult = (resultId: number) => {
+    if (!item) return;
+    const newResults = item.data.results.filter(id => id !== resultId);
+    updateData({ results: newResults });
+  };
+
+  // Get available results for each type, excluding already selected ones
+  const getAvailableResultsForType = (type: 'ЗК' | 'СК' | 'РН') => {
+    if (!item) return [];
+    return allResults.filter(r => 
+      r.type === type && 
+      !item.data.results.includes(r.id)
+    );
+  };
+
+  // Get selected results for each type
+  const getSelectedResultsForType = (type: 'ЗК' | 'СК' | 'РН') => {
+    return selectedResults.filter(r => r.type === type);
   };
 
   const isValid = useMemo(() => {
@@ -321,6 +365,51 @@ export default function CourseEdit() {
               <textarea rows={5} className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.description} onChange={(e) => updateData({description: e.target.value})} />
             </div>
+            {(["ЗК", "СК", "РН"] as const).map(type => (
+              <div key={type} className="col-span-2">
+                <label className="block text-[#fbf0df] font-bold mb-2">{RESULT_TYPES[type]}:</label>
+                <div className="flex flex-col gap-2">
+                  {getSelectedResultsForType(type).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {getSelectedResultsForType(type).map((result) => (
+                        <div
+                          key={result.id}
+                          className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                        >
+                          <span className="text-[#fbf0df] font-mono text-sm">
+                            <span className="font-bold text-[#f3d5a3]">{result.no}.</span> {result.name}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveResult(result.id)}
+                            className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                            aria-label={`Видалити ${RESULT_TYPES[type]}`}
+                          >
+                            <FontAwesomeIcon icon={faTimes} size="xs" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <select
+                    className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAddResult(e.target.value);
+                        e.target.value = "";
+                      }
+                    }}
+                  >
+                    <option value="">-- Додати {RESULT_TYPES[type]} --</option>
+                    {getAvailableResultsForType(type).map(result => (
+                      <option key={result.id} value={result.id}>
+                        {result.no}. {result.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="flex gap-2">

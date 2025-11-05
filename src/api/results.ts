@@ -4,13 +4,6 @@ import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 
-async function parseResultsFromDocx(filePath: string): Promise<CourseResult[]> {
-  const opp = await parseOPP(filePath);
-  if (!opp) throw new Error("Невалідний файл ОПП");
-  console.log("Parsed OPP results: ", opp);
-  return [...opp.specialResults, ...opp.generalResults, ...opp.programResults];
-  return [];
-}
 
 const resultsApi = {
   "/api/results": {
@@ -79,14 +72,24 @@ const resultsApi = {
         console.log("Saving uploaded file to:", uploadPath);
 
         // Parse the docx file
-        const parsedResults = await parseResultsFromDocx(uploadPath);
+        const opp = await parseOPP(uploadPath);
+        if (!opp) throw new Error("Невалідний файл ОПП");
+        console.log("Parsed OPP results: ", opp);
+        const parsedResults = [...opp.specialResults, ...opp.generalResults, ...opp.programResults];        
               
-        const savedResults: CourseResult[] = await Promise.all(parsedResults.map(async (result) => {
-          const id = await courseResults.add(result)
-          return Object.assign(result, { id });
+        const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
+          try {
+            const id = await courseResults.add(result)
+            return Object.assign(result, { id });
+          } catch (error) {
+            // ignore duplicate key errors (PostgreSQL unique constraint violation)
+            if (error && typeof error === 'object' && 'errno' in error && error.errno === '23505') return null;            
+            console.error("Error adding result:", error);
+            return null;
+          }
         }));
         
-        return Response.json(savedResults);
+        return Response.json(savedResults.filter(result => result !== null));
       } catch (error) {
         console.error("Error processing docx file:", error);
         return new Response(`Error processing docx file: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
