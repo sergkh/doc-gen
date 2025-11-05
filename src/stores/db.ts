@@ -123,9 +123,8 @@ const courseResults = {
     return result[0] || null;
   },
 
-  add: async (result: CourseResult) => {
-    return await sql`INSERT INTO course_results 
-      (id, no, type, name) VALUES (${result.id}, ${result.no}, ${result.type}, ${result.name}) RETURNING *`;
+  add: async (result: CourseResult) : Promise<number> => {
+    return (await sql`INSERT INTO course_results (no, type, name) VALUES (${result.no}, ${result.type}, ${result.name}) RETURNING *`)[0].id;
   },
 
   update: async (result: CourseResult) => {

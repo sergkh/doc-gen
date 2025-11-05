@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { useDropzone } from "react-dropzone";
+import toast from "react-hot-toast";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
 import { loadAllTeachers } from "../teachers";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
@@ -15,7 +17,6 @@ export default function CourseEdit() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [prerequisiteInfos, setPrerequisiteInfos] = useState<ShortCourseInfo[]>([]);
   const [postrequisiteInfos, setPostrequisiteInfos] = useState<ShortCourseInfo[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
@@ -59,35 +60,9 @@ export default function CourseEdit() {
     navigate("/courses");
   };
 
-  const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const fileName = file.name.toLowerCase();
-      const isDocxFile = 
-        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        fileName.endsWith(".docx");
-
-      if (isDocxFile) {
-        await handleFileUpload(file);
-      } else {
-        alert("Будь ласка, перетягніть файл .docx");
-      }
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      await handleFileUpload(file);
-    }
-  };
-
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
-    try {
+    const uploadPromise = (async () => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -102,23 +77,40 @@ export default function CourseEdit() {
 
       const course = await response.json() as Course;
       setItem(course);
+      return course;
+    })();
+
+    toast.promise(uploadPromise, {
+      loading: "Завантаження та обробка файлу...",
+      success: "Файл syllabus успішно оброблено",
+      error: "Не вдалося обробити файл syllabus",
+    });
+
+    try {
+      await uploadPromise;
     } catch (error) {
       console.error("Error uploading syllabus:", error);
-      alert("Не вдалося обробити файл syllabus");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+    },
+    accept: {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+    },
+    maxFiles: 1,
+    disabled: isUploading,
+    onDropRejected: () => {
+      toast.error("Будь ласка, перетягніть файл .docx");
+    }
+  });
 
   const handleAddPrerequisite = (courseId: string) => {
     if (!item || !courseId) return;
@@ -188,6 +180,21 @@ export default function CourseEdit() {
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">Редагувати курс</h1>
+        
+        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
+          <label className="block text-[#fbf0df] font-bold mb-2">Завантажити з Силабуса (.docx):</label>
+          <div
+            {...getRootProps()}
+            className={`border-2 ${isDragActive ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
+          >
+            <input {...getInputProps()} />
+            {isUploading ? (<span className="text-[#fbf0df]">Завантаження...</span>) : (
+              <span className="text-[#fbf0df]">
+                {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
+              </span>
+            )}
+          </div>
+        </div>
 
         <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -330,36 +337,6 @@ export default function CourseEdit() {
 
         {item?.id && <CourseTopicsEditor courseId={item.id} />}
 
-        <div 
-          onDrop={handleFileDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`bg-[#1a1a1a] border-2 ${isDragging ? "border-[#f3d5a3] border-dashed" : "border-[#fbf0df]"} rounded-xl p-3 font-mono transition-colors duration-200`}
-        >
-          <label className="block text-[#fbf0df] font-bold mb-2">Завантажити з Силабуса (.docx):</label>
-          <div className={`border-2 ${isDragging ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200`}>
-            <input
-              type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="syllabus-upload"
-              disabled={isUploading}
-            />
-            <label
-              htmlFor="syllabus-upload"
-              className={`cursor-pointer block ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              {isUploading ? (
-                <span className="text-[#fbf0df]">Завантаження...</span>
-              ) : (
-                <span className="text-[#fbf0df]">
-                  {isDragging ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
-                </span>
-              )}
-            </label>
-          </div>
-        </div>
       </div>
     </div>
   );

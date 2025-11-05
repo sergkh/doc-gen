@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { CourseResult } from "@/stores/models";
 import { loadAllResults, deleteResult, uploadResultsFromDocx } from "../results";
@@ -14,11 +15,9 @@ const RESULT_TYPES = {
 
 export default function ResultsList() {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [items, setItems] = useState<CourseResult[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     loadAllResults().then(setItems).catch(console.error);
@@ -65,12 +64,6 @@ export default function ResultsList() {
   };
 
   const processFile = async (file: File) => {
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith(".docx")) {
-      toast.error("Будь ласка, виберіть файл .docx");
-      return;
-    }
-
     setIsUploading(true);
     const uploadPromise = (async () => {
       const uploadedResults = await uploadResultsFromDocx(file);
@@ -92,40 +85,25 @@ export default function ResultsList() {
       console.error("Error uploading file:", error);
     } finally {
       setIsUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    await processFile(file);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    await processFile(file);
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        processFile(file);
+      }
+    },
+    accept: {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+    },
+    maxFiles: 1,
+    disabled: isUploading,
+    onDropRejected: () => {
+      toast.error("Будь ласка, виберіть файл .docx");
+    }
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
@@ -141,32 +119,22 @@ export default function ResultsList() {
         </div>
 
         <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          {...getRootProps()}
           className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-            isDragging
+            isDragActive
               ? "border-blue-500 bg-blue-500/10"
               : "border-[#fbf0df] bg-[#1a1a1a]"
           } ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
-          onClick={() => !isUploading && fileInputRef.current?.click()}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".docx"
-            onChange={handleFileUpload}
-            className="hidden"
-            disabled={isUploading}
-          />
+          <input {...getInputProps()} />
           <div className="flex flex-col items-center gap-3">            
             {isUploading ? (
               <p className="text-[#fbf0df] font-mono font-bold">
-                <FontAwesomeIcon icon={faUpload} className={`${isDragging ? "text-blue-500" : "text-[#fbf0df]"}`}/> Завантаження...
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-[#fbf0df]"}/> Завантаження...
               </p>
             ) : (
               <p className="text-[#fbf0df] font-mono font-bold text-lg">
-                <FontAwesomeIcon icon={faUpload} className={`${isDragging ? "text-blue-500" : "text-[#fbf0df]"}`}/> Перетягніть файл .docx сюди або натисніть для вибору
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-[#fbf0df]"}/> Перетягніть файл OПП в форматі .docx сюди або натисніть для вибору
               </p>
             )}
           </div>

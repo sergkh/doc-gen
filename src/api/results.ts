@@ -1,11 +1,14 @@
+import { parseOPP } from "@/docx/parse";
 import { courseResults } from "@/stores/db";
 import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 
 async function parseResultsFromDocx(filePath: string): Promise<CourseResult[]> {
-  // TODO: Implement docx parsing logic
-  console.log("Parsing results from docx file:", filePath);  
+  const opp = await parseOPP(filePath);
+  if (!opp) throw new Error("Невалідний файл ОПП");
+  console.log("Parsed OPP results: ", opp);
+  return [...opp.specialResults, ...opp.generalResults, ...opp.programResults];
   return [];
 }
 
@@ -67,10 +70,7 @@ const resultsApi = {
           return new Response("Invalid file type. Expected .docx file", { status: 400 });
         }
 
-        // Generate unique filename
-        const timestamp = Date.now();
-        const sanitizedFileName = fileName.replace(/[^a-z0-9.-]/gi, "_");
-        const uploadFileName = `${timestamp}_${sanitizedFileName}`;
+        const uploadFileName = `${Date.now()}.docx`;
         const uploadsDir = path.join(process.cwd(), "uploads");
         const uploadPath = path.join(uploadsDir, uploadFileName);
 
@@ -80,22 +80,11 @@ const resultsApi = {
 
         // Parse the docx file
         const parsedResults = await parseResultsFromDocx(uploadPath);
-        
-        // Save all parsed results to the database
-        const savedResults: CourseResult[] = [];
-        for (const result of parsedResults) {
-          await courseResults.add(result);
-          // Get the saved result with the generated ID
-          const allResults = await courseResults.all();
-          const savedResult = allResults.find(r => 
-            r.no === result.no && 
-            r.type === result.type && 
-            r.name === result.name
-          );
-          if (savedResult) {
-            savedResults.push(savedResult);
-          }
-        }
+              
+        const savedResults: CourseResult[] = await Promise.all(parsedResults.map(async (result) => {
+          const id = await courseResults.add(result)
+          return Object.assign(result, { id });
+        }));
         
         return Response.json(savedResults);
       } catch (error) {
