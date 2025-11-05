@@ -20,7 +20,18 @@ export type CourseData = {
   prerequisites: number[],
   postrequisites: number[],
   results: number[],
-  attestations: string[]
+  attestations: {
+    name: string,
+    semester: number
+  }[],
+  fulltime: {
+    semesters: number[],
+    study_year: number
+  },
+  inabscentia: {
+    semesters: number[],
+    study_year: number
+  }
 }
 
 export type GeneratedCourseData = {
@@ -51,15 +62,25 @@ export type GeneratedTopicData = {
   keyQuestions: string[]
 } & Record<string, any>;
 
+export type CourseTopicData = {
+  attestation: number,
+  fulltime: {
+    hours: number,
+    practical_hours: number,
+  },
+  inabscentia: {
+    hours: number,
+    practical_hours: number
+  }
+}
+
 export type CourseTopic = {
   id: number,
   course_id: number,
   index: number,
   name: string,
   lection: string,
-  attestation: number,
-  hours: number,
-  practical_hours: number,
+  data: CourseTopicData,
   generated: GeneratedTopicData | null
 }
 

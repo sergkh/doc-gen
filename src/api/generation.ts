@@ -60,8 +60,8 @@ async function loadFullCourseInfo(
   // group topics by attestation
   const attestations = course.data.attestations.map((a, index) => ({
     no: index+1,
-    name: a,
-    topics: updatedTopics.filter(t => t.attestation === index + 1)
+    name: a.name,
+    topics: updatedTopics.filter(t => t.data?.attestation === index + 1)
   } as CourseAttestation));
 
   onProgress?.(95);

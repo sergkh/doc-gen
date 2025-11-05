@@ -9,6 +9,8 @@ import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
 import { loadAllTeachers } from "../teachers";
 import { loadAllResults } from "../results";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
+import AttestationsEditor from "../components/AttestationsEditor";
+import ResultsEditor from "../components/ResultsEditor";
 
 const RESULT_TYPES = {
   "ЗК": "Загальні компетентності",
@@ -27,13 +29,14 @@ export default function CourseEdit() {
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const attestationInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
-  useEffect(() => { loadAllTeachers().then(setTeachers).catch(console.error); }, []);
-  useEffect(() => { loadAllCourses().then(setAllCourses).catch(console.error); }, []);
-  useEffect(() => { loadAllResults().then(setAllResults).catch(console.error); }, []);
-
+  useEffect(() => { 
+    loadAllTeachers().then(setTeachers).catch(console.error); 
+    loadAllCourses().then(setAllCourses).catch(console.error);
+    loadAllResults().then(setAllResults).catch(console.error);
+  }, []);
+  
   // Load prerequisite and postrequisite info when item or prerequisites/postrequisites change
   useEffect(() => {
     if (!item || !item.id || item.id < 0) {
@@ -206,12 +209,21 @@ export default function CourseEdit() {
     return selectedResults.filter(r => r.type === type);
   };
 
-  const handleAddAttestation = (attestation: string) => {
+  const handleAddAttestation = (attestation: string, semester: number = 1) => {
     if (!item || !attestation.trim()) return;
     const trimmed = attestation.trim();
-    if (item.data.attestations.includes(trimmed)) return;
+    // Check if attestation with same name already exists
+    if (item.data.attestations.some(a => a.name === trimmed)) return;
     
-    const newAttestations = [...item.data.attestations, trimmed];
+    const newAttestations = [...item.data.attestations, { name: trimmed, semester }];
+    updateData({ attestations: newAttestations });
+  };
+
+  const handleUpdateAttestationSemester = (index: number, semester: number) => {
+    if (!item) return;
+    const newAttestations = item.data.attestations.map((att, i) => 
+      i === index ? { ...att, semester } : att
+    );
     updateData({ attestations: newAttestations });
   };
 
@@ -219,6 +231,33 @@ export default function CourseEdit() {
     if (!item) return;
     const newAttestations = item.data.attestations.filter((_, i) => i !== index);
     updateData({ attestations: newAttestations });
+  };
+
+  const handleAddSemester = (form: 'fulltime' | 'inabscentia', semester: number) => {
+    if (!item) return;
+    const currentForm = item.data[form] || { semesters: [], study_year: 1 };
+    const currentSemesters = currentForm.semesters || [];
+    if (currentSemesters.includes(semester)) return;
+    const newSemesters = {
+      ...currentForm,
+      semesters: [...currentSemesters, semester].sort((a, b) => a - b)
+    };
+    updateData({ 
+      [form]: newSemesters
+    });
+  };
+
+  const handleRemoveSemester = (form: 'fulltime' | 'inabscentia', semester: number) => {
+    if (!item) return;
+    const currentForm = item.data[form] || { semesters: [], study_year: 1 };
+    const currentSemesters = currentForm.semesters || [];
+    const newSemesters = {
+      ...currentForm,
+      semesters: currentSemesters.filter(s => s !== semester)
+    };
+    updateData({ 
+      [form]: newSemesters
+    });
   };
 
   const isValid = useMemo(() => {
@@ -282,6 +321,34 @@ export default function CourseEdit() {
               <label className="block text-[#fbf0df] font-bold mb-2">Напрям:</label>
               <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Рік навчання (денна):</label>
+              <input 
+                type="number"
+                min="1"
+                max="6"
+                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                value={item.data.fulltime?.study_year || 1} 
+                onChange={(e) => {
+                  const fulltime = { ...item.data.fulltime, study_year: Number(e.target.value) || 1 };
+                  updateData({ fulltime });
+                }} 
+              />
+            </div>
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Рік навчання (заочна):</label>
+              <input 
+                type="number"
+                min="1"
+                max="6"
+                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                value={item.data.inabscentia?.study_year || 1} 
+                onChange={(e) => {
+                  const inabscentia = { ...item.data.inabscentia, study_year: Number(e.target.value) || 1 };
+                  updateData({ inabscentia });
+                }} 
+              />
             </div>
             <div>
               <label className="block text-[#fbf0df] font-bold mb-2">Викладач:</label>
@@ -382,99 +449,108 @@ export default function CourseEdit() {
                 value={item.data.description} onChange={(e) => updateData({description: e.target.value})} />
             </div>
             {(["ЗК", "СК", "РН"] as const).map(type => (
-              <div key={type} className="col-span-2">
-                <label className="block text-[#fbf0df] font-bold mb-2">{RESULT_TYPES[type]}:</label>
-                <div className="flex flex-col gap-2">
-                  {getSelectedResultsForType(type).length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {getSelectedResultsForType(type).map((result) => (
-                        <div
-                          key={result.id}
-                          className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
-                        >
-                          <span className="text-[#fbf0df] font-mono text-sm">
-                            <span className="font-bold text-[#f3d5a3]">{result.no}.</span> {result.name}
-                          </span>
-                          <button
-                            onClick={() => handleRemoveResult(result.id)}
-                            className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
-                            aria-label={`Видалити ${RESULT_TYPES[type]}`}
-                          >
-                            <FontAwesomeIcon icon={faTimes} size="xs" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <select
-                    className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                    value=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleAddResult(e.target.value);
-                        e.target.value = "";
-                      }
-                    }}
-                  >
-                    <option value="">-- Додати {RESULT_TYPES[type]} --</option>
-                    {getAvailableResultsForType(type).map(result => (
-                      <option key={result.id} value={result.id}>
-                        {result.no}. {result.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <ResultsEditor
+                key={type}
+                label={RESULT_TYPES[type]}
+                selectedResults={getSelectedResultsForType(type)}
+                availableResults={getAvailableResultsForType(type)}
+                onAdd={handleAddResult}
+                onRemove={handleRemoveResult}
+              />
             ))}
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Атестації:</label>
-              <div className="flex flex-col gap-2">
-                {item.data.attestations.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {item.data.attestations.map((attestation, index) => (
-                      <div
-                        key={index}
-                        className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
-                      >
-                        <span className="text-[#fbf0df] font-mono text-sm">{attestation}</span>
-                        <button
-                          onClick={() => handleRemoveAttestation(index)}
-                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
-                          aria-label="Видалити атестацію"
-                        >
-                          <FontAwesomeIcon icon={faTimes} size="xs" />
-                        </button>
+              <label className="block text-[#fbf0df] font-bold mb-2">Семестри:</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Денна форма:</label>
+                  <div className="flex flex-col gap-2">
+                    {(item.data.fulltime?.semesters || []).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {(item.data.fulltime?.semesters || []).map((semester) => (
+                          <div
+                            key={semester}
+                            className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                          >
+                            <span className="text-[#fbf0df] font-mono text-sm">{semester} семестр</span>
+                            <button
+                              onClick={() => handleRemoveSemester('fulltime', semester)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                              aria-label="Видалити семестр"
+                            >
+                              <FontAwesomeIcon icon={faTimes} size="xs" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    <select
+                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleAddSemester('fulltime', Number(e.target.value));
+                          e.target.value = "";
+                        }
+                      }}
+                    >
+                      <option value="">-- Додати семестр --</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                        <option key={sem} value={sem}>
+                          {sem} семестр
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <input
-                    ref={attestationInputRef}
-                    type="text"
-                    className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                    placeholder="Назва атестації"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                        handleAddAttestation(e.currentTarget.value);
-                        e.currentTarget.value = '';
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      if (attestationInputRef.current && attestationInputRef.current.value.trim()) {
-                        handleAddAttestation(attestationInputRef.current.value);
-                        attestationInputRef.current.value = '';
-                      }
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold flex items-center gap-2"
-                  >
-                    <FontAwesomeIcon icon={faPlus} /> Додати
-                  </button>
+                </div>
+                <div>
+                  <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Заочна форма:</label>
+                  <div className="flex flex-col gap-2">
+                    {(item.data.inabscentia?.semesters || []).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {(item.data.inabscentia?.semesters || []).map((semester) => (
+                          <div
+                            key={semester}
+                            className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                          >
+                            <span className="text-[#fbf0df] font-mono text-sm">{semester} семестр</span>
+                            <button
+                              onClick={() => handleRemoveSemester('inabscentia', semester)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                              aria-label="Видалити семестр"
+                            >
+                              <FontAwesomeIcon icon={faTimes} size="xs" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <select
+                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleAddSemester('inabscentia', Number(e.target.value));
+                          e.target.value = "";
+                        }
+                      }}
+                    >
+                      <option value="">-- Додати семестр --</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                        <option key={sem} value={sem}>
+                          {sem} семестр
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
+            <AttestationsEditor
+              attestations={item.data.attestations}
+              onAdd={handleAddAttestation}
+              onUpdateSemester={handleUpdateAttestationSemester}
+              onRemove={handleRemoveAttestation}
+            />
           </div>
 
           <div className="flex gap-2">

@@ -17,9 +17,14 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topicHours, setTopicHours] = useState<number>(2);
   const [topicAttestation, setTopicAttestation] = useState<number>(1);
   const [topicPracticalHours, setTopicPracticalHours] = useState<number>(2);
+  const [topicInabscentiaHours, setTopicInabscentiaHours] = useState<number>(0);
+  const [topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
   const [editingAttestationId, setEditingAttestationId] = useState<number | null>(null);
+  const [editingFulltimeHoursId, setEditingFulltimeHoursId] = useState<number | null>(null);
   const [editingPracticalHoursId, setEditingPracticalHoursId] = useState<number | null>(null);
+  const [editingInabscentiaHoursId, setEditingInabscentiaHoursId] = useState<number | null>(null);
+  const [editingInabscentiaPracticalHoursId, setEditingInabscentiaPracticalHoursId] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId) {
@@ -46,9 +51,17 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       index: topics.length + 1,
       name: "",
       lection: "",
-      hours: 2,
-      attestation: 1,
-      practical_hours: 0,
+      data: {
+        attestation: 1,
+        fulltime: {
+          hours: 2,
+          practical_hours: 0
+        },
+        inabscentia: {
+          hours: 0,
+          practical_hours: 0
+        }
+      },
       generated: null
     });
     setTopicName("");
@@ -57,6 +70,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicHours(2);
     setTopicAttestation(1);
     setTopicPracticalHours(2);
+    setTopicInabscentiaHours(0);
+    setTopicInabscentiaPracticalHours(0);
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
@@ -65,9 +80,11 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     const subtopics = topic.generated?.subtopics || [];
     setTopicSubtopics(subtopics.join("\n"));
     setTopicLection(topic.lection || "");
-    setTopicHours(topic.hours || 2);
-    setTopicAttestation(topic.attestation || 1);
-    setTopicPracticalHours(topic.practical_hours || 0);
+    setTopicHours(topic.data?.fulltime?.hours || 2);
+    setTopicAttestation(topic.data?.attestation || 1);
+    setTopicPracticalHours(topic.data?.fulltime?.practical_hours || 0);
+    setTopicInabscentiaHours(topic.data?.inabscentia?.hours || 0);
+    setTopicInabscentiaPracticalHours(topic.data?.inabscentia?.practical_hours || 0);
   };
 
   const handleCancelEdit = () => {
@@ -78,6 +95,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicHours(2);
     setTopicAttestation(1);
     setTopicPracticalHours(0);
+    setTopicInabscentiaHours(0);
+    setTopicInabscentiaPracticalHours(0);
   };
 
   const handleSaveTopic = async () => {
@@ -98,9 +117,17 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         ...editingTopic,
         name: topicName.trim(),
         lection: topicLection.trim(),
-        hours: topicHours,
-        attestation: topicAttestation,
-        practical_hours: topicPracticalHours,
+        data: {
+          attestation: topicAttestation,
+          fulltime: {
+            hours: topicHours,
+            practical_hours: topicPracticalHours
+          },
+          inabscentia: {
+            hours: topicInabscentiaHours,
+            practical_hours: topicInabscentiaPracticalHours
+          }
+        },
         generated: {
           subtopics: subtopicsArray,
           keywords: existingGenerated?.keywords || [],
@@ -232,7 +259,10 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     try {
       const updatedTopic: CourseTopic = {
         ...topic,
-        attestation: newAttestation
+        data: {
+          ...topic.data,
+          attestation: newAttestation
+        }
       };
 
       const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
@@ -254,11 +284,49 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     }
   };
 
+  const handleUpdateFulltimeHours = async (topic: CourseTopic, newHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        data: {
+          ...topic.data,
+          fulltime: {
+            ...topic.data?.fulltime,
+            hours: newHours
+          }
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setEditingFulltimeHoursId(null);
+      } else {
+        throw new Error("Failed to update fulltime hours");
+      }
+    } catch (error) {
+      console.error("Error updating fulltime hours:", error);
+      alert("Не вдалося оновити години");
+      setEditingFulltimeHoursId(null);
+    }
+  };
+
   const handleUpdatePracticalHours = async (topic: CourseTopic, newPracticalHours: number) => {
     try {
       const updatedTopic: CourseTopic = {
         ...topic,
-        practical_hours: newPracticalHours
+        data: {
+          ...topic.data,
+          fulltime: {
+            ...topic.data?.fulltime,
+            practical_hours: newPracticalHours
+          }
+        }
       };
 
       const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
@@ -277,6 +345,70 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       console.error("Error updating practical hours:", error);
       alert("Не вдалося оновити практичні години");
       setEditingPracticalHoursId(null);
+    }
+  };
+
+  const handleUpdateInabscentiaHours = async (topic: CourseTopic, newHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        data: {
+          ...topic.data,
+          inabscentia: {
+            ...topic.data?.inabscentia,
+            hours: newHours
+          }
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setEditingInabscentiaHoursId(null);
+      } else {
+        throw new Error("Failed to update in absentia hours");
+      }
+    } catch (error) {
+      console.error("Error updating in absentia hours:", error);
+      alert("Не вдалося оновити години заочної форми");
+      setEditingInabscentiaHoursId(null);
+    }
+  };
+
+  const handleUpdateInabscentiaPracticalHours = async (topic: CourseTopic, newPracticalHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        data: {
+          ...topic.data,
+          inabscentia: {
+            ...topic.data?.inabscentia,
+            practical_hours: newPracticalHours
+          }
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setEditingInabscentiaPracticalHoursId(null);
+      } else {
+        throw new Error("Failed to update in absentia practical hours");
+      }
+    } catch (error) {
+      console.error("Error updating in absentia practical hours:", error);
+      alert("Не вдалося оновити практичні години заочної форми");
+      setEditingInabscentiaPracticalHoursId(null);
     }
   };
 
@@ -339,46 +471,76 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                       placeholder="Введіть підтеми, по одній на рядок"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
-                      <select
-                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                        value={topicHours}
-                        onChange={(e) => setTopicHours(Number(e.target.value))}
-                      >
-                        <option value={2}>2 години</option>
-                        <option value={4}>4 години</option>
-                        <option value={6}>6 годин</option>
-                        <option value={8}>8 годин</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[#fbf0df] font-bold mb-2">Практичні години:</label>
-                      <select
-                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                        value={topicPracticalHours}
-                        onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
-                      >
-                        <option value={0}>0 годин</option>
-                        <option value={2}>2 години</option>
-                        <option value={4}>4 години</option>
-                        <option value={6}>6 годин</option>
-                        <option value={8}>8 годин</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
-                      <select
-                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                        value={topicAttestation}
-                        onChange={(e) => setTopicAttestation(Number(e.target.value))}
-                      >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
-                        <option value={4}>4</option>
-                      </select>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">Години (денна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicHours}
+                          onChange={(e) => setTopicHours(Number(e.target.value))}
+                        >
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (денна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicPracticalHours}
+                          onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
+                        >
+                          <option value={0}>0 годин</option>
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicInabscentiaHours}
+                          onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
+                        >
+                          <option value={0}>0 годин</option>
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (заочна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicInabscentiaPracticalHours}
+                          onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
+                        >
+                          <option value={0}>0 годин</option>
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicAttestation}
+                          onChange={(e) => setTopicAttestation(Number(e.target.value))}
+                        >
+                          <option value={1}>1</option>
+                          <option value={2}>2</option>
+                          <option value={3}>3</option>
+                          <option value={4}>4</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -415,9 +577,11 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             }
             
             // Otherwise show the normal topic item
-            const attestation = topic.attestation || 1;
-            const hours = topic.hours || 2;
-            const practicalHours = topic.practical_hours || 0;
+            const attestation = topic.data?.attestation || 1;
+            const hours = topic.data?.fulltime?.hours || 2;
+            const practicalHours = topic.data?.fulltime?.practical_hours || 0;
+            const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
+            const inabscentiaPracticalHours = topic.data?.inabscentia?.practical_hours || 0;
             // Background colors based on attestation index
             const attestationBgColors = {
               1: "bg-[#2a2a2a]", // Default dark gray
@@ -443,10 +607,36 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         <div className="font-bold text-[#f3d5a3]">
                           {topic.index}. {topic.name || `Тема ${topic.index}`}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-[#fbf0df] opacity-70">
-                          <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">
-                            {hours} год.
-                          </span>
+                        <div className="flex items-center gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
+                          {editingFulltimeHoursId === topic.id ? (
+                            <select
+                              value={hours}
+                              onChange={(e) => {
+                                const newHours = Number(e.target.value);
+                                handleUpdateFulltimeHours(topic, newHours);
+                              }}
+                              onBlur={() => setEditingFulltimeHoursId(null)}
+                              autoFocus
+                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={2}>2 год.</option>
+                              <option value={4}>4 год.</option>
+                              <option value={6}>6 год.</option>
+                              <option value={8}>8 год.</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingFulltimeHoursId(topic.id);
+                              }}
+                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                              title="Натисніть для зміни годин"
+                            >
+                              {hours} год.
+                            </button>
+                          )}
                           {editingPracticalHoursId === topic.id ? (
                             <select
                               value={practicalHours}
@@ -475,6 +665,66 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                               title="Натисніть для зміни практичних годин"
                             >
                               {practicalHours} пр.
+                            </button>
+                          )}
+                          {editingInabscentiaHoursId === topic.id ? (
+                            <select
+                              value={inabscentiaHours}
+                              onChange={(e) => {
+                                const newHours = Number(e.target.value);
+                                handleUpdateInabscentiaHours(topic, newHours);
+                              }}
+                              onBlur={() => setEditingInabscentiaHoursId(null)}
+                              autoFocus
+                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={0}>0 год. заоч.</option>
+                              <option value={2}>2 год. заоч.</option>
+                              <option value={4}>4 год. заоч.</option>
+                              <option value={6}>6 год. заоч.</option>
+                              <option value={8}>8 год. заоч.</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingInabscentiaHoursId(topic.id);
+                              }}
+                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                              title="Натисніть для зміни годин заочної форми"
+                            >
+                              {inabscentiaHours} год. заоч.
+                            </button>
+                          )}
+                          {editingInabscentiaPracticalHoursId === topic.id ? (
+                            <select
+                              value={inabscentiaPracticalHours}
+                              onChange={(e) => {
+                                const newPracticalHours = Number(e.target.value);
+                                handleUpdateInabscentiaPracticalHours(topic, newPracticalHours);
+                              }}
+                              onBlur={() => setEditingInabscentiaPracticalHoursId(null)}
+                              autoFocus
+                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value={0}>0 пр. заоч.</option>
+                              <option value={2}>2 пр. заоч.</option>
+                              <option value={4}>4 пр. заоч.</option>
+                              <option value={6}>6 пр. заоч.</option>
+                              <option value={8}>8 пр. заоч.</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingInabscentiaPracticalHoursId(topic.id);
+                              }}
+                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                              title="Натисніть для зміни практичних годин заочної форми"
+                            >
+                              {inabscentiaPracticalHours} пр. заоч.
                             </button>
                           )}
                           {editingAttestationId === topic.id ? (
@@ -570,45 +820,76 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
               placeholder="Введіть підтеми, по одній на рядок"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
-              <select
-                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                value={topicHours}
-                onChange={(e) => setTopicHours(Number(e.target.value))}
-              >
-                <option value={2}>2 години</option>
-                <option value={4}>4 години</option>
-                <option value={6}>6 годин</option>
-                <option value={8}>8 годин</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Практичні години:</label>
-              <select
-                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                value={topicPracticalHours}
-                onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
-              >
-                <option value={2}>2 години</option>
-                <option value={4}>4 години</option>
-                <option value={6}>6 годин</option>
-                <option value={8}>8 годин</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
-              <select
-                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                value={topicAttestation}
-                onChange={(e) => setTopicAttestation(Number(e.target.value))}
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-                <option value={4}>4</option>
-              </select>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">Години (денна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicHours}
+                  onChange={(e) => setTopicHours(Number(e.target.value))}
+                >
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (денна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicPracticalHours}
+                  onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
+                >
+                  <option value={0}>0 годин</option>
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicInabscentiaHours}
+                  onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
+                >
+                  <option value={0}>0 годин</option>
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (заочна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicInabscentiaPracticalHours}
+                  onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
+                >
+                  <option value={0}>0 годин</option>
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicAttestation}
+                  onChange={(e) => setTopicAttestation(Number(e.target.value))}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                </select>
+              </div>
             </div>
           </div>
           <div>
