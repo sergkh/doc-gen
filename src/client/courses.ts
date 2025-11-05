@@ -25,7 +25,8 @@ export async function loadCourse(id: string): Promise<Course> {
         description: "",
         prerequisites: [],
         postrequisites: [],
-        results: []
+        results: [],
+        attestations: []
       }
     };
   }

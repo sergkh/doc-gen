@@ -81,8 +81,8 @@ const courseTopics = {
 
   add: async (topic: CourseTopic) => {
     return await sql`INSERT INTO course_topics 
-      (course_id, index, name, lection, generated) 
-      VALUES (${topic.course_id}, ${topic.index}, ${topic.name}, ${topic.lection}, ${topic.generated}) RETURNING *`;
+      (course_id, index, name, lection, generated, hours, attestation) 
+      VALUES (${topic.course_id}, ${topic.index}, ${topic.name}, ${topic.lection}, ${topic.generated}, ${topic.hours}, ${topic.attestation}) RETURNING *`;
   },
 
   update: async (topic: CourseTopic) => {
@@ -91,6 +91,8 @@ const courseTopics = {
           name = ${topic.name},
           lection = ${topic.lection}, 
           generated = ${topic.generated},
+          hours = ${topic.hours},
+          attestation = ${topic.attestation},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${topic.id}
       RETURNING *`;

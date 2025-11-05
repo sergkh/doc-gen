@@ -47,11 +47,21 @@ export default function CoursesList() {
                     <div className="text-sm opacity-80">Автор: {d.teacher ?? d.teacher_id}</div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => navigate(`/courses/${d.id}`)} className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
-                      <FontAwesomeIcon icon={faPen} /> Редагувати
+                    <button 
+                      onClick={() => navigate(`/courses/${d.id}`)} 
+                      className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      aria-label="Редагувати дисципліну"
+                      title="Редагувати дисципліну"
+                    >
+                      <FontAwesomeIcon icon={faPen} />
                     </button>
-                    <button onClick={() => handleDelete(d)} className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
-                      <FontAwesomeIcon icon={faTrash} /> Видалити
+                    <button 
+                      onClick={() => handleDelete(d)} 
+                      className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      aria-label="Видалити дисципліну"
+                      title="Видалити дисципліну"
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </div>
                 </li>

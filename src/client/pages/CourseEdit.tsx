@@ -1,8 +1,8 @@
 import type { Course, Teacher, ShortCourseInfo, CourseResult } from "@/stores/models";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
@@ -27,6 +27,7 @@ export default function CourseEdit() {
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const attestationInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
   useEffect(() => { loadAllTeachers().then(setTeachers).catch(console.error); }, []);
@@ -203,6 +204,21 @@ export default function CourseEdit() {
   // Get selected results for each type
   const getSelectedResultsForType = (type: 'ЗК' | 'СК' | 'РН') => {
     return selectedResults.filter(r => r.type === type);
+  };
+
+  const handleAddAttestation = (attestation: string) => {
+    if (!item || !attestation.trim()) return;
+    const trimmed = attestation.trim();
+    if (item.data.attestations.includes(trimmed)) return;
+    
+    const newAttestations = [...item.data.attestations, trimmed];
+    updateData({ attestations: newAttestations });
+  };
+
+  const handleRemoveAttestation = (index: number) => {
+    if (!item) return;
+    const newAttestations = item.data.attestations.filter((_, i) => i !== index);
+    updateData({ attestations: newAttestations });
   };
 
   const isValid = useMemo(() => {
@@ -410,6 +426,55 @@ export default function CourseEdit() {
                 </div>
               </div>
             ))}
+            <div className="col-span-2">
+              <label className="block text-[#fbf0df] font-bold mb-2">Атестації:</label>
+              <div className="flex flex-col gap-2">
+                {item.data.attestations.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {item.data.attestations.map((attestation, index) => (
+                      <div
+                        key={index}
+                        className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                      >
+                        <span className="text-[#fbf0df] font-mono text-sm">{attestation}</span>
+                        <button
+                          onClick={() => handleRemoveAttestation(index)}
+                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                          aria-label="Видалити атестацію"
+                        >
+                          <FontAwesomeIcon icon={faTimes} size="xs" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    ref={attestationInputRef}
+                    type="text"
+                    className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                    placeholder="Назва атестації"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        handleAddAttestation(e.currentTarget.value);
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (attestationInputRef.current && attestationInputRef.current.value.trim()) {
+                        handleAddAttestation(attestationInputRef.current.value);
+                        attestationInputRef.current.value = '';
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold flex items-center gap-2"
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> Додати
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-2">

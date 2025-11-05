@@ -19,7 +19,8 @@ export type CourseData = {
   description: string,
   prerequisites: number[],
   postrequisites: number[],
-  results: number[]
+  results: number[],
+  attestations: string[]
 }
 
 export type GeneratedCourseData = {
@@ -32,7 +33,7 @@ export type Course = {
   teacher_id: number,
   teacher?: string,
   data: CourseData,
-  generated: GeneratedCourseData | null
+  generated: GeneratedCourseData | null  
 }
 
 export type Teacher = {
@@ -41,7 +42,7 @@ export type Teacher = {
   email: string
 }
 
-export type GenerateTopicData = {
+export type GeneratedTopicData = {
   subtopics: string[],
   keywords: string[],
   topics: string[],
@@ -56,7 +57,9 @@ export type CourseTopic = {
   index: number,
   name: string,
   lection: string,
-  generated: GenerateTopicData | null
+  attestation: number,
+  hours: number,
+  generated: GeneratedTopicData | null
 }
 
 export type QuizQuestion = {

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Course, CourseTopic, GeneratedCourseData, GenerateTopicData, QuizQuestion } from "@/stores/models.ts";
+import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion } from "@/stores/models.ts";
 import { courses, courseTopics } from "@/stores/db.ts";
 
 const model = "gpt-4o";
@@ -103,7 +103,7 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
       selfQuestions: results['selfQuestions'].items,
       referats: results['referats'].items,    
       keyQuestions: results['keyQuestions'].items
-    } as GenerateTopicData
+    } as GeneratedTopicData
   } as CourseTopic
 }
 

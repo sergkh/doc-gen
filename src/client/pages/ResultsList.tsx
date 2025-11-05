@@ -163,11 +163,21 @@ export default function ResultsList() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => navigate(`/results/${result.id}`)} className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
-                            <FontAwesomeIcon icon={faPen} /> Редагувати
+                          <button 
+                            onClick={() => navigate(`/results/${result.id}`)} 
+                            className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                            aria-label="Редагувати результат"
+                            title="Редагувати результат"
+                          >
+                            <FontAwesomeIcon icon={faPen} />
                           </button>
-                          <button onClick={() => handleDelete(result)} className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold">
-                            <FontAwesomeIcon icon={faTrash} /> Видалити
+                          <button 
+                            onClick={() => handleDelete(result)} 
+                            className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                            aria-label="Видалити результат"
+                            title="Видалити результат"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
                           </button>
                         </div>
                       </li>

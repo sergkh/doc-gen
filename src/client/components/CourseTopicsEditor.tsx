@@ -14,6 +14,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topicName, setTopicName] = useState("");
   const [topicSubtopics, setTopicSubtopics] = useState("");
   const [topicLection, setTopicLection] = useState("");
+  const [topicHours, setTopicHours] = useState<number>(2);
+  const [topicAttestation, setTopicAttestation] = useState<number>(1);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -41,11 +43,15 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       index: topics.length + 1,
       name: "",
       lection: "",
+      hours: 2,
+      attestation: 1,
       generated: null
     });
     setTopicName("");
     setTopicSubtopics("");
     setTopicLection("");
+    setTopicHours(2);
+    setTopicAttestation(1);
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
@@ -54,6 +60,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     const subtopics = topic.generated?.subtopics || [];
     setTopicSubtopics(subtopics.join("\n"));
     setTopicLection(topic.lection || "");
+    setTopicHours(topic.hours || 2);
+    setTopicAttestation(topic.attestation || 1);
   };
 
   const handleCancelEdit = () => {
@@ -61,6 +69,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicName("");
     setTopicSubtopics("");
     setTopicLection("");
+    setTopicHours(2);
+    setTopicAttestation(1);
   };
 
   const handleSaveTopic = async () => {
@@ -76,13 +86,21 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         .map(s => s.trim())
         .filter(s => s.length > 0);
       
+      const existingGenerated = editingTopic.generated;
       const topicData: CourseTopic = {
         ...editingTopic,
         name: topicName.trim(),
         lection: topicLection.trim(),
+        hours: topicHours,
+        attestation: topicAttestation,
         generated: {
-          ...(editingTopic.generated || {}),
-          subtopics: subtopicsArray
+          subtopics: subtopicsArray,
+          keywords: existingGenerated?.keywords || [],
+          topics: existingGenerated?.topics || [],
+          referats: existingGenerated?.referats || [],
+          quiz: existingGenerated?.quiz || [],
+          keyQuestions: existingGenerated?.keyQuestions || [],
+          ...(existingGenerated || {})
         }
       };
 
@@ -261,6 +279,34 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                       placeholder="Введіть підтеми, по одній на рядок"
                     />
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
+                      <select
+                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                        value={topicHours}
+                        onChange={(e) => setTopicHours(Number(e.target.value))}
+                      >
+                        <option value={2}>2 години</option>
+                        <option value={4}>4 години</option>
+                        <option value={6}>6 годин</option>
+                        <option value={8}>8 годин</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+                      <select
+                        className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                        value={topicAttestation}
+                        onChange={(e) => setTopicAttestation(Number(e.target.value))}
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                        <option value={4}>4</option>
+                      </select>
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-[#fbf0df] font-bold mb-2">Текст лекції:</label>
                     <textarea
@@ -295,11 +341,22 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             }
             
             // Otherwise show the normal topic item
+            const attestation = topic.attestation || 1;
+            const hours = topic.hours || 2;
+            // Background colors based on attestation index
+            const attestationBgColors = {
+              1: "bg-[#2a2a2a]", // Default dark gray
+              2: "bg-[#2a2a3a]", // Slightly blue-tinted
+              3: "bg-[#3a2a2a]", // Slightly red-tinted
+              4: "bg-[#2a3a2a]"  // Slightly green-tinted
+            };
+            const bgColor = attestationBgColors[attestation as keyof typeof attestationBgColors] || attestationBgColors[1];
+            
             return (
               <Reorder.Item
                 key={topic.id}
                 value={topic}
-                className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing"
+                className={`${bgColor} border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing transition-colors`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-2 flex-1">
@@ -307,8 +364,18 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                       <FontAwesomeIcon icon={faGripVertical} />
                     </div>
                     <div className="flex-1">
-                      <div className="font-bold text-[#f3d5a3] mb-1">
-                        {topic.index}. {topic.name || `Тема ${topic.index}`}
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="font-bold text-[#f3d5a3]">
+                          {topic.index}. {topic.name || `Тема ${topic.index}`}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-[#fbf0df] opacity-70">
+                          <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">
+                            {hours} год.
+                          </span>
+                          <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">
+                            Атест. {attestation}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
                         {topic.lection}
@@ -318,15 +385,19 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                   <div className="flex gap-2 ml-4">
                     <button
                       onClick={() => handleEditTopic(topic)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
+                      className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      aria-label="Редагувати тему"
+                      title="Редагувати тему"
                     >
-                      <FontAwesomeIcon icon={faPen} size="xs" /> Редагувати
+                      <FontAwesomeIcon icon={faPen} />
                     </button>
                     <button
                       onClick={() => handleDeleteTopic(topic.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white border-0 px-3 py-1 rounded-lg font-bold flex items-center gap-1"
+                      className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      aria-label="Видалити тему"
+                      title="Видалити тему"
                     >
-                      <FontAwesomeIcon icon={faTrash} size="xs" /> Видалити
+                      <FontAwesomeIcon icon={faTrash} />
                     </button>
                   </div>
                 </div>
@@ -367,6 +438,34 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
               onChange={(e) => setTopicSubtopics(e.target.value)}
               placeholder="Введіть підтеми, по одній на рядок"
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
+              <select
+                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                value={topicHours}
+                onChange={(e) => setTopicHours(Number(e.target.value))}
+              >
+                <option value={2}>2 години</option>
+                <option value={4}>4 години</option>
+                <option value={6}>6 годин</option>
+                <option value={8}>8 годин</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+              <select
+                className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                value={topicAttestation}
+                onChange={(e) => setTopicAttestation(Number(e.target.value))}
+              >
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={4}>4</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="block text-[#fbf0df] font-bold mb-2">Текст лекції:</label>
