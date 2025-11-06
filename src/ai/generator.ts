@@ -65,7 +65,6 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic, ap
 
   for (const { name, prompt } of prompts) {
     if (topic.generated && topic.generated[name]) {
-      console.log(`Skipping ${name} for topic ${topic.index} ${topic.name} as it is already generated`);
       results[name] = { items: topic.generated[name] };
       continue;
     }

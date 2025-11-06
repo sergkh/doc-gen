@@ -1,8 +1,8 @@
-import { generateCourseInfo } from "@/ai/generator";
 import { renderDoc } from "@/docx/render";
-import { courseResults, courses, courseTopics, templates } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseTopic, Template } from "@/stores/models";
+import { courses, courseTopics, templates } from "@/stores/db";
+import type { Course, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
+import { loadFullCourseInfo } from "@/docx/transformations";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -28,53 +28,6 @@ function wordResp(file: ArrayBuffer, name: string): Response {
       "Content-Disposition": `inline; filename=\"${name}\"`,
     }
   });
-}
-
-async function loadFullCourseInfo(
-  course: Course, 
-  topics: CourseTopic[],
-  onProgress?: (progress: number) => void,
-  apiKey?: string
-): Promise<CourseGenerationData> {
-  onProgress?.(5);
-  
-  // Generate course info - this is the slow part (AI generation)
-  // Progress from 5% to 70% (65% for AI generation)
-  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(course, topics, (progress: number) => {
-    onProgress?.(5 + progress * 0.65); // Scale progress to 65%
-  }, apiKey);
-  
-  // Estimate progress: if we have N topics, each topic is roughly 65% / N
-  // For now, we'll report 70% after generation completes
-  onProgress?.(70);
-
-  const prerequisites = await courses.getShortInfos(course.data.prerequisites);
-  onProgress?.(80);
-  const postrequisites = await courses.getShortInfos(course.data.postrequisites);
-  onProgress?.(85);
-
-  const results = await courseResults.list(course.data.results);
-  onProgress?.(90);
-
-  // group topics by attestation
-  const attestations = course.data.attestations.map((a, index) => ({
-    no: index+1,
-    name: a.name,
-    topics: updatedTopics.filter(t => t.data?.attestation === index + 1)
-  } as CourseAttestation));
-
-  onProgress?.(95);
-  
-  return {
-    course: updatedCourse,
-    topics: updatedTopics,
-    prerequisites,
-    postrequisites,
-    generalResults: results.filter(r => r.type === "ЗК").sort((a, b) => a.no - b.no),
-    specialResults: results.filter(r => r.type === "СК").sort((a, b) => a.no - b.no),
-    programResults: results.filter(r => r.type === "РН").sort((a, b) => a.no - b.no),
-    attestations  
-  } as CourseGenerationData
 }
 
 async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string) {

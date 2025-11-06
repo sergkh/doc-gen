@@ -322,6 +322,30 @@ export default function CourseEdit() {
               <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
             </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="optional-checkbox"
+                className="w-5 h-5 cursor-pointer accent-[#fbf0df]"
+                checked={item.data.optional}
+                onChange={(e) => updateData({optional: e.target.checked})}
+              />
+              <label htmlFor="optional-checkbox" className="text-[#fbf0df] font-bold cursor-pointer">
+                Вибіркова дисципліна
+              </label>
+            </div>
+            <div>
+              <label className="block text-[#fbf0df] font-bold mb-2">Форма контролю:</label>
+              <select
+                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                value={item.data.control_type || "credit"}
+                onChange={(e) => updateData({control_type: e.target.value as "exam" | "credit" | "both"})}
+              >
+                <option value="credit">Залік</option>
+                <option value="exam">Іспит</option>
+                <option value="both">Залік та іспит</option>
+              </select>
+            </div>
             <div>
               <label className="block text-[#fbf0df] font-bold mb-2">Рік навчання (денна):</label>
               <input 

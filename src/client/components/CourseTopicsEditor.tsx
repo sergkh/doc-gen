@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { Reorder } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
+import InPlaceEditor from "./InPlaceEditor";
 
 interface CourseTopicsEditorProps {
   courseId: number;
@@ -21,12 +22,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topicPracticalHours, setTopicPracticalHours] = useState<number>(2);
   const [topicInabscentiaHours, setTopicInabscentiaHours] = useState<number>(0);
   const [topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours] = useState<number>(0);
+  const [topicSrsHours, setTopicSrsHours] = useState<number>(0);
+  const [topicInabscentiaSrsHours, setTopicInabscentiaSrsHours] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [editingAttestationId, setEditingAttestationId] = useState<number | null>(null);
-  const [editingFulltimeHoursId, setEditingFulltimeHoursId] = useState<number | null>(null);
-  const [editingPracticalHoursId, setEditingPracticalHoursId] = useState<number | null>(null);
-  const [editingInabscentiaHoursId, setEditingInabscentiaHoursId] = useState<number | null>(null);
-  const [editingInabscentiaPracticalHoursId, setEditingInabscentiaPracticalHoursId] = useState<number | null>(null);
 
   useEffect(() => {
     if (courseId) {
@@ -57,11 +55,13 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         attestation: 1,
         fulltime: {
           hours: 2,
-          practical_hours: 0
+          practical_hours: 0,
+          srs_hours: 0
         },
         inabscentia: {
           hours: 0,
-          practical_hours: 0
+          practical_hours: 0,
+          srs_hours: 0
         }
       },
       generated: null
@@ -74,6 +74,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicPracticalHours(2);
     setTopicInabscentiaHours(0);
     setTopicInabscentiaPracticalHours(0);
+    setTopicSrsHours(0);
+    setTopicInabscentiaSrsHours(0);
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
@@ -87,6 +89,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicPracticalHours(topic.data?.fulltime?.practical_hours || 0);
     setTopicInabscentiaHours(topic.data?.inabscentia?.hours || 0);
     setTopicInabscentiaPracticalHours(topic.data?.inabscentia?.practical_hours || 0);
+    setTopicSrsHours(topic.data?.fulltime?.srs_hours || 0);
+    setTopicInabscentiaSrsHours(topic.data?.inabscentia?.srs_hours || 0);
   };
 
   const handleCancelEdit = () => {
@@ -99,6 +103,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicPracticalHours(0);
     setTopicInabscentiaHours(0);
     setTopicInabscentiaPracticalHours(0);
+    setTopicSrsHours(0);
+    setTopicInabscentiaSrsHours(0);
   };
 
   const handleSaveTopic = async () => {
@@ -123,11 +129,13 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
           attestation: topicAttestation,
           fulltime: {
             hours: topicHours,
-            practical_hours: topicPracticalHours
+            practical_hours: topicPracticalHours,
+            srs_hours: topicSrsHours
           },
           inabscentia: {
             hours: topicInabscentiaHours,
-            practical_hours: topicInabscentiaPracticalHours
+            practical_hours: topicInabscentiaPracticalHours,
+            srs_hours: topicInabscentiaSrsHours
           }
         },
         generated: {
@@ -275,14 +283,12 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
       if (response.ok) {
         await fetchTopics(courseId);
-        setEditingAttestationId(null);
       } else {
         throw new Error("Failed to update attestation");
       }
     } catch (error) {
       console.error("Error updating attestation:", error);
       alert("Не вдалося оновити атестацію");
-      setEditingAttestationId(null);
     }
   };
 
@@ -307,14 +313,12 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
       if (response.ok) {
         await fetchTopics(courseId);
-        setEditingFulltimeHoursId(null);
       } else {
         throw new Error("Failed to update fulltime hours");
       }
     } catch (error) {
       console.error("Error updating fulltime hours:", error);
       alert("Не вдалося оновити години");
-      setEditingFulltimeHoursId(null);
     }
   };
 
@@ -339,14 +343,12 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
       if (response.ok) {
         await fetchTopics(courseId);
-        setEditingPracticalHoursId(null);
       } else {
         throw new Error("Failed to update practical hours");
       }
     } catch (error) {
       console.error("Error updating practical hours:", error);
       alert("Не вдалося оновити практичні години");
-      setEditingPracticalHoursId(null);
     }
   };
 
@@ -371,14 +373,12 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
       if (response.ok) {
         await fetchTopics(courseId);
-        setEditingInabscentiaHoursId(null);
       } else {
         throw new Error("Failed to update in absentia hours");
       }
     } catch (error) {
       console.error("Error updating in absentia hours:", error);
       alert("Не вдалося оновити години заочної форми");
-      setEditingInabscentiaHoursId(null);
     }
   };
 
@@ -403,14 +403,72 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
       if (response.ok) {
         await fetchTopics(courseId);
-        setEditingInabscentiaPracticalHoursId(null);
       } else {
         throw new Error("Failed to update in absentia practical hours");
       }
     } catch (error) {
       console.error("Error updating in absentia practical hours:", error);
       alert("Не вдалося оновити практичні години заочної форми");
-      setEditingInabscentiaPracticalHoursId(null);
+    }
+  };
+
+  const handleUpdateFulltimeSrsHours = async (topic: CourseTopic, newSrsHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        data: {
+          ...topic.data,
+          fulltime: {
+            ...topic.data?.fulltime,
+            srs_hours: newSrsHours
+          }
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+      } else {
+        throw new Error("Failed to update fulltime SRS hours");
+      }
+    } catch (error) {
+      console.error("Error updating fulltime SRS hours:", error);
+      alert("Не вдалося оновити СРС години денної форми");
+    }
+  };
+
+  const handleUpdateInabscentiaSrsHours = async (topic: CourseTopic, newSrsHours: number) => {
+    try {
+      const updatedTopic: CourseTopic = {
+        ...topic,
+        data: {
+          ...topic.data,
+          inabscentia: {
+            ...topic.data?.inabscentia,
+            srs_hours: newSrsHours
+          }
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedTopic),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+      } else {
+        throw new Error("Failed to update in absentia SRS hours");
+      }
+    } catch (error) {
+      console.error("Error updating in absentia SRS hours:", error);
+      alert("Не вдалося оновити СРС години заочної форми");
     }
   };
 
@@ -503,6 +561,25 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (денна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicSrsHours}
+                          onChange={(e) => setTopicSrsHours(Number(e.target.value))}
+                        >
+                          <option value={0}>0 годин</option>
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                          <option value={10}>10 годин</option>
+                          <option value={12}>12 годин</option>
+                          <option value={14}>14 годин</option>
+                          <option value={16}>16 годин</option>
+                          <option value={18}>18 годин</option>
+                        </select>
+                      </div>
+                      <div>
                         <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
                         <select
                           className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
@@ -528,6 +605,27 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                           <option value={4}>4 години</option>
                           <option value={6}>6 годин</option>
                           <option value={8}>8 годин</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (заочна):</label>
+                        <select
+                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          value={topicInabscentiaSrsHours}
+                          onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
+                        >
+                          <option value={0}>0 годин</option>
+                          <option value={2}>2 години</option>
+                          <option value={4}>4 години</option>
+                          <option value={6}>6 годин</option>
+                          <option value={8}>8 годин</option>
+                          <option value={10}>10 годин</option>
+                          <option value={12}>12 годин</option>
+                          <option value={14}>14 годин</option>
+                          <option value={16}>16 годин</option>
+                          <option value={18}>18 годин</option>
                         </select>
                       </div>
                       <div>
@@ -582,8 +680,10 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             const attestation = topic.data?.attestation || 1;
             const hours = topic.data?.fulltime?.hours || 2;
             const practicalHours = topic.data?.fulltime?.practical_hours || 0;
+            const srsHours = topic.data?.fulltime?.srs_hours || 0;
             const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
             const inabscentiaPracticalHours = topic.data?.inabscentia?.practical_hours || 0;
+            const inabscentiaSrsHours = topic.data?.inabscentia?.srs_hours || 0;
             // Background colors based on attestation index
             const attestationBgColors = {
               1: "bg-[#2a2a2a]", // Default dark gray
@@ -610,154 +710,108 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                           {topic.index}. {topic.name || `Тема ${topic.index}`}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
-                          {editingFulltimeHoursId === topic.id ? (
-                            <select
-                              value={hours}
-                              onChange={(e) => {
-                                const newHours = Number(e.target.value);
-                                handleUpdateFulltimeHours(topic, newHours);
-                              }}
-                              onBlur={() => setEditingFulltimeHoursId(null)}
-                              autoFocus
-                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value={2}>2 год.</option>
-                              <option value={4}>4 год.</option>
-                              <option value={6}>6 год.</option>
-                              <option value={8}>8 год.</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingFulltimeHoursId(topic.id);
-                              }}
-                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                              title="Натисніть для зміни годин"
-                            >
-                              {hours} год.
-                            </button>
-                          )}
-                          {editingPracticalHoursId === topic.id ? (
-                            <select
-                              value={practicalHours}
-                              onChange={(e) => {
-                                const newPracticalHours = Number(e.target.value);
-                                handleUpdatePracticalHours(topic, newPracticalHours);
-                              }}
-                              onBlur={() => setEditingPracticalHoursId(null)}
-                              autoFocus
-                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value={0}>0 пр.</option>
-                              <option value={2}>2 пр.</option>
-                              <option value={4}>4 пр.</option>
-                              <option value={6}>6 пр.</option>
-                              <option value={8}>8 пр.</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingPracticalHoursId(topic.id);
-                              }}
-                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                              title="Натисніть для зміни практичних годин"
-                            >
-                              {practicalHours} пр.
-                            </button>
-                          )}
-                          {editingInabscentiaHoursId === topic.id ? (
-                            <select
-                              value={inabscentiaHours}
-                              onChange={(e) => {
-                                const newHours = Number(e.target.value);
-                                handleUpdateInabscentiaHours(topic, newHours);
-                              }}
-                              onBlur={() => setEditingInabscentiaHoursId(null)}
-                              autoFocus
-                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value={0}>0 год. заоч.</option>
-                              <option value={2}>2 год. заоч.</option>
-                              <option value={4}>4 год. заоч.</option>
-                              <option value={6}>6 год. заоч.</option>
-                              <option value={8}>8 год. заоч.</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingInabscentiaHoursId(topic.id);
-                              }}
-                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                              title="Натисніть для зміни годин заочної форми"
-                            >
-                              {inabscentiaHours} год. заоч.
-                            </button>
-                          )}
-                          {editingInabscentiaPracticalHoursId === topic.id ? (
-                            <select
-                              value={inabscentiaPracticalHours}
-                              onChange={(e) => {
-                                const newPracticalHours = Number(e.target.value);
-                                handleUpdateInabscentiaPracticalHours(topic, newPracticalHours);
-                              }}
-                              onBlur={() => setEditingInabscentiaPracticalHoursId(null)}
-                              autoFocus
-                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value={0}>0 пр. заоч.</option>
-                              <option value={2}>2 пр. заоч.</option>
-                              <option value={4}>4 пр. заоч.</option>
-                              <option value={6}>6 пр. заоч.</option>
-                              <option value={8}>8 пр. заоч.</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingInabscentiaPracticalHoursId(topic.id);
-                              }}
-                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                              title="Натисніть для зміни практичних годин заочної форми"
-                            >
-                              {inabscentiaPracticalHours} пр. заоч.
-                            </button>
-                          )}
-                          {editingAttestationId === topic.id ? (
-                            <select
-                              value={attestation}
-                              onChange={(e) => {
-                                const newAttestation = Number(e.target.value);
-                                handleUpdateAttestation(topic, newAttestation);
-                              }}
-                              onBlur={() => setEditingAttestationId(null)}
-                              autoFocus
-                              className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value={1}>Атест. 1</option>
-                              <option value={2}>Атест. 2</option>
-                              <option value={3}>Атест. 3</option>
-                              <option value={4}>Атест. 4</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAttestationId(topic.id);
-                              }}
-                              className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
-                              title="Натисніть для зміни атестації"
-                            >
-                              Атест. {attestation}
-                            </button>
-                          )}
+                          <InPlaceEditor
+                            value={hours}
+                            options={[
+                              { value: 2, label: "2 год." },
+                              { value: 4, label: "4 год." },
+                              { value: 6, label: "6 год." },
+                              { value: 8, label: "8 год." },
+                            ]}
+                            displayText={`${hours} год.`}
+                            title="Натисніть для зміни годин"
+                            onChange={(newHours) => handleUpdateFulltimeHours(topic, newHours)}
+                          />
+                          <InPlaceEditor
+                            value={practicalHours}
+                            options={[
+                              { value: 0, label: "0 пр." },
+                              { value: 2, label: "2 пр." },
+                              { value: 4, label: "4 пр." },
+                              { value: 6, label: "6 пр." },
+                              { value: 8, label: "8 пр." },
+                            ]}
+                            displayText={`${practicalHours} пр.`}
+                            title="Натисніть для зміни практичних годин"
+                            onChange={(newPracticalHours) => handleUpdatePracticalHours(topic, newPracticalHours)}
+                          />
+                          <InPlaceEditor
+                            value={srsHours}
+                            options={[
+                              { value: 0, label: "0 СРС" },
+                              { value: 2, label: "2 СРС" },
+                              { value: 4, label: "4 СРС" },
+                              { value: 6, label: "6 СРС" },
+                              { value: 7, label: "7 СРС" },
+                              { value: 8, label: "8 СРС" },
+                              { value: 10, label: "10 СРС" },
+                              { value: 12, label: "12 СРС" },
+                              { value: 14, label: "14 СРС" },
+                              { value: 16, label: "16 СРС" },
+                              { value: 18, label: "18 СРС" },
+                            ]}
+                            displayText={`${srsHours} СРС`}
+                            title="Натисніть для зміни СРС годин денної форми"
+                            onChange={(newSrsHours) => handleUpdateFulltimeSrsHours(topic, newSrsHours)}
+                          />                          
+                          <InPlaceEditor
+                            value={inabscentiaHours}
+                            options={[
+                              { value: 0, label: "0 год. заоч." },
+                              { value: 1, label: "1 год. заоч." },
+                              { value: 2, label: "2 год. заоч." },
+                              { value: 4, label: "4 год. заоч." },
+                              { value: 6, label: "6 год. заоч." },
+                              { value: 8, label: "8 год. заоч." },
+                            ]}
+                            displayText={`${inabscentiaHours} год. заоч.`}
+                            title="Натисніть для зміни годин заочної форми"
+                            onChange={(newHours) => handleUpdateInabscentiaHours(topic, newHours)}
+                          />
+                          <InPlaceEditor
+                            value={inabscentiaPracticalHours}
+                            options={[
+                              { value: 0, label: "0 пр. заоч." },
+                              { value: 1, label: "1 пр. заоч." },
+                              { value: 2, label: "2 пр. заоч." },
+                              { value: 4, label: "4 пр. заоч." },
+                              { value: 6, label: "6 пр. заоч." },
+                              { value: 8, label: "8 пр. заоч." },
+                            ]}
+                            displayText={`${inabscentiaPracticalHours} пр. заоч.`}
+                            title="Натисніть для зміни практичних годин заочної форми"
+                            onChange={(newPracticalHours) => handleUpdateInabscentiaPracticalHours(topic, newPracticalHours)}
+                          />
+                          <InPlaceEditor
+                            value={inabscentiaSrsHours}
+                            options={[
+                              { value: 0, label: "0 СРС заоч." },
+                              { value: 2, label: "2 СРС заоч." },
+                              { value: 4, label: "4 СРС заоч." },
+                              { value: 6, label: "6 СРС заоч." },
+                              { value: 8, label: "8 СРС заоч." },
+                              { value: 10, label: "10 СРС заоч." },
+                              { value: 12, label: "12 СРС заоч." },
+                              { value: 14, label: "14 СРС заоч." },
+                              { value: 16, label: "16 СРС заоч." },
+                              { value: 18, label: "18 СРС заоч." },
+                            ]}
+                            displayText={`${inabscentiaSrsHours} СРС заоч.`}
+                            title="Натисніть для зміни СРС годин заочної форми"
+                            onChange={(newSrsHours) => handleUpdateInabscentiaSrsHours(topic, newSrsHours)}
+                          />
+                          <InPlaceEditor
+                            value={attestation}
+                            options={[
+                              { value: 1, label: "Атест. 1" },
+                              { value: 2, label: "Атест. 2" },
+                              { value: 3, label: "Атест. 3" },
+                              { value: 4, label: "Атест. 4" },
+                            ]}
+                            displayText={`Атест. ${attestation}`}
+                            title="Натисніть для зміни атестації"
+                            onChange={(newAttestation) => handleUpdateAttestation(topic, newAttestation)}
+                          />                          
                         </div>
                       </div>
                       <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
@@ -862,6 +916,25 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (денна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicSrsHours}
+                  onChange={(e) => setTopicSrsHours(Number(e.target.value))}
+                >
+                  <option value={0}>0 годин</option>
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                  <option value={10}>10 годин</option>
+                  <option value={12}>12 годин</option>
+                  <option value={14}>14 годин</option>
+                  <option value={16}>16 годин</option>
+                  <option value={18}>18 годин</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
                 <select
                   className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
@@ -887,6 +960,27 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                   <option value={4}>4 години</option>
                   <option value={6}>6 годин</option>
                   <option value={8}>8 годин</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (заочна):</label>
+                <select
+                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  value={topicInabscentiaSrsHours}
+                  onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
+                >
+                  <option value={0}>0 годин</option>
+                  <option value={2}>2 години</option>
+                  <option value={4}>4 години</option>
+                  <option value={6}>6 годин</option>
+                  <option value={8}>8 годин</option>
+                  <option value={10}>10 годин</option>
+                  <option value={12}>12 годин</option>
+                  <option value={14}>14 годин</option>
+                  <option value={16}>16 годин</option>
+                  <option value={18}>18 годин</option>
                 </select>
               </div>
               <div>

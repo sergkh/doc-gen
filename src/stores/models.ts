@@ -17,6 +17,8 @@ export type ShortCourseInfo = {
 }
 
 export type CourseData = {
+  optional: boolean,
+  control_type: "exam" | "credit" | "both",
   hours: number,
   credits: number,
   specialty: string,
@@ -40,7 +42,7 @@ export type CourseData = {
 }
 
 export type GeneratedCourseData = {
-  disciplineQuestions: string[]
+  disciplineQuestions: string[] 
 }
 
 export type Course = {
@@ -69,13 +71,15 @@ export type GeneratedTopicData = {
 
 export type CourseTopicData = {
   attestation: number,
-  fulltime: {
+  fulltime: {    
     hours: number,
     practical_hours: number,
+    srs_hours: number
   },
   inabscentia: {
     hours: number,
-    practical_hours: number
+    practical_hours: number,
+    srs_hours: number
   }
 }
 
@@ -98,7 +102,37 @@ export type QuizQuestion = {
 export type CourseAttestation = {
   no: number,
   name: string,
-  topics: CourseTopic[]
+  semester: number
+  topics: CourseTopic[],
+  fulltime: {    
+    hours: number,
+    practical_hours: number,
+    srs_hours: number
+    total_hours: number
+  },
+  inabscentia: {
+    hours: number,
+    practical_hours: number,
+    srs_hours: number
+    total_hours: number
+  }
+}
+
+export type CourseSemester = {
+  attestations: CourseAttestation[],
+  semester: number
+  fulltime: {    
+    hours: number,
+    practical_hours: number,
+    srs_hours: number
+    total_hours: number
+  },
+  inabscentia: {
+    hours: number,
+    practical_hours: number,
+    srs_hours: number
+    total_hours: number
+  }
 }
 
 export type CourseGenerationData = {
@@ -109,7 +143,23 @@ export type CourseGenerationData = {
   generalResults:CourseResult[],
   specialResults:CourseResult[],
   programResults:CourseResult[],
-  attestations: CourseAttestation[]
+  // same data grouped by semester or plain attestations for easy access
+  semesters: CourseSemester[],
+  attestations: CourseAttestation[],
+  oneSemesterOnly: boolean,
+  hours: {
+    total: number,
+    fulltime: {
+      lectures: number,
+      practicals: number,
+      srs: number
+    },
+    inabscentia: {
+      lectures: number,
+      practicals: number,
+      srs: number
+    }
+  }
 }
 
 export type Template = {
