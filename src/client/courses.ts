@@ -1,4 +1,4 @@
-import type { Course } from "@/stores/models";
+import type { Course, KeyValue } from "@/stores/models";
 
 export async function loadAllCourses() {
   const res = await fetch(`/api/courses`)
@@ -8,6 +8,16 @@ export async function loadAllCourses() {
   }
 
   return await res.json() as Course[];
+}
+
+export async function loadAllCoursesBrief() {
+  const res = await fetch(`/api/courses?brief=true`)
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
+  }
+
+  return await res.json() as KeyValue[];
 }
 
 export async function loadCourse(id: string): Promise<Course> {

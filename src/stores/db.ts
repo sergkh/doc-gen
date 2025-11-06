@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, ShortCourseInfo, Teacher } from "./models";
+import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Teacher, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -13,6 +13,10 @@ try {
 const courses = {
   all: async (): Promise<Course[]> => {
     return await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id ORDER BY name`;
+  },
+
+  brief: async (): Promise<KeyValue[]> => {
+    return await sql`SELECT c.id, c.name FROM courses c ORDER BY name`;
   },
 
   add: async (c: Course) => {
@@ -144,4 +148,32 @@ const courseResults = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults };
+const templates = {
+  all: async (): Promise<Template[]> => {
+    return await sql`SELECT * FROM templates ORDER BY name` as Template[];
+  },
+
+  get: async (id: number): Promise<Template | null> => {
+    const result = await sql`SELECT * FROM templates WHERE id = ${id}`;
+    return result[0] || null;
+  },
+
+  add: async (template: Template) => {
+    return await sql`INSERT INTO templates (name, file) VALUES (${template.name}, ${template.file}) RETURNING *`;
+  },
+
+  update: async (template: Template) => {
+    return await sql`UPDATE templates 
+      SET name = ${template.name}, 
+          file = ${template.file}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${template.id}
+      RETURNING *`;
+  },
+
+  delete: async (id: number) => {
+    return await sql`DELETE FROM templates WHERE id = ${id}`;
+  },
+};
+
+export { courses, teachers, courseTopics , courseResults, templates };

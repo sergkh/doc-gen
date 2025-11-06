@@ -8,6 +8,9 @@ import TeacherEdit from "./client/pages/TeacherEdit";
 import CourseEdit from "./client/pages/CourseEdit";
 import ResultsList from "./client/pages/ResultsList";
 import ResultEdit from "./client/pages/ResultEdit";
+import TemplatesList from "./client/pages/TemplatesList";
+import TemplateEdit from "./client/pages/TemplateEdit";
+import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 
 function Navigation() {
   const location = useLocation();
@@ -55,6 +58,16 @@ function Navigation() {
         >
           Результати
         </Link>
+        <Link
+          to="/templates"
+          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
+            location.pathname.startsWith("/templates")
+              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
+              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+          }`}
+        >
+          Шаблони
+        </Link>
       </div>
     </nav>
   );
@@ -95,10 +108,13 @@ export function App() {
         />
         <Route path="/courses" element={<CoursesList />} />
         <Route path="/courses/:id" element={<CourseEdit />} />
+        <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
         <Route path="/teachers" element={<TeachersList />} />
         <Route path="/teachers/:id" element={<TeacherEdit />} />
         <Route path="/results" element={<ResultsList />} />
         <Route path="/results/:id" element={<ResultEdit />} />
+        <Route path="/templates" element={<TemplatesList />} />
+        <Route path="/templates/:id" element={<TemplateEdit />} />
       </Routes>
     </div>
   );

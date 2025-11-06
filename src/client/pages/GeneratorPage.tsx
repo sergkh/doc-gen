@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
-import { loadAllCourses } from "../courses";
-import type { Course } from "@/stores/models";
+import { loadAllCoursesBrief } from "../courses";
+import { loadAllTemplates } from "../templates";
+import type { Course, KeyValue, Template } from "@/stores/models";
 import toast from "react-hot-toast";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
@@ -17,16 +18,20 @@ interface JobStatusResponse {
 
 interface SavedJob {
   jobId: string;
-  type: "method" | "program";
+  templateId: number;
 }
 
 const STORAGE_KEY = "generationJob";
+const API_KEY_STORAGE_KEY = "openai_api_key";
 
 export default function GeneratorPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<KeyValue[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-  const [isGeneratingMethod, setIsGeneratingMethod] = useState(false);
-  const [isGeneratingProgram, setIsGeneratingProgram] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [apiKey, setApiKey] = useState<string>("");
+  
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -47,15 +52,14 @@ export default function GeneratorPage() {
     localStorage.removeItem(STORAGE_KEY);
     setCurrentJobId(null);
     setProgress(0);
-    setIsGeneratingMethod(false);
-    setIsGeneratingProgram(false);
+    setIsGenerating(false);
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
   };
 
-  const pollJobStatus = (jobId: string, type: "method" | "program") => {
+  const pollJobStatus = (jobId: string) => {
     const poll = async () => {
       try {
         const response = await fetch(`/api/jobs/${jobId}`);
@@ -96,18 +100,28 @@ export default function GeneratorPage() {
   };
 
   useEffect(() => {
-    async function fetchCourses() {
+    // Load API key from localStorage
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+
+    async function fetchData() {
       try {
-        const allCourses = await loadAllCourses();
+        const [allCourses, allTemplates] = await Promise.all([
+          loadAllCoursesBrief(),
+          loadAllTemplates()
+        ]);
         setCourses(allCourses);
+        setTemplates(allTemplates);
       } catch (error) {
-        console.error("Failed to load courses:", error);
-        toast.error("Помилка завантаження дисциплін");
+        console.error("Failed to load data:", error);
+        toast.error("Помилка завантаження даних");
       } finally {
         setIsLoading(false);
       }
     }
-    fetchCourses();
+    fetchData();
   }, []);
 
   // Resume job from localStorage on mount
@@ -131,7 +145,7 @@ export default function GeneratorPage() {
                 const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
                 if (downloadResponse.ok) {
                   const blob = await downloadResponse.blob();
-                  const filename = status.filename || (savedJob.type === "method" ? "method-sam.docx" : "program.docx");
+                  const filename = status.filename || "result.docx";
                   await handleDownload(blob, filename);
                 }
                 clearJobState();
@@ -140,12 +154,8 @@ export default function GeneratorPage() {
                 clearJobState();
               } else {
                 // Job still in progress, resume polling
-                if (savedJob.type === "method") {
-                  setIsGeneratingMethod(true);
-                } else {
-                  setIsGeneratingProgram(true);
-                }
-                pollJobStatus(savedJob.jobId, savedJob.type);
+                setIsGenerating(true);
+                pollJobStatus(savedJob.jobId);
               }
             } else {
               // Job not found, clear it
@@ -174,51 +184,38 @@ export default function GeneratorPage() {
     };
   }, []);
 
-  const handleGenerateMethod = async () => {
-    if (!selectedCourseId) {
-      toast.error("Будь ласка, оберіть дисципліну");
-      return;
-    }
-
-    setIsGeneratingMethod(true);
-    setProgress(0);
-
-    try {
-      const response = await fetch(`/api/courses/${selectedCourseId}/generated/self-method`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to start generation");
-      }
-
-      const { jobId } = await response.json();
-      setCurrentJobId(jobId);
-      
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ jobId, type: "method" } as SavedJob));
-      
-      pollJobStatus(jobId, "method");
-    } catch (error) {
-      console.error("Error starting generation:", error);
-      toast.error("Помилка запуску генерації методички");
-      setIsGeneratingMethod(false);
-      setProgress(0);
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    if (value) {
+      localStorage.setItem(API_KEY_STORAGE_KEY, value);
+    } else {
+      localStorage.removeItem(API_KEY_STORAGE_KEY);
     }
   };
 
-  const handleGenerateProgram = async () => {
+  const handleGenerate = async () => {
     if (!selectedCourseId) {
       toast.error("Будь ласка, оберіть дисципліну");
       return;
     }
 
-    setIsGeneratingProgram(true);
+    if (!selectedTemplateId) {
+      toast.error("Будь ласка, оберіть шаблон");
+      return;
+    }
+
+    setIsGenerating(true);
     setProgress(0);
 
     try {
-      const response = await fetch(`/api/courses/${selectedCourseId}/generated/program`, {
+      const response = await fetch(`/api/courses/${selectedCourseId}/generate/${selectedTemplateId}`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          apiKey: apiKey || undefined
+        })
       });
 
       if (!response.ok) {
@@ -229,13 +226,16 @@ export default function GeneratorPage() {
       setCurrentJobId(jobId);
       
       // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ jobId, type: "program" } as SavedJob));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
+        jobId, 
+        templateId: Number(selectedTemplateId) 
+      } as SavedJob));
       
-      pollJobStatus(jobId, "program");
+      pollJobStatus(jobId);
     } catch (error) {
       console.error("Error starting generation:", error);
-      toast.error("Помилка запуску генерації програми");
-      setIsGeneratingProgram(false);
+      toast.error("Помилка запуску генерації");
+      setIsGenerating(false);
       setProgress(0);
     }
   };
@@ -245,32 +245,71 @@ export default function GeneratorPage() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">Генератор документів</h1>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
-          <label className="block text-[#fbf0df] font-bold mb-2">Дисципліна:</label>
-          {isLoading ? (
-            <div className="text-[#fbf0df]">Завантаження...</div>
-          ) : (
-            <select
-              value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-            >
-              <option value="">-- Оберіть дисципліну --</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.name}
-                </option>
-              ))}
-            </select>
-          )}
+        <div>
+          <label className="text-[#fbf0df] font-bold mb-2">
+            OpenAI API Key (опціонально):
+          </label>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => handleApiKeyChange(e.target.value)}
+            disabled={isGenerating}
+            placeholder="Ключ API OpenAI"
+            className="w-2xl bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50 placeholder:opacity-50"
+          />
+          <div className="text-sm text-[#fbf0df] opacity-70 mt-1">
+            Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.
+          </div>
         </div>
 
-        {(isGeneratingMethod || isGeneratingProgram) && (
+        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+          <div>
+            <label className="block text-[#fbf0df] font-bold mb-2">Дисципліна:</label>
+            {isLoading ? (
+              <div className="text-[#fbf0df]">Завантаження...</div>
+            ) : (
+              <select
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                disabled={isGenerating}
+                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
+              >
+                <option value="">-- Оберіть дисципліну --</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-[#fbf0df] font-bold mb-2">Шаблон:</label>
+            {isLoading ? (
+              <div className="text-[#fbf0df]">Завантаження...</div>
+            ) : (
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                disabled={isGenerating}
+                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
+              >
+                <option value="">-- Оберіть шаблон --</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        {isGenerating && (
           <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[#fbf0df] font-bold">
-                {isGeneratingMethod ? "Генерація методички..." : "Генерація програми..."}
-              </span>
+              <span className="text-[#fbf0df] font-bold">Генерація...</span>
               <span className="text-[#fbf0df]">{progress}%</span>
             </div>
             <div className="w-full bg-[#2a2a2a] rounded-full h-4 overflow-hidden">
@@ -282,28 +321,20 @@ export default function GeneratorPage() {
           </div>
         )}
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <button
-            onClick={handleGenerateMethod}
-            disabled={isGeneratingMethod || isGeneratingProgram || !selectedCourseId}
+            onClick={handleGenerate}
+            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
           >
             <FontAwesomeIcon icon={faDownload} />
-            {isGeneratingMethod ? "Генерую..." : "Згенерувати методичку"}
+            {isGenerating ? "Генерую..." : "Згенерувати"}
           </button>
-
-          <button
-            onClick={handleGenerateProgram}
-            disabled={isGeneratingMethod || isGeneratingProgram || !selectedCourseId}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
-          >
-            <FontAwesomeIcon icon={faDownload} />
-            {isGeneratingProgram ? "Генерую..." : "Згенерувати програму"}
-          </button>
-          { isGeneratingProgram || isGeneratingMethod ? (
-            <span>Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу</span>
-            ) : <></>
-          }
+          {isGenerating && (
+            <span className="text-[#fbf0df] font-mono">
+              Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
+            </span>
+          )}
         </div>
       </div>
     </div>

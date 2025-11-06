@@ -5,6 +5,11 @@ export type CourseResult = {
   name: string
 }
 
+export type KeyValue = {
+  id: number,
+  name: string
+}
+
 export type ShortCourseInfo = {
   id: number,
   name: string,
@@ -45,7 +50,7 @@ export type Course = {
   teacher?: string,
   data: CourseData,
   generated: GeneratedCourseData | null  
-}
+};
 
 export type Teacher = {
   id: number,
@@ -105,4 +110,10 @@ export type CourseGenerationData = {
   specialResults:CourseResult[],
   programResults:CourseResult[],
   attestations: CourseAttestation[]
+}
+
+export type Template = {
+  id: number,
+  name: string,
+  file: string
 }

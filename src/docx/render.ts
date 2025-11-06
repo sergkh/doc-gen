@@ -54,14 +54,11 @@ const parser = expressionParser.configure({
   },
 });
 
-async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {
+export async function renderDoc(templatePath: string, data: any): Promise<ArrayBuffer> {
+  console.log("Rendering docx", templatePath, data);
 
-  console.log("Rendering docx", template, data);
-
-  const content = await readFile(
-    path.resolve(__dirname, "templates", template),
-    "binary"
-  );
+  const fullPath = path.resolve(process.cwd(), templatePath);
+  const content = await readFile(fullPath, "binary");
   
   const zip = new PizZip(content);
 
@@ -78,13 +75,4 @@ async function renderDoc(template: string, data: any): Promise<ArrayBuffer> {
   await doc.renderAsync(Object.assign(data, extra, helpers));
 
   return doc.toArrayBuffer()
-}
-
-export function renderSelfMethod(data: CourseGenerationData): Promise<ArrayBuffer> {
-  // temp hack with authors before allowing multiple authors
-  return renderDoc("method.docx", {...data,  authors: [ data.course.teacher ]} );
-}
-
-export function renderProgram(data: CourseGenerationData): Promise<ArrayBuffer> {
-  return renderDoc("program.docx", {...data,  authors: [ data.course.teacher ]} );
 }

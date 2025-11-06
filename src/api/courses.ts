@@ -1,6 +1,6 @@
 import { courses, courseTopics } from "@/stores/db";
 import type { Course, CourseTopic } from "@/stores/models";
-import type { BunRequest, Serve } from "bun";
+import type { BunRequest } from "bun";
 import path from "path";
 
 async function parseSylabus(filePath: string): Promise<Course> {
@@ -11,9 +11,10 @@ async function parseSylabus(filePath: string): Promise<Course> {
 
 const coursesApi = {
   "/api/courses": {
-      async GET() {      
-        console.log("Fetching all courses");
-        return Response.json(await courses.all());
+      async GET(req: BunRequest) {
+        const brief = new URL(req.url).searchParams.get("brief") === "true";
+        console.log(`Fetching all courses ${brief ? "brief" : ""}`);
+        return Response.json(brief ? await courses.brief() : await courses.all());
       },
       async POST(req: BunRequest) {
         const course = await req.json() as Course;
@@ -149,4 +150,4 @@ const coursesApi = {
   }
 }
 
-export default coursesApi satisfies Serve;
+export default coursesApi;

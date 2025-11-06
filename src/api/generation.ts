@@ -1,15 +1,13 @@
 import { generateCourseInfo } from "@/ai/generator";
-import { renderProgram, renderSelfMethod } from "@/docx/render";
-import { courseResults, courses, courseTopics } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseTopic } from "@/stores/models";
+import { renderDoc } from "@/docx/render";
+import { courseResults, courses, courseTopics, templates } from "@/stores/db";
+import type { Course, CourseAttestation, CourseGenerationData, CourseTopic, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
 interface Job {
   id: string;
-  courseId: number;
-  type: "self-method" | "program";
   status: JobStatus;
   progress: number;
   error?: string;
@@ -35,7 +33,8 @@ function wordResp(file: ArrayBuffer, name: string): Response {
 async function loadFullCourseInfo(
   course: Course, 
   topics: CourseTopic[],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  apiKey?: string
 ): Promise<CourseGenerationData> {
   onProgress?.(5);
   
@@ -43,7 +42,7 @@ async function loadFullCourseInfo(
   // Progress from 5% to 70% (65% for AI generation)
   const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(course, topics, (progress: number) => {
     onProgress?.(5 + progress * 0.65); // Scale progress to 65%
-  });
+  }, apiKey);
   
   // Estimate progress: if we have N topics, each topic is roughly 65% / N
   // For now, we'll report 70% after generation completes
@@ -78,34 +77,33 @@ async function loadFullCourseInfo(
   } as CourseGenerationData
 }
 
-async function runGenerationJob(job: Job) {
+async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string) {
   try {
     job.status = "generating";
     job.progress = 5;
 
-    const course = await courses.get(job.courseId);
-    if (!course) {
-      throw new Error("Course not found");
-    }
-
-    const topics = await courseTopics.all(job.courseId);
+    const topics = await courseTopics.all(course.id);
     if (topics.length === 0) {
       throw new Error("No topics found");
     }
 
     const renderData = await loadFullCourseInfo(course, topics, (progress) => {
       job.progress = progress;
-    });
+    }, apiKey);
 
     job.status = "rendering";
     job.progress = 95;
 
-    const doc = job.type === "self-method" 
-      ? await renderSelfMethod(renderData)
-      : await renderProgram(renderData);
+    // Add authors to render data
+    const renderDataWithAuthors = {
+      ...renderData,
+      authors: [renderData.course.teacher]
+    };
+
+    const doc = await renderDoc(template.file, renderDataWithAuthors);
     
     job.result = doc;
-    job.filename = job.type === "self-method" ? "method-sam.docx" : "program.docx";
+    job.filename = `generated_${new Date().toISOString().split('T')[0]}.docx`;
     job.status = "completed";
     job.progress = 100;
   } catch (error) {
@@ -116,14 +114,19 @@ async function runGenerationJob(job: Job) {
 }
 
 const generationApi = {
-  "/api/courses/:id/generated/self-method": {
+  "/api/courses/:courseId/generate/:templateId": {
     async POST(req: BunRequest) {
-      const { id } = req.params as { id: string };
-      const courseId = Number(id);
+      const { courseId, templateId } = req.params as { courseId: number; templateId: number };
+      const body = await req.json().catch(() => ({})) as { apiKey?: string };
       
       const course = await courses.get(courseId);
       if (!course) {
         return new Response("Course not found", { status: 404 });
+      }
+
+      const template = await templates.get(templateId);
+      if (!template) {
+        return new Response("Template not found", { status: 404 });
       }
 
       const topics = await courseTopics.all(courseId);
@@ -132,51 +135,11 @@ const generationApi = {
       }
 
       const jobId = generateJobId();
-      const job: Job = {
-        id: jobId,
-        courseId,
-        type: "self-method",
-        status: "pending",
-        progress: 0,
-      };
+      const job: Job = { id: jobId, status: "pending", progress: 0 };
       jobs.set(jobId, job);
 
       // Start generation in background
-      runGenerationJob(job).catch((error) => {
-        job.status = "error";
-        job.error = error instanceof Error ? error.message : "Unknown error";
-      });
-
-      return Response.json({ jobId });
-    }
-  },
-  "/api/courses/:id/generated/program": {
-    async POST(req: BunRequest) {
-      const { id } = req.params as { id: string };
-      const courseId = Number(id);
-      
-      const course = await courses.get(courseId);
-      if (!course) {
-        return new Response("Course not found", { status: 404 });
-      }
-
-      const topics = await courseTopics.all(courseId);
-      if (topics.length === 0) {
-        return new Response("No topics found", { status: 404 });
-      }
-
-      const jobId = generateJobId();
-      const job: Job = {
-        id: jobId,
-        courseId,
-        type: "program",
-        status: "pending",
-        progress: 0,
-      };
-      jobs.set(jobId, job);
-
-      // Start generation in background
-      runGenerationJob(job).catch((error) => {
+      runGenerationJob(job, course, template, body.apiKey).catch((error) => {
         job.status = "error";
         job.error = error instanceof Error ? error.message : "Unknown error";
       });

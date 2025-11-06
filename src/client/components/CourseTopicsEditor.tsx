@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faTimes, faGripVertical } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { Reorder } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
 
@@ -9,6 +10,7 @@ interface CourseTopicsEditorProps {
 }
 
 export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps) {
+  const navigate = useNavigate();
   const [topics, setTopics] = useState<CourseTopic[]>([]);
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [topicName, setTopicName] = useState("");
@@ -764,6 +766,16 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                     </div>
                   </div>
                   <div className="flex gap-2 ml-4">
+                    {topic.generated && (
+                      <button
+                        onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}
+                        className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                        aria-label="Редагувати згенеровані дані"
+                        title="Редагувати згенеровані дані"
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleEditTopic(topic)}
                       className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"

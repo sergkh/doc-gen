@@ -12,6 +12,14 @@ function deepEqual(a: any, b: any): boolean {
   }
 }
 
+function createOpenAIClient(apiKey?: string): OpenAI {
+  const key = apiKey || process.env.OPENAI_API_KEY;
+  if (!key) {
+    throw new Error("OpenAI API key is required");
+  }
+  return new OpenAI({ apiKey: key });
+}
+
 export const prompts = [
   {
     name: "subtopics",
@@ -49,9 +57,8 @@ export const prompts = [
   }
 ];
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-export async function generateCourseTopic(course: Course, topic: CourseTopic): Promise<CourseTopic> {
+export async function generateCourseTopic(course: Course, topic: CourseTopic, apiKey?: string): Promise<CourseTopic> {
+  const client = createOpenAIClient(apiKey);
   const results = {} as Record<string, any>;
 
   console.log(`Processing topic ${topic.index} ${topic.name}`);
@@ -107,13 +114,13 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic): P
   } as CourseTopic
 }
 
-export async function generateCourseInfo(course: Course, topics: CourseTopic[], progress: (progress: number) => void): Promise<{ course: Course, topics: CourseTopic[] }> {
+export async function generateCourseInfo(course: Course, topics: CourseTopic[], progress: (progress: number) => void, apiKey?: string): Promise<{ course: Course, topics: CourseTopic[] }> {
   
   let updatedTopics = [] as CourseTopic[]
   
   // do not parallelize as it might be rate limited by the OpenAI API
   for (const topic of topics) {
-    const updated = await generateCourseTopic(course, topic);
+    const updated = await generateCourseTopic(course, topic, apiKey);
 
     progress((updatedTopics.length + 1)/ topics.length * 100);
     
