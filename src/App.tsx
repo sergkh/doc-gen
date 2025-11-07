@@ -1,6 +1,9 @@
 import "./index.css";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
 import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
@@ -16,70 +19,134 @@ import PromptsList from "./client/pages/PromptsList";
 
 function Navigation() {
   const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
+  const linkClassName = (isActive: boolean) => 
+    `font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
+      isActive
+        ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
+        : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+    }`;
 
   return (
-    <nav className="bg-[#1a1a1a] border-b-2 border-[#fbf0df] p-4 mb-4">
-      <div className="max-w-7xl mx-auto px-4 flex gap-4">
-        <Link
-          to="/"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname === "/"
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+    <nav className="bg-[#1a1a1a] border-b-2 border-[#fbf0df] mb-4">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Mobile header with hamburger */}
+        <div className="flex items-center justify-between p-4 md:hidden">
+          <button
+            onClick={toggleMenu}
+            className="text-[#fbf0df] hover:text-white transition-colors p-2"
+            aria-label="Toggle menu"
+          >
+            <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} size="lg" />
+          </button>
+        </div>
+
+        {/* Desktop menu */}
+        <div className="hidden md:flex gap-4 p-4">
+          <Link
+            to="/"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname === "/")}
+          >
+            Генератор документів
+          </Link>        
+          <Link
+            to="/courses"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname.startsWith("/courses"))}
+          >
+            Дисципліни
+          </Link>
+          <Link
+            to="/teachers"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname.startsWith("/teachers"))}
+          >
+            Викладачі
+          </Link>
+          <Link
+            to="/results"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname.startsWith("/results"))}
+          >
+            Результати
+          </Link>
+          <Link
+            to="/templates"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname.startsWith("/templates"))}
+          >
+            Шаблони
+          </Link>
+          <Link
+            to="/prompts"
+            onClick={closeMenu}
+            className={linkClassName(location.pathname.startsWith("/prompts"))}
+          >
+            Промпти
+          </Link>        
+        </div>
+
+        {/* Mobile menu */}
+        <div
+          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+            isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          Генератор документів
-        </Link>        
-        <Link
-          to="/courses"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname.startsWith("/courses")
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Дисципліни
-        </Link>
-        <Link
-          to="/teachers"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname.startsWith("/teachers")
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Викладачі
-        </Link>
-        <Link
-          to="/results"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname.startsWith("/results")
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Результати
-        </Link>
-        <Link
-          to="/templates"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname.startsWith("/templates")
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Шаблони
-        </Link>
-        <Link
-          to="/prompts"
-          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-            location.pathname.startsWith("/prompts")
-              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
-          }`}
-        >
-          Промпти
-        </Link>        
+          <div className="flex flex-col gap-2 px-4 pb-4">
+            <Link
+              to="/"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname === "/")}
+            >
+              Генератор документів
+            </Link>        
+            <Link
+              to="/courses"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname.startsWith("/courses"))}
+            >
+              Дисципліни
+            </Link>
+            <Link
+              to="/teachers"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname.startsWith("/teachers"))}
+            >
+              Викладачі
+            </Link>
+            <Link
+              to="/results"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname.startsWith("/results"))}
+            >
+              Результати
+            </Link>
+            <Link
+              to="/templates"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname.startsWith("/templates"))}
+            >
+              Шаблони
+            </Link>
+            <Link
+              to="/prompts"
+              onClick={closeMenu}
+              className={linkClassName(location.pathname.startsWith("/prompts"))}
+            >
+              Промпти
+            </Link>        
+          </div>
+        </div>
       </div>
     </nav>
   );

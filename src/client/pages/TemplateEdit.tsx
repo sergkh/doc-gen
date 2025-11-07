@@ -1,12 +1,13 @@
 import type { Template } from "@/stores/models";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDropzone } from "react-dropzone";
 import { loadTemplate, upsertTemplate } from "../templates";
+import toast from "react-hot-toast";
 
 export default function TemplateEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [item, setItem] = useState<Template | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -20,12 +21,26 @@ export default function TemplateEdit() {
     setItem({ ...item, ...json } as Template);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
   };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        handleFileSelect(file);
+      }
+    },
+    accept: {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+    },
+    maxFiles: 1,
+    disabled: isUploading,
+    onDropRejected: () => {
+      toast.error("Будь ласка, перетягніть файл .docx");
+    }
+  });
 
   const handleSave = async () => {
     if (!item || !isValid) return;
@@ -86,17 +101,26 @@ export default function TemplateEdit() {
               <label className="block text-[#fbf0df] font-bold mb-2">
                 Файл {item.id < 0 ? "(обов'язково)" : "(за бажанням)"}:
               </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileChange}
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-600 file:text-white hover:file:bg-green-700"
-              />
-              {selectedFile && (
-                <div className="text-sm text-[#fbf0df] opacity-80 mt-2">
-                  Вибрано: {selectedFile.name}
-                </div>
-              )}
+              <div
+                {...getRootProps()}
+                className={`border-2 ${isDragActive ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-[#fbf0df]"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-[#f3d5a3]"}`}
+              >
+                <input {...getInputProps()} />
+                {isUploading ? (
+                  <span className="text-[#fbf0df]">Завантаження...</span>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[#fbf0df]">
+                      {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
+                    </span>
+                    {selectedFile && (
+                      <div className="text-sm text-[#fbf0df] opacity-80 mt-2">
+                        Вибрано: {selectedFile.name}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
