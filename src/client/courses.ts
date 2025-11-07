@@ -29,6 +29,8 @@ export async function loadCourse(id: string): Promise<Course> {
       generated: null,
       data: {
         hours: 0,
+        control_type: "exam",
+        optional: false,
         credits: 0,
         specialty: "122 – Компʼютерні науки",
         area: "Компʼютерні науки",
