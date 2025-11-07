@@ -2,7 +2,7 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult } from "@/stores/mo
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faPlus, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
@@ -278,7 +278,9 @@ export default function CourseEdit() {
   return (
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-        <h1 className="font-mono">Редагувати курс</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-mono">Редагувати курс</h1>          
+        </div>
         
         <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
           <label className="block text-[#fbf0df] font-bold mb-2">Завантажити з Силабуса (.docx):</label>
@@ -296,11 +298,21 @@ export default function CourseEdit() {
         </div>
 
         <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">          
+            <div>
               <label className="block text-[#fbf0df] font-bold mb-2">Назва:</label>
               <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.name} onChange={(e) => update({name: e.target.value})} />
+            </div>
+            <div className="flex items-start justify-end gap-2">
+              { item?.generated && item.id && (
+                <button
+                  onClick={() => navigate(`/courses/${item.id}/generated`)}
+                  className="col-span-2"
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                </button>
+              )}
             </div>
             <div>
               <label className="block text-[#fbf0df] font-bold mb-2">Кредити:</label>

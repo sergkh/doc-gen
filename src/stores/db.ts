@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Teacher, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, KeyValue, Prompt, ShortCourseInfo, Teacher, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -176,4 +176,46 @@ const templates = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults, templates };
+const prompts = {
+  get: async (id: number): Promise<Prompt | null> => {
+    const result = await sql`SELECT * FROM prompts WHERE id = ${id}`;
+    return result[0] || null;
+  },
+
+  getByType: async (type: string): Promise<Prompt[]> => {
+    return await sql`SELECT * FROM prompts WHERE type = ${type} ORDER BY index` as Prompt[];
+  },
+
+  add: async (prompt: Prompt) => {
+    return await sql`INSERT INTO prompts 
+      (index, type, field, system_prompt, prompt) 
+      VALUES (${prompt.index}, ${prompt.type}, ${prompt.field}, ${prompt.system_prompt}, ${prompt.prompt}) 
+      RETURNING *`;
+  },
+
+  update: async (prompt: Prompt) => {
+    return await sql`UPDATE prompts 
+      SET index = ${prompt.index}, 
+          type = ${prompt.type}, 
+          field = ${prompt.field}, 
+          system_prompt = ${prompt.system_prompt}, 
+          prompt = ${prompt.prompt}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${prompt.id}
+      RETURNING *`;
+  },
+
+  delete: async (id: number) => {
+    return await sql`DELETE FROM prompts WHERE id = ${id}`;
+  },
+
+  updateOrdering: async (type: string, promptIds: number[]) => {
+    await Promise.all(
+      promptIds.map(async (promptId, index) => 
+        await sql`UPDATE prompts SET index=${index + 1} WHERE id=${promptId} AND type=${type}`
+      )
+    );
+  },
+};
+
+export { courses, teachers, courseTopics , courseResults, templates, prompts };

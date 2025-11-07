@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion } from "@/stores/models.ts";
-import { courses, courseTopics } from "@/stores/db.ts";
+import { courses, courseTopics, prompts } from "@/stores/db.ts";
 
 const model = "gpt-4o";
 
@@ -12,7 +12,7 @@ function deepEqual(a: any, b: any): boolean {
   }
 }
 
-function createOpenAIClient(apiKey?: string): OpenAI {
+function createOpenAIClient(apiKey?: string | null): OpenAI {
   const key = apiKey || process.env.OPENAI_API_KEY;
   if (!key) {
     throw new Error("OpenAI API key is required");
@@ -20,58 +20,31 @@ function createOpenAIClient(apiKey?: string): OpenAI {
   return new OpenAI({ apiKey: key });
 }
 
-export const prompts = [
-  {
-    name: "subtopics",
-    prompt: "вибери підтеми що розглядаються в наданій лекції українською мовою. Виведи тільки підтеми без нумерації в JSON формату {items: string[]}"
-  },
-  {
-    name: "keywords",
-    prompt: "придумай основні терміни до цієї лекції українською мовою. Виведи тільки до 10 основних термінів без нумерації в JSON форматі {items: string[]}"
-  },
-  {
-    name: "selfQuestions",
-    prompt: "придумай 15 теоретичних тем для самостійної роботи студентів з лекції, які будуть дотичні до цієї лекції але бажано не присутні в ній. Поверни тільки JSON формату {items: string[]}"
-  },
-  {
-    name: "referats",
-    prompt: "зроби 15 тем рефератів що відносяться до тем цієї лекції. Поверни тільки JSON формату {items: string[]}"
-  },
-  {
-    name: "quiz",
-    prompt: `зроби 20 тестових завдань на 4 варіанти відповіді по цій лекції. Поверни тільки JSON який чітко відповідає формату: 
-    {
-      "items": [
-        {
-          "question": "string",
-          "options": ["string", "string", "string", "string"],
-          "correct_answer": "string",
-          "explanation": "string"
-        }
-      ]
-  }`
-  },
-  {
-    name: "keyQuestions",
-    prompt: "зроби 20 запитань без варіантів відповіді по цій лекції. Поверни тільки JSON as {items: string[]}"
-  }
-];
+function format(template: string, data: Record<string, any>): string {
+  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => data[key.trim()] ?? '');
+}
 
-export async function generateCourseTopic(course: Course, topic: CourseTopic, apiKey?: string): Promise<CourseTopic> {
+// Gets all configured prompts for given type and runs them if they weren't run before
+// prompts are run in order of their index, so can rely on previous prompts results
+export async function runPrompts(
+  state: Record<string, any>,
+  type: "topic" | "course",
+  apiKey: string | null,
+  contextProvider: (context: Record<string, any>) => Record<string, any>  
+): Promise<Record<string, any>> {
   const client = createOpenAIClient(apiKey);
-  const results = {} as Record<string, any>;
+  const results = {...state} as Record<string, any>;
 
-  console.log(`Processing topic ${topic.index} ${topic.name}`);
+  const promptsToRun = await prompts.getByType(type);
 
-  for (const { name, prompt } of prompts) {
-    if (topic.generated && topic.generated[name]) {
-      results[name] = { items: topic.generated[name] };
-      continue;
-    }
-
-    console.log(`Generating prompt ${name} for topic ${topic.index} ${topic.name}`);
+  for (const prompt of promptsToRun) {
+    // this field is already generated
+    if (state[prompt.field]) continue;
 
     try {
+      const systemPrompt = format(prompt.system_prompt, contextProvider(results));
+      const formattedPrompt = format(prompt.prompt, contextProvider(results));
+
       const response = await client.chat.completions.create({
         model: model,
         temperature: 0,
@@ -79,47 +52,50 @@ export async function generateCourseTopic(course: Course, topic: CourseTopic, ap
         messages: [
           {
             role: "system",
-            content: `Ти асистент викладача з дисципліни ${course}, який видає відповіді тільки в форматі JSON об'єктів`
+            content: systemPrompt
           },
           {
             role: "user",
-            content: `${prompt}:\n\n${topic.lection}`
+            content: formattedPrompt
           }
         ]
       });
 
       const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
-      results[name] = jsonResponse;
+      results[prompt.field] = jsonResponse.items;
+
+      console.log(`Generating ${type} prompt ${prompt.field}: request:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\nresponse>${JSON.stringify(jsonResponse.items)}`);
     } catch (err) { 
       console.error(err);     
     }
   }
 
-  const quiz = results['quiz'].items.map((q: any, idx: number) => 
-    Object.assign(q, { index: idx+1 } as QuizQuestion)
-  ) as QuizQuestion[]
-
-  return {
-    ...topic,
-    generated: {
-      ...topic.generated,
-      quiz: quiz,
-      subtopics: results['subtopics'].items,
-      keywords: results['keywords'].items,
-      selfQuestions: results['selfQuestions'].items,
-      referats: results['referats'].items,    
-      keyQuestions: results['keyQuestions'].items
-    } as GeneratedTopicData
-  } as CourseTopic
+  return results;
 }
 
+// Runs set of prompts for course and topics
 export async function generateCourseInfo(course: Course, topics: CourseTopic[], progress: (progress: number) => void, apiKey?: string): Promise<{ course: Course, topics: CourseTopic[] }> {
-  
+  const key = apiKey ?? null;
   let updatedTopics = [] as CourseTopic[]
   
   // do not parallelize as it might be rate limited by the OpenAI API
   for (const topic of topics) {
-    const updated = await generateCourseTopic(course, topic, apiKey);
+    const prompts = await runPrompts(topic.generated || {}, "topic", key, (state) => ({
+      // ...state,
+      courseName: course.name,
+      courseDescription: course.data.description,
+      name: topic.name, 
+      lection: topic.lection || topic.name,
+      subtopics: topic.generated?.subtopics || state['subtopics'].items.join(", ") || ""
+    }));
+
+    const updated = {
+      ...topic,
+      generated: {
+        ...prompts,
+        quiz: prompts['quiz'].map((q: any, idx: number) => Object.assign(q, { index: idx+1 } as QuizQuestion)),        
+      } as GeneratedTopicData
+    } as CourseTopic
 
     progress((updatedTopics.length + 1)/ topics.length * 100);
     
@@ -129,18 +105,19 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
     updatedTopics.push(updated);
   }
 
-  const disciplineQuestions = updatedTopics.flatMap(t => t.generated?.keyQuestions || []);
+  const prompts = await runPrompts(course.generated || {}, "course", key, (state) => ({
+    ...state,
+    courseName: course.name,
+    courseDescription: course.data.description,
+    topics: updatedTopics.map(t => t.name).join(", "),
+    subtopics: updatedTopics.flatMap(t => t.generated?.subtopics || []).join(", ")
+  }));
 
-  const updatedCourse = {
-    ...course,
-    generated: {
-      disciplineQuestions: disciplineQuestions
-    } as GeneratedCourseData
-  }
+  const updatedCourse = { ...course, generated: prompts as GeneratedCourseData }
 
   console.log("Done generating AI course info");
 
-  if (!course.generated) {
+  if (!deepEqual(updatedCourse, course)) {
     await courses.update(updatedCourse);
   }
   

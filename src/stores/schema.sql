@@ -46,3 +46,17 @@ CREATE TABLE IF NOT EXISTS templates(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS prompts(
+  id SERIAL PRIMARY KEY,
+  index INTEGER NOT NULL,
+  type VARCHAR(64) NOT NULL,
+  field VARCHAR(512) NOT NULL,
+  system_prompt TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_index_type ON prompts (index, type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_field_type ON prompts (field, type);

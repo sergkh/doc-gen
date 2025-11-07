@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faRotateRight } from "@fortawesome/free-solid-svg-icons";
 import type { CourseTopic, QuizQuestion } from "@/stores/models";
 import toast from "react-hot-toast";
 import QuizEditor from "../components/QuizEditor";
@@ -146,6 +146,30 @@ export default function TopicGeneratedDataEdit() {
     setQuiz(updatedQuiz);
   };
 
+  const handleResetSubtopics = () => {
+    setSubtopics("");
+  };
+
+  const handleResetKeywords = () => {
+    setKeywords("");
+  };
+
+  const handleResetTopics = () => {
+    setTopics([]);
+  };
+
+  const handleResetReferats = () => {
+    setReferats([]);
+  };
+
+  const handleResetKeyQuestions = () => {
+    setKeyQuestions([]);
+  };
+
+  const handleResetQuiz = () => {
+    setQuiz([]);
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
@@ -174,7 +198,16 @@ export default function TopicGeneratedDataEdit() {
         <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-4">
           {/* Subtopics */}
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Підтеми з програми (по одній на рядок):</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Підтеми з програми (по одній на рядок):</label>
+              <button
+                onClick={handleResetSubtopics}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути підтеми (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
             <textarea
               rows={5}
               value={subtopics}
@@ -186,7 +219,16 @@ export default function TopicGeneratedDataEdit() {
 
           {/* Keywords */}
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Перелік термінів для методички з самостійної роботи (через кому):</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Перелік термінів для методички з самостійної роботи (через кому):</label>
+              <button
+                onClick={handleResetKeywords}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути ключові слова (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
             <textarea
               rows={3}
               value={keywords}
@@ -198,7 +240,16 @@ export default function TopicGeneratedDataEdit() {
 
           {/* Topics */}
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Теми для самостійної роботи:</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи:</label>
+              <button
+                onClick={handleResetTopics}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути теми (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
             <div className="flex flex-col gap-2">
               {topics.length > 0 && (
                 <div className="flex flex-col gap-2">
@@ -236,7 +287,16 @@ export default function TopicGeneratedDataEdit() {
 
           {/* Referats */}
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Теми рефератів:</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Теми рефератів:</label>
+              <button
+                onClick={handleResetReferats}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути реферати (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
             <div className="flex flex-col gap-2">
               {referats.length > 0 && (
                 <div className="flex flex-col gap-2">
@@ -274,7 +334,16 @@ export default function TopicGeneratedDataEdit() {
 
           {/* Key Questions */}
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Ключові питання:</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Ключові питання:</label>
+              <button
+                onClick={handleResetKeyQuestions}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути ключові питання (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
             <div className="flex flex-col gap-2">
               {keyQuestions.length > 0 && (
                 <div className="flex flex-col gap-2">
@@ -311,7 +380,19 @@ export default function TopicGeneratedDataEdit() {
           </div>
 
           {/* Quiz */}
-          <QuizEditor quiz={quiz} onQuizChange={handleQuizChange} />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Тестові завдання:</label>
+              <button
+                onClick={handleResetQuiz}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути тестові завдання (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <QuizEditor quiz={quiz} onQuizChange={handleQuizChange} />
+          </div>
 
           <div className="flex gap-2 pt-2">
             <button

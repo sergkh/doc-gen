@@ -6,6 +6,7 @@ import coursesApi from "@/api/courses.ts";
 import generationApi from "@/api/generation.ts";
 import resultsApi from "@/api/results.ts";
 import templatesApi from "@/api/templates.ts";
+import promptsApi from "@/api/prompts.ts";
 
 const server = serve({
   routes: {    
@@ -14,7 +15,8 @@ const server = serve({
     ...coursesApi,
     ...teachersApi,
     ...resultsApi,
-    ...templatesApi
+    ...templatesApi,
+    ...promptsApi
   },
 
   development: process.env.NODE_ENV !== "production" && {

@@ -42,8 +42,12 @@ export type CourseData = {
 }
 
 export type GeneratedCourseData = {
-  disciplineQuestions: string[] 
-}
+  disciplineQuestions?: string[]
+  selfMethodGoal?: string,
+  selfMethodTask?: string,
+  selfMethodGeneral?: string,
+  selfMethodIndividualTopics?: string[]
+} & Record<string, any>;
 
 export type Course = {
   id: number,
@@ -61,12 +65,12 @@ export type Teacher = {
 }
 
 export type GeneratedTopicData = {
-  subtopics: string[],
-  keywords: string[],
-  topics: string[],
-  referats: string[],
-  quiz: QuizQuestion[],
-  keyQuestions: string[]
+  subtopics?: string[],
+  keywords?: string[],
+  topics?: string[],
+  referats?: string[],
+  quiz?: QuizQuestion[],
+  keyQuestions?: string[]
 } & Record<string, any>;
 
 export type CourseTopicData = {
@@ -166,4 +170,13 @@ export type Template = {
   id: number,
   name: string,
   file: string
+}
+
+export type Prompt = {
+  id: number,
+  index: number,
+  type: "course" | "topic",
+  field: string,
+  system_prompt: string,
+  prompt: string
 }

@@ -11,6 +11,8 @@ import ResultEdit from "./client/pages/ResultEdit";
 import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
+import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
+import PromptsList from "./client/pages/PromptsList";
 
 function Navigation() {
   const location = useLocation();
@@ -68,6 +70,16 @@ function Navigation() {
         >
           Шаблони
         </Link>
+        <Link
+          to="/prompts"
+          className={`font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
+            location.pathname.startsWith("/prompts")
+              ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
+              : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+          }`}
+        >
+          Промпти
+        </Link>        
       </div>
     </nav>
   );
@@ -108,6 +120,7 @@ export function App() {
         />
         <Route path="/courses" element={<CoursesList />} />
         <Route path="/courses/:id" element={<CourseEdit />} />
+        <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
         <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
         <Route path="/teachers" element={<TeachersList />} />
         <Route path="/teachers/:id" element={<TeacherEdit />} />
@@ -115,6 +128,7 @@ export function App() {
         <Route path="/results/:id" element={<ResultEdit />} />
         <Route path="/templates" element={<TemplatesList />} />
         <Route path="/templates/:id" element={<TemplateEdit />} />
+        <Route path="/prompts" element={<PromptsList />} />
       </Routes>
     </div>
   );
