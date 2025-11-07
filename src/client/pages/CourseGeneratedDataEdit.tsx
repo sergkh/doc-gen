@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRotateRight, faTrash, faPlus } from "@fortawesome/free-solid-svg-icons";
 import type { Course, GeneratedCourseData } from "@/stores/models";
 import toast from "react-hot-toast";
+import { dropEmpty } from "../util/util";
 
 export default function CourseGeneratedDataEdit() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -73,7 +74,7 @@ export default function CourseGeneratedDataEdit() {
 
     setIsSaving(true);
     try {
-      const updatedGenerated: GeneratedCourseData = {
+      const generated: GeneratedCourseData = dropEmpty({
         ...course.generated,
         disciplineQuestions,
         selfMethodGoal,
@@ -88,12 +89,9 @@ export default function CourseGeneratedDataEdit() {
         programBriefSkills,
         programIntro,
         programBriefIntro
-      };
+      });
 
-      const updatedCourse: Course = {
-        ...course,
-        generated: updatedGenerated
-      };
+      const updatedCourse: Course = {...course, generated };
 
       const response = await fetch(`/api/courses/${courseId}`, {
         method: "PUT",
@@ -128,10 +126,6 @@ export default function CourseGeneratedDataEdit() {
     setDisciplineQuestions(disciplineQuestions.filter((_, i) => i !== index));
   };
 
-  const handleResetDisciplineQuestions = () => {
-    setDisciplineQuestions([]);
-  };
-
   const handleAddSelfMethodIndividualTopic = () => {
     if (newSelfMethodIndividualTopic.trim()) {
       setSelfMethodIndividualTopics([...selfMethodIndividualTopics, newSelfMethodIndividualTopic.trim()]);
@@ -141,54 +135,6 @@ export default function CourseGeneratedDataEdit() {
 
   const handleRemoveSelfMethodIndividualTopic = (index: number) => {
     setSelfMethodIndividualTopics(selfMethodIndividualTopics.filter((_, i) => i !== index));
-  };
-
-  const handleResetSelfMethodGoal = () => {
-    setSelfMethodGoal("");
-  };
-
-  const handleResetSelfMethodTask = () => {
-    setSelfMethodTask("");
-  };
-
-  const handleResetSelfMethodGeneral = () => {
-    setSelfMethodGeneral("");
-  };
-
-  const handleResetSelfMethodIndividualTopics = () => {
-    setSelfMethodIndividualTopics([]);
-  };
-
-  const handleResetProgramGoal = () => {
-    setProgramGoal("");
-  };
-
-  const handleResetProgramTask = () => {
-    setProgramTask("");
-  };
-
-  const handleResetProgramSubject = () => {
-    setProgramSubject("");
-  };
-
-  const handleResetProgramOrientation = () => {
-    setProgramOrientation("");
-  };
-
-  const handleResetProgramBriefResults = () => {
-    setProgramBriefResults("");
-  };
-
-  const handleResetProgramBriefSkills = () => {
-    setProgramBriefSkills("");
-  };
-
-  const handleResetProgramIntro = () => {
-    setProgramIntro("");
-  };
-
-  const handleResetProgramBriefIntro = () => {
-    setProgramBriefIntro("");
   };
 
   if (isLoading) {
@@ -222,7 +168,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Питання до дисципліни:</label>
               <button
-                onClick={handleResetDisciplineQuestions}
+                onClick={() => setDisciplineQuestions([])}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути питання (буде згенеровано автоматично)"
               >
@@ -269,7 +215,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Мета самостійної роботи:</label>
               <button
-                onClick={handleResetSelfMethodGoal}
+                onClick={() => setSelfMethodGoal("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути мету (буде згенеровано автоматично)"
               >
@@ -290,7 +236,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Завдання самостійної роботи:</label>
               <button
-                onClick={handleResetSelfMethodTask}
+                onClick={() => setSelfMethodTask("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути завдання (буде згенеровано автоматично)"
               >
@@ -311,7 +257,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Загальна інформація про самостійну роботу:</label>
               <button
-                onClick={handleResetSelfMethodGeneral}
+                onClick={() => setSelfMethodGeneral("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути загальну інформацію (буде згенеровано автоматично)"
               >
@@ -332,7 +278,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Індивідуальні теми самостійної роботи:</label>
               <button
-                onClick={handleResetSelfMethodIndividualTopics}
+                onClick={() => setSelfMethodIndividualTopics([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути теми (буде згенеровано автоматично)"
               >
@@ -379,7 +325,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Мета програми:</label>
               <button
-                onClick={handleResetProgramGoal}
+                onClick={() => setProgramGoal("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути мету (буде згенеровано автоматично)"
               >
@@ -400,7 +346,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Завдання програми:</label>
               <button
-                onClick={handleResetProgramTask}
+                onClick={() => setProgramTask("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути завдання (буде згенеровано автоматично)"
               >
@@ -421,7 +367,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Предмет програми:</label>
               <button
-                onClick={handleResetProgramSubject}
+                onClick={() => setProgramSubject("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути предмет (буде згенеровано автоматично)"
               >
@@ -442,7 +388,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Орієнтація програми:</label>
               <button
-                onClick={handleResetProgramOrientation}
+                onClick={() => setProgramOrientation("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути орієнтацію (буде згенеровано автоматично)"
               >
@@ -463,7 +409,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Короткі результати програми:</label>
               <button
-                onClick={handleResetProgramBriefResults}
+                onClick={() => setProgramBriefResults("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути результати (буде згенеровано автоматично)"
               >
@@ -484,7 +430,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Короткі вміння програми:</label>
               <button
-                onClick={handleResetProgramBriefSkills}
+                onClick={() => setProgramBriefSkills("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути вміння (буде згенеровано автоматично)"
               >
@@ -505,7 +451,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Вступ до програми:</label>
               <button
-                onClick={handleResetProgramIntro}
+                onClick={() => setProgramIntro("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути вступ (буде згенеровано автоматично)"
               >
@@ -526,7 +472,7 @@ export default function CourseGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Короткий вступ до програми:</label>
               <button
-                onClick={handleResetProgramBriefIntro}
+                onClick={() => setProgramBriefIntro("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути короткий вступ (буде згенеровано автоматично)"
               >

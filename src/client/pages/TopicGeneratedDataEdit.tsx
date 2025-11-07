@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faRotateRight } from "@fortawesome/free-solid-svg-icons";
-import type { CourseTopic, QuizQuestion } from "@/stores/models";
+import type { CourseTopic, GeneratedTopicData, QuizQuestion } from "@/stores/models";
 import toast from "react-hot-toast";
 import QuizEditor from "../components/QuizEditor";
+import { dropEmpty } from "../util/util";
 
 export default function TopicGeneratedDataEdit() {
   const { courseId, topicId } = useParams<{ courseId: string; topicId: string }>();
@@ -67,12 +68,13 @@ export default function TopicGeneratedDataEdit() {
     if (!topic) return;
 
     setIsSaving(true);
+
     try {
       // Parse form data
       const subtopicsArray = subtopics.split("\n").filter(s => s.trim() !== "");
       const keywordsArray = keywords.split(",").map(k => k.trim()).filter(k => k !== "");
 
-      const updatedGenerated = {
+      const generated = dropEmpty({
         ...topic.generated,
         subtopics: subtopicsArray,
         keywords: keywordsArray,
@@ -80,12 +82,9 @@ export default function TopicGeneratedDataEdit() {
         referats,
         keyQuestions,
         quiz
-      };
+      }) as GeneratedTopicData;
 
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        generated: updatedGenerated
-      };
+      const updatedTopic: CourseTopic = {...topic, generated };
 
       const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`, {
         method: "PUT",
@@ -142,34 +141,6 @@ export default function TopicGeneratedDataEdit() {
     setKeyQuestions(keyQuestions.filter((_, i) => i !== index));
   };
 
-  const handleQuizChange = (updatedQuiz: QuizQuestion[]) => {
-    setQuiz(updatedQuiz);
-  };
-
-  const handleResetSubtopics = () => {
-    setSubtopics("");
-  };
-
-  const handleResetKeywords = () => {
-    setKeywords("");
-  };
-
-  const handleResetTopics = () => {
-    setTopics([]);
-  };
-
-  const handleResetReferats = () => {
-    setReferats([]);
-  };
-
-  const handleResetKeyQuestions = () => {
-    setKeyQuestions([]);
-  };
-
-  const handleResetQuiz = () => {
-    setQuiz([]);
-  };
-
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
@@ -201,7 +172,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Підтеми з програми (по одній на рядок):</label>
               <button
-                onClick={handleResetSubtopics}
+                onClick={() => setSubtopics("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути підтеми (буде згенеровано автоматично)"
               >
@@ -222,7 +193,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Перелік термінів для методички з самостійної роботи (через кому):</label>
               <button
-                onClick={handleResetKeywords}
+                onClick={() => setKeywords("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути ключові слова (буде згенеровано автоматично)"
               >
@@ -243,7 +214,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи:</label>
               <button
-                onClick={handleResetTopics}
+                onClick={() => setTopics([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути теми (буде згенеровано автоматично)"
               >
@@ -290,7 +261,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Теми рефератів:</label>
               <button
-                onClick={handleResetReferats}
+                onClick={() => setReferats([])}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути реферати (буде згенеровано автоматично)"
               >
@@ -337,7 +308,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Ключові питання:</label>
               <button
-                onClick={handleResetKeyQuestions}
+                onClick={() => setKeyQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути ключові питання (буде згенеровано автоматично)"
               >
@@ -384,14 +355,14 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Тестові завдання:</label>
               <button
-                onClick={handleResetQuiz}
+                onClick={() => setQuiz([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути тестові завдання (буде згенеровано автоматично)"
               >
                 <FontAwesomeIcon icon={faRotateRight} />
               </button>
             </div>
-            <QuizEditor quiz={quiz} onQuizChange={handleQuizChange} />
+            <QuizEditor quiz={quiz} onQuizChange={setQuiz} />
           </div>
 
           <div className="flex gap-2 pt-2">

@@ -699,17 +699,17 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 value={topic}
                 className={`${bgColor} border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing transition-colors`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-2 flex-1">
-                    <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing">
+                <div className="flex items-start justify-between gap-2 flex-col sm:flex-row">
+                  <div className="flex items-start gap-2 flex-1 min-w-0 w-full">
+                    <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing flex-shrink-0">
                       <FontAwesomeIcon icon={faGripVertical} />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="font-bold text-[#f3d5a3]">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                        <div className="font-bold text-[#f3d5a3] flex-shrink-0">
                           {topic.index}. {topic.name || `Тема ${topic.index}`}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
+                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
                           <InPlaceEditor
                             value={hours}
                             options={[
@@ -819,7 +819,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 sm:ml-4 flex-shrink-0">
                     {topic.generated && (
                       <button
                         onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}

@@ -16,6 +16,7 @@
     "bun-plugin-tailwind": "^0.1.2",
     "docx4js": "^3.3.0",
     "docxtemplater": "^3.67.1",
+    "joyride": "^0.1.4",
     "mammoth": "^1.11.0",
     "motion": "^12.23.24",
     "openai": "^6.7.0",
