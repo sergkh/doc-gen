@@ -46,6 +46,13 @@ const parser = expressionParser.configure({
         }
         return input.charAt(0).toUpperCase() + input.slice(1);
       },
+      uncapitalize(input) {
+        if (!input) return input;
+        if (Array.isArray(input)) {
+          return input.map(i => i.charAt(0).toLowerCase() + i.slice(1));
+        }
+        return input.charAt(0).toLowerCase() + input.slice(1);
+      },
       endWithDot(input) {
         if (!input) return input;
         if(typeof input !== "string") return input;

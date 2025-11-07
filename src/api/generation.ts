@@ -112,7 +112,7 @@ const generationApi = {
       return Response.json({
         id: job.id,
         status: job.status,
-        progress: job.progress,
+        progress: Math.round(job.progress),
         error: job.error,
         filename: job.filename,
       });
