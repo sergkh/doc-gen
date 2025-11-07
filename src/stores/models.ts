@@ -46,7 +46,15 @@ export type GeneratedCourseData = {
   selfMethodGoal?: string,
   selfMethodTask?: string,
   selfMethodGeneral?: string,
-  selfMethodIndividualTopics?: string[]
+  selfMethodIndividualTopics?: string[],
+  programGoal?: string
+  programTask?: string
+  programSubject: string 
+  programOrientation?: string,
+  programBriefResults?: string,
+  programBriefSkills?: string,
+  programIntro?: string,
+  programBriefIntro?: string
 } & Record<string, any>;
 
 export type Course = {

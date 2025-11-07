@@ -21,7 +21,11 @@ function createOpenAIClient(apiKey?: string | null): OpenAI {
 }
 
 function format(template: string, data: Record<string, any>): string {
-  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => data[key.trim()] ?? '');
+  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
+    const result = data[key.trim()];
+    if (!result) throw new Error(`Missing dependency: ${key.trim()}`);
+    return result;
+  });
 }
 
 // Gets all configured prompts for given type and runs them if they weren't run before
@@ -81,7 +85,7 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
   // do not parallelize as it might be rate limited by the OpenAI API
   for (const topic of topics) {
     const prompts = await runPrompts(topic.generated || {}, "topic", key, (state) => ({
-      // ...state,
+      ...state,
       courseName: course.name,
       courseDescription: course.data.description,
       name: topic.name, 

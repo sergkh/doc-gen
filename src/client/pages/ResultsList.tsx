@@ -112,9 +112,9 @@ export default function ResultsList() {
           <h1 className="font-mono">Результати навчання</h1>
           <button
             onClick={() => navigate("/results/new")}
-            className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+            className="text-[#fbf0df] hover:text-[#f3d5a3] px-2 py-2 rounded-lg font-bold flex items-center gap-2"
           >
-            <FontAwesomeIcon icon={faPlus} /> Додати результат
+            <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
 

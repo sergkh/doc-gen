@@ -23,14 +23,13 @@ export default function CoursesList() {
   return (
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
-        <h1 className="font-mono">Дисципліни</h1>
-
         <div className="flex justify-between items-center">
+          <h1 className="font-mono">Дисципліни</h1>
           <button
             onClick={() => navigate("/courses/new")}
-            className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+            className="text-[#fbf0df] hover:text-[#f3d5a3] px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
-            <FontAwesomeIcon icon={faPlus} /> Додати дисципліну
+            <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
 

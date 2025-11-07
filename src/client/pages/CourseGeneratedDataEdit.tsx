@@ -20,6 +20,14 @@ export default function CourseGeneratedDataEdit() {
   const [selfMethodGeneral, setSelfMethodGeneral] = useState("");
   const [selfMethodIndividualTopics, setSelfMethodIndividualTopics] = useState<string[]>([]);
   const [newSelfMethodIndividualTopic, setNewSelfMethodIndividualTopic] = useState("");
+  const [programGoal, setProgramGoal] = useState("");
+  const [programTask, setProgramTask] = useState("");
+  const [programSubject, setProgramSubject] = useState("");
+  const [programOrientation, setProgramOrientation] = useState("");
+  const [programBriefResults, setProgramBriefResults] = useState("");
+  const [programBriefSkills, setProgramBriefSkills] = useState("");
+  const [programIntro, setProgramIntro] = useState("");
+  const [programBriefIntro, setProgramBriefIntro] = useState("");
 
   useEffect(() => {
     if (courseId) {
@@ -44,6 +52,14 @@ export default function CourseGeneratedDataEdit() {
       setSelfMethodTask(generated.selfMethodTask || "");
       setSelfMethodGeneral(generated.selfMethodGeneral || "");
       setSelfMethodIndividualTopics(generated.selfMethodIndividualTopics || []);
+      setProgramGoal(generated.programGoal || "");
+      setProgramTask(generated.programTask || "");
+      setProgramSubject(generated.programSubject || "");
+      setProgramOrientation(generated.programOrientation || "");
+      setProgramBriefResults(generated.programBriefResults || "");
+      setProgramBriefSkills(generated.programBriefSkills || "");
+      setProgramIntro(generated.programIntro || "");
+      setProgramBriefIntro(generated.programBriefIntro || "");
     } catch (error) {
       console.error("Error fetching course:", error);
       toast.error("Помилка завантаження курсу");
@@ -63,7 +79,15 @@ export default function CourseGeneratedDataEdit() {
         selfMethodGoal,
         selfMethodTask,
         selfMethodGeneral,
-        selfMethodIndividualTopics
+        selfMethodIndividualTopics,
+        programGoal,
+        programTask,
+        programSubject,
+        programOrientation,
+        programBriefResults,
+        programBriefSkills,
+        programIntro,
+        programBriefIntro
       };
 
       const updatedCourse: Course = {
@@ -133,6 +157,38 @@ export default function CourseGeneratedDataEdit() {
 
   const handleResetSelfMethodIndividualTopics = () => {
     setSelfMethodIndividualTopics([]);
+  };
+
+  const handleResetProgramGoal = () => {
+    setProgramGoal("");
+  };
+
+  const handleResetProgramTask = () => {
+    setProgramTask("");
+  };
+
+  const handleResetProgramSubject = () => {
+    setProgramSubject("");
+  };
+
+  const handleResetProgramOrientation = () => {
+    setProgramOrientation("");
+  };
+
+  const handleResetProgramBriefResults = () => {
+    setProgramBriefResults("");
+  };
+
+  const handleResetProgramBriefSkills = () => {
+    setProgramBriefSkills("");
+  };
+
+  const handleResetProgramIntro = () => {
+    setProgramIntro("");
+  };
+
+  const handleResetProgramBriefIntro = () => {
+    setProgramBriefIntro("");
   };
 
   if (isLoading) {
@@ -316,6 +372,174 @@ export default function CourseGeneratedDataEdit() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Program Goal */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Мета програми:</label>
+              <button
+                onClick={handleResetProgramGoal}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути мету (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programGoal}
+              onChange={(e) => setProgramGoal(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть мету програми"
+            />
+          </div>
+
+          {/* Program Task */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Завдання програми:</label>
+              <button
+                onClick={handleResetProgramTask}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути завдання (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programTask}
+              onChange={(e) => setProgramTask(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть завдання програми"
+            />
+          </div>
+
+          {/* Program Subject */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Предмет програми:</label>
+              <button
+                onClick={handleResetProgramSubject}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути предмет (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programSubject}
+              onChange={(e) => setProgramSubject(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть предмет програми"
+            />
+          </div>
+
+          {/* Program Orientation */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Орієнтація програми:</label>
+              <button
+                onClick={handleResetProgramOrientation}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути орієнтацію (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programOrientation}
+              onChange={(e) => setProgramOrientation(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть орієнтацію програми"
+            />
+          </div>
+
+          {/* Program Brief Results */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Короткі результати програми:</label>
+              <button
+                onClick={handleResetProgramBriefResults}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути результати (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programBriefResults}
+              onChange={(e) => setProgramBriefResults(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть короткі результати програми"
+            />
+          </div>
+
+          {/* Program Brief Skills */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Короткі вміння програми:</label>
+              <button
+                onClick={handleResetProgramBriefSkills}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути вміння (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={5}
+              value={programBriefSkills}
+              onChange={(e) => setProgramBriefSkills(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть короткі вміння програми"
+            />
+          </div>
+
+          {/* Program Intro */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Вступ до програми:</label>
+              <button
+                onClick={handleResetProgramIntro}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути вступ (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={10}
+              value={programIntro}
+              onChange={(e) => setProgramIntro(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть вступ до програми"
+            />
+          </div>
+
+          {/* Program Brief Intro */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Короткий вступ до програми:</label>
+              <button
+                onClick={handleResetProgramBriefIntro}
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути короткий вступ (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <textarea
+              rows={10}
+              value={programBriefIntro}
+              onChange={(e) => setProgramBriefIntro(e.target.value)}
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              placeholder="Введіть короткий вступ до програми"
+            />
           </div>
 
           <div className="flex gap-2 pt-2">
