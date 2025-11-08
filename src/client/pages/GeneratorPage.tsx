@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { loadAllCoursesBrief } from "../courses";
 import { loadAllTemplates } from "../templates";
 import type { Course, KeyValue, Template } from "@/stores/models";
@@ -19,12 +20,15 @@ interface JobStatusResponse {
 interface SavedJob {
   jobId: string;
   templateId: number;
+  navigateToEdit?: boolean;
+  courseId?: string;
 }
 
 const STORAGE_KEY = "generationJob";
 const API_KEY_STORAGE_KEY = "openai_api_key";
 
 export default function GeneratorPage() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<KeyValue[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
@@ -35,6 +39,7 @@ export default function GeneratorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [navigateToEdit, setNavigateToEdit] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
 
   const handleDownload = async (blob: Blob, filename: string) => {
@@ -53,13 +58,14 @@ export default function GeneratorPage() {
     setCurrentJobId(null);
     setProgress(0);
     setIsGenerating(false);
+    setNavigateToEdit(false);
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
   };
 
-  const pollJobStatus = (jobId: string) => {
+  const pollJobStatus = (jobId: string, shouldNavigateToEdit: boolean = false, courseId?: string) => {
     const poll = async () => {
       try {
         const response = await fetch(`/api/jobs/${jobId}`);
@@ -71,18 +77,25 @@ export default function GeneratorPage() {
         setProgress(status.progress);
 
         if (status.status === "completed") {
-          // Download the file
-          const downloadResponse = await fetch(`/api/jobs/${jobId}/download`);
-          
-          if (!downloadResponse.ok) {
-            throw new Error("Failed to download file");
+          if (shouldNavigateToEdit && courseId) {
+            // Navigate to course edit page instead of downloading
+            toast.success("Генерацію завершено, перехід до редагування");
+            clearJobState();
+            navigate(`/courses/${courseId}`);
+          } else {
+            // Download the file
+            const downloadResponse = await fetch(`/api/jobs/${jobId}/download`);
+            
+            if (!downloadResponse.ok) {
+              throw new Error("Failed to download file");
+            }
+
+            const blob = await downloadResponse.blob();
+            await handleDownload(blob, status.filename || "result.docx");
+
+            // Cleanup
+            clearJobState();
           }
-
-          const blob = await downloadResponse.blob();
-          await handleDownload(blob, status.filename || "result.docx");
-
-          // Cleanup
-          clearJobState();
         } else if (status.status === "error") {
           // Error occurred
           clearJobState();
@@ -131,6 +144,7 @@ export default function GeneratorPage() {
       try {
         const savedJob: SavedJob = JSON.parse(savedJobStr);
         setCurrentJobId(savedJob.jobId);
+        setNavigateToEdit(savedJob.navigateToEdit || false);
         
         // Check if job still exists and is not completed
         async function resumeJob() {
@@ -141,21 +155,28 @@ export default function GeneratorPage() {
               setProgress(status.progress);
               
               if (status.status === "completed") {
-                // Job already completed, download it
-                const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
-                if (downloadResponse.ok) {
-                  const blob = await downloadResponse.blob();
-                  const filename = status.filename || "result.docx";
-                  await handleDownload(blob, filename);
+                if (savedJob.navigateToEdit && savedJob.courseId) {
+                  // Navigate to course edit page
+                  toast.success("Генерацію завершено, перехід до редагування");
+                  clearJobState();
+                  navigate(`/courses/${savedJob.courseId}`);
+                } else {
+                  // Job already completed, download it
+                  const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
+                  if (downloadResponse.ok) {
+                    const blob = await downloadResponse.blob();
+                    const filename = status.filename || "result.docx";
+                    await handleDownload(blob, filename);
+                  }
+                  clearJobState();
                 }
-                clearJobState();
               } else if (status.status === "error") {
                 toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
                 clearJobState();
               } else {
                 // Job still in progress, resume polling
                 setIsGenerating(true);
-                pollJobStatus(savedJob.jobId);
+                pollJobStatus(savedJob.jobId, savedJob.navigateToEdit || false, savedJob.courseId);
               }
             } else {
               // Job not found, clear it
@@ -193,7 +214,7 @@ export default function GeneratorPage() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (navigateAfterCompletion: boolean = false) => {
     if (!selectedCourseId) {
       toast.error("Будь ласка, оберіть дисципліну");
       return;
@@ -206,6 +227,7 @@ export default function GeneratorPage() {
 
     setIsGenerating(true);
     setProgress(0);
+    setNavigateToEdit(navigateAfterCompletion);
 
     try {
       const response = await fetch(`/api/courses/${selectedCourseId}/generate/${selectedTemplateId}`, {
@@ -228,16 +250,23 @@ export default function GeneratorPage() {
       // Save to localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
         jobId, 
-        templateId: Number(selectedTemplateId) 
+        templateId: Number(selectedTemplateId),
+        navigateToEdit: navigateAfterCompletion,
+        courseId: navigateAfterCompletion ? selectedCourseId : undefined
       } as SavedJob));
       
-      pollJobStatus(jobId);
+      pollJobStatus(jobId, navigateAfterCompletion, navigateAfterCompletion ? selectedCourseId : undefined);
     } catch (error) {
       console.error("Error starting generation:", error);
       toast.error("Помилка запуску генерації");
       setIsGenerating(false);
       setProgress(0);
+      setNavigateToEdit(false);
     }
+  };
+
+  const handleGenerateAndEdit = async () => {
+    await handleGenerate(true);
   };
 
   return (
@@ -323,12 +352,20 @@ export default function GeneratorPage() {
 
         <div className="flex gap-4 items-center">
           <button
-            onClick={handleGenerate}
+            onClick={() => handleGenerate(false)}
             disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
           >
             <FontAwesomeIcon icon={faDownload} />
-            {isGenerating ? "Генерую..." : "Згенерувати"}
+            {isGenerating && !navigateToEdit ? "Генерую..." : "Згенерувати"}
+          </button>
+          <button
+            onClick={handleGenerateAndEdit}
+            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
+          >
+            <FontAwesomeIcon icon={faEdit} />
+            {isGenerating && navigateToEdit ? "Генерую..." : "Згенерувати і редагувати"}
           </button>
           {isGenerating && (
             <span className="text-[#fbf0df] font-mono">

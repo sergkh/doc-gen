@@ -266,7 +266,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Topics */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи:</label>
+              <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи ({selfQuestions.length}):</label>
               <button
                 onClick={() => setSelfQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -313,7 +313,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Self Questions Short */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Короткі питання для самостійної роботи:</label>
+              <label className="block text-[#fbf0df] font-bold">Короткі питання для самостійної роботи ({selfQuestionsShort.length}):</label>
               <button
                 onClick={() => setSelfQuestionsShort([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -360,7 +360,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Referats */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Теми рефератів:</label>
+              <label className="block text-[#fbf0df] font-bold">Теми рефератів ({referats.length}):</label>
               <button
                 onClick={() => setReferats([])}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -407,7 +407,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Key Questions */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Ключові питання:</label>
+              <label className="block text-[#fbf0df] font-bold">Ключові питання ({keyQuestions.length}):</label>
               <button
                 onClick={() => setKeyQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -454,7 +454,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Quiz */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Тестові завдання:</label>
+              <label className="block text-[#fbf0df] font-bold">Тестові завдання ({quiz.length}):</label>
               <button
                 onClick={() => setQuiz([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
