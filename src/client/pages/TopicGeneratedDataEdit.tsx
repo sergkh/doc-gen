@@ -17,8 +17,10 @@ export default function TopicGeneratedDataEdit() {
   // Form state
   const [subtopics, setSubtopics] = useState("");
   const [keywords, setKeywords] = useState("");
-  const [topics, setTopics] = useState<string[]>([]);
-  const [newTopic, setNewTopic] = useState("");
+  const [selfQuestions, setSelfQuestions] = useState<string[]>([]);
+  const [newSelfQuestion, setNewSelfQuestion] = useState("");
+  const [selfQuestionsShort, setSelfQuestionsShort] = useState<string[]>([]);
+  const [newSelfQuestionShort, setNewSelfQuestionShort] = useState("");
   const [referats, setReferats] = useState<string[]>([]);
   const [newReferat, setNewReferat] = useState("");
   const [keyQuestions, setKeyQuestions] = useState<string[]>([]);
@@ -52,7 +54,8 @@ export default function TopicGeneratedDataEdit() {
 
       setSubtopics(generated.subtopics?.join("\n") || "");
       setKeywords(generated.keywords?.join(", ") || "");
-      setTopics(generated.topics || []);
+      setSelfQuestions(generated.selfQuestions || []);
+      setSelfQuestionsShort(generated.selfQuestionsShort || []);
       setReferats(generated.referats || []);
       setKeyQuestions(generated.keyQuestions || []);
       setQuiz(generated.quiz || []);
@@ -78,7 +81,8 @@ export default function TopicGeneratedDataEdit() {
         ...topic.generated,
         subtopics: subtopicsArray,
         keywords: keywordsArray,
-        topics,
+        selfQuestions,
+        selfQuestionsShort,
         referats,
         keyQuestions,
         quiz
@@ -109,14 +113,25 @@ export default function TopicGeneratedDataEdit() {
   };
 
   const handleAddTopic = () => {
-    if (newTopic.trim()) {
-      setTopics([...topics, newTopic.trim()]);
-      setNewTopic("");
+    if (newSelfQuestion.trim()) {
+      setSelfQuestions(old => [...old, newSelfQuestion.trim()]);
+      setNewSelfQuestion("");
     }
   };
 
   const handleRemoveTopic = (index: number) => {
-    setTopics(topics.filter((_, i) => i !== index));
+    setSelfQuestions(old => old.filter((_, i) => i !== index));
+  };
+
+  const handleAddSelfQuestionShort = () => {
+    if (newSelfQuestionShort.trim()) {
+      setSelfQuestionsShort(old => [...old, newSelfQuestionShort.trim()]);
+      setNewSelfQuestionShort("");
+    }
+  };
+
+  const handleRemoveSelfQuestionShort = (index: number) => {
+    setSelfQuestionsShort(old => old.filter((_, i) => i !== index));
   };
 
   const handleAddReferat = () => {
@@ -214,7 +229,7 @@ export default function TopicGeneratedDataEdit() {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи:</label>
               <button
-                onClick={() => setTopics([]) }
+                onClick={() => setSelfQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
                 title="Скинути теми (буде згенеровано автоматично)"
               >
@@ -222,9 +237,9 @@ export default function TopicGeneratedDataEdit() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
-              {topics.length > 0 && (
+              {selfQuestions.length > 0 && (
                 <div className="flex flex-col gap-2">
-                  {topics.map((t, index) => (
+                  {selfQuestions.map((t, index) => (
                     <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
                       <span className="flex-1 text-[#fbf0df]">{t}</span>
                       <button
@@ -240,14 +255,61 @@ export default function TopicGeneratedDataEdit() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={newTopic}
-                  onChange={(e) => setNewTopic(e.target.value)}
+                  value={newSelfQuestion}
+                  onChange={(e) => setNewSelfQuestion(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddTopic()}
                   className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати тему"
                 />
                 <button
                   onClick={handleAddTopic}
+                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Self Questions Short */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[#fbf0df] font-bold">Короткі питання для самостійної роботи:</label>
+              <button
+                onClick={() => setSelfQuestionsShort([]) }
+                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
+                title="Скинути короткі питання (буде згенеровано автоматично)"
+              >
+                <FontAwesomeIcon icon={faRotateRight} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {selfQuestionsShort.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {selfQuestionsShort.map((q, index) => (
+                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
+                      <span className="flex-1 text-[#fbf0df]">{q}</span>
+                      <button
+                        onClick={() => handleRemoveSelfQuestionShort(index)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSelfQuestionShort}
+                  onChange={(e) => setNewSelfQuestionShort(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleAddSelfQuestionShort()}
+                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  placeholder="Додати коротке питання"
+                />
+                <button
+                  onClick={handleAddSelfQuestionShort}
                   className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
                 >
                   <FontAwesomeIcon icon={faPlus} />

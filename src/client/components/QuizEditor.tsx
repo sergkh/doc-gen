@@ -46,7 +46,6 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
 
   return (
     <div>
-      <label className="block text-[#fbf0df] font-bold mb-2">Тестові завдання:</label>
       <div className="flex flex-col gap-4">
         {quiz.map((question, qIndex) => (
           <div key={qIndex} className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2">
@@ -59,11 +58,11 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
                 <FontAwesomeIcon icon={faTrash} />
               </button>
             </div>
-            <input
-              type="text"
+            <textarea
+              rows={3}
               value={question.question}
               onChange={(e) => handleUpdateQuestion(qIndex, "question", e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Текст питання"
             />
             <div className="flex flex-col gap-2">

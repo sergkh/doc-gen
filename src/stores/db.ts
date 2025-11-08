@@ -188,8 +188,8 @@ const prompts = {
 
   add: async (prompt: Prompt) => {
     return await sql`INSERT INTO prompts 
-      (index, type, field, system_prompt, prompt) 
-      VALUES (${prompt.index}, ${prompt.type}, ${prompt.field}, ${prompt.system_prompt}, ${prompt.prompt}) 
+      (index, type, field, system_prompt, prompt, model) 
+      VALUES (${prompt.index}, ${prompt.type}, ${prompt.field}, ${prompt.system_prompt}, ${prompt.prompt}, ${prompt.model}) 
       RETURNING *`;
   },
 
@@ -199,7 +199,8 @@ const prompts = {
           type = ${prompt.type}, 
           field = ${prompt.field}, 
           system_prompt = ${prompt.system_prompt}, 
-          prompt = ${prompt.prompt}, 
+          prompt = ${prompt.prompt},
+          model = ${prompt.model},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${prompt.id}
       RETURNING *`;

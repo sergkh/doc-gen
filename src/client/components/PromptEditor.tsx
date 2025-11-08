@@ -4,6 +4,13 @@ import { faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { Prompt } from "@/stores/models";
 
+const AVAILABLE_MODELS = [
+  "gpt-4o",
+  "gpt-5-2025-08-07",  
+  "gpt-5-mini-2025-08-07",
+  "gpt-4.1-2025-04-14"
+];
+
 interface PromptEditorProps {
   prompt: Prompt;
   selectedType: "course" | "topic";
@@ -18,12 +25,14 @@ export default function PromptEditor({
   onCancel,
 }: PromptEditorProps) {
   const [field, setField] = useState(prompt.field);
+  const [model, setModel] = useState(prompt.model || "gpt-4o");
   const [systemPrompt, setSystemPrompt] = useState(prompt.system_prompt);
   const [userPrompt, setUserPrompt] = useState(prompt.prompt);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setField(prompt.field);
+    setModel(prompt.model || "gpt-4o");
     setSystemPrompt(prompt.system_prompt);
     setUserPrompt(prompt.prompt);
   }, [prompt]);
@@ -39,6 +48,7 @@ export default function PromptEditor({
       const updatedPrompt: Prompt = {
         ...prompt,
         field: field.trim(),
+        model: model || "gpt-4o",
         system_prompt: systemPrompt.trim(),
         prompt: userPrompt.trim(),
       };
@@ -85,6 +95,20 @@ export default function PromptEditor({
           onChange={(e) => setField(e.target.value)}
           placeholder="Назва поля (наприклад: subtopics, keywords)"
         />
+      </div>
+      <div>
+        <label className="block text-[#fbf0df] font-bold mb-2">Модель:</label>
+        <select
+          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+        >
+          {AVAILABLE_MODELS.map((m) => (
+            <option key={m} value={m} className="bg-[#2a2a2a] text-[#fbf0df]">
+              {m}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="block text-[#fbf0df] font-bold mb-2">Системний промпт:</label>

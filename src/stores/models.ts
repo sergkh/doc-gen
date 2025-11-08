@@ -75,7 +75,8 @@ export type Teacher = {
 export type GeneratedTopicData = {
   subtopics?: string[],
   keywords?: string[],
-  topics?: string[],
+  selfQuestions?: string[],
+  selfQuestionsShort?: string[],
   referats?: string[],
   quiz?: QuizQuestion[],
   keyQuestions?: string[]
@@ -185,6 +186,7 @@ export type Prompt = {
   index: number,
   type: "course" | "topic",
   field: string,
+  model: string,
   system_prompt: string,
   prompt: string
 }

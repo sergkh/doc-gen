@@ -45,6 +45,7 @@ export default function PromptsList() {
       index: prompts.length + 1,
       type: selectedType,
       field: "",
+      model: "gpt-4o",
       system_prompt: "Ти асистент викладача з дисципліни \"{{courseName}}\". Опис: {{courseDescription}}, який видає відповіді тільки в форматі JSON об'єктів",
       prompt: ""
     };
@@ -76,6 +77,7 @@ export default function PromptsList() {
           body: JSON.stringify({
             index: promptData.index,
             field: promptData.field,
+            model: promptData.model || "gpt-4o",
             system_prompt: promptData.system_prompt,
             prompt: promptData.prompt
           }),
@@ -89,6 +91,7 @@ export default function PromptsList() {
             index: promptData.index,
             type: promptData.type,
             field: promptData.field,
+            model: promptData.model || "gpt-4o",
             system_prompt: promptData.system_prompt,
             prompt: promptData.prompt
           }),

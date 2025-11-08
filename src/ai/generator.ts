@@ -2,8 +2,6 @@ import OpenAI from "openai";
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion } from "@/stores/models.ts";
 import { courses, courseTopics, prompts } from "@/stores/db.ts";
 
-const model = "gpt-4o";
-
 function deepEqual(a: any, b: any): boolean {
   try {
     return JSON.stringify(a) === JSON.stringify(b);
@@ -50,8 +48,7 @@ export async function runPrompts(
       const formattedPrompt = format(prompt.prompt, contextProvider(results));
 
       const response = await client.chat.completions.create({
-        model: model,
-        temperature: 0,
+        model: prompt.model,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -68,7 +65,7 @@ export async function runPrompts(
       const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
       results[prompt.field] = jsonResponse.items;
 
-      console.log(`Generating ${type} prompt ${prompt.field}: request:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\nresponse>${JSON.stringify(jsonResponse.items)}`);
+      console.log(`Generating ${type} prompt ${prompt.field}: request:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(jsonResponse.items)}`);
     } catch (err) { 
       console.error(err);     
     }
