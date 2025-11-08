@@ -43,6 +43,8 @@ export async function runPrompts(
     // this field is already generated
     if (state[prompt.field]) continue;
 
+    console.log(`Generating ${type} prompt ${prompt.field}`);
+
     try {
       const systemPrompt = format(prompt.system_prompt, contextProvider(results));
       const formattedPrompt = format(prompt.prompt, contextProvider(results));
@@ -65,7 +67,7 @@ export async function runPrompts(
       const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
       results[prompt.field] = jsonResponse.items;
 
-      console.log(`Generating ${type} prompt ${prompt.field}: request:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(jsonResponse.items)}`);
+      console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(jsonResponse.items)}`);
     } catch (err) { 
       console.error(err);     
     }

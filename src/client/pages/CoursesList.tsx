@@ -16,6 +16,7 @@ export default function CoursesList() {
 
 
   const handleDelete = (course: Course) => {
+    // not yet
     // const updated = deleteCourse(id);
     // setItems(updated);
   };

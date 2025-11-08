@@ -38,6 +38,11 @@ export type CourseData = {
   inabscentia: {
     semesters: number[],
     study_year: number
+  },
+  literature: {
+    main: string[],
+    additional: string[],
+    internet: string[]
   }
 }
 
