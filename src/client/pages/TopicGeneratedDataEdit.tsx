@@ -67,45 +67,84 @@ export default function TopicGeneratedDataEdit() {
     }
   };
 
+  const saveTopicData = async (): Promise<boolean> => {
+    if (!topic) return false;
+
+    // Parse form data
+    const subtopicsArray = subtopics.split("\n").filter(s => s.trim() !== "");
+    const keywordsArray = keywords.split(",").map(k => k.trim()).filter(k => k !== "");
+
+    const generated = dropEmpty({
+      ...topic.generated,
+      subtopics: subtopicsArray,
+      keywords: keywordsArray,
+      selfQuestions,
+      selfQuestionsShort,
+      referats,
+      keyQuestions,
+      quiz
+    }) as GeneratedTopicData;
+
+    const updatedTopic: CourseTopic = {...topic, generated };
+
+    const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(updatedTopic)
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save");
+    }
+
+    return true;
+  };
+
   const handleSave = async () => {
+    setIsSaving(true);
+
+    try {
+      await saveTopicData();
+      toast.success("Дані успішно збережено");
+      navigate(`/courses/${courseId}`);
+    } catch (error) {
+      console.error("Error saving topic:", error);
+      toast.error("Помилка збереження даних");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveAndNext = async () => {
     if (!topic) return;
 
     setIsSaving(true);
 
     try {
-      // Parse form data
-      const subtopicsArray = subtopics.split("\n").filter(s => s.trim() !== "");
-      const keywordsArray = keywords.split(",").map(k => k.trim()).filter(k => k !== "");
+      // Save current topic
+      await saveTopicData();
 
-      const generated = dropEmpty({
-        ...topic.generated,
-        subtopics: subtopicsArray,
-        keywords: keywordsArray,
-        selfQuestions,
-        selfQuestionsShort,
-        referats,
-        keyQuestions,
-        quiz
-      }) as GeneratedTopicData;
-
-      const updatedTopic: CourseTopic = {...topic, generated };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(updatedTopic)
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save");
+      // Fetch all topics for the course
+      const topicsResponse = await fetch(`/api/courses/${courseId}/topics`);
+      if (!topicsResponse.ok) {
+        throw new Error("Failed to fetch topics");
       }
+      const allTopics = await topicsResponse.json() as CourseTopic[];
 
-      toast.success("Дані успішно збережено");
-      navigate(`/courses/${courseId}`);
+      // Find the next topic by index
+      const nextTopic = allTopics.find(t => t.index === topic.index + 1);
+
+      if (nextTopic) {
+        toast.success("Дані збережено, перехід до наступної теми");
+        navigate(`/courses/${courseId}/topics/${nextTopic.id}/generated`);
+      } else {
+        toast.success("Дані збережено. Це остання тема");
+        navigate(`/courses/${courseId}`);
+      }
     } catch (error) {
-      console.error("Error saving topic:", error);
+      console.error("Error saving and moving to next topic:", error);
       toast.error("Помилка збереження даних");
     } finally {
       setIsSaving(false);
@@ -434,6 +473,13 @@ export default function TopicGeneratedDataEdit() {
               className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
             >
               {isSaving ? "Збереження..." : "Зберегти"}
+            </button>
+            <button
+              onClick={handleSaveAndNext}
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
+            >
+              {isSaving ? "Збереження..." : "Зберегти >>"}
             </button>
             <button
               onClick={() => navigate(`/courses/${courseId}`)}

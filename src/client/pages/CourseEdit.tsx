@@ -386,7 +386,7 @@ export default function CourseEdit() {
                 }} 
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <label className="block text-[#fbf0df] font-bold mb-2">Викладач:</label>
               <select
                 className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
