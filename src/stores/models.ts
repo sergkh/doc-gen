@@ -196,6 +196,7 @@ export type Prompt = {
   prompt: string
 }
 
-export type ParsingType = {
+export type ParsedData = {
   type: 'syllabus' | 'program';
+  topics: CourseTopic[]
 }

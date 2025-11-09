@@ -68,7 +68,9 @@ const teachers = {
   },
 
   findByName: async (name: string): Promise<Teacher | null> => {
-    const result = await sql`SELECT * FROM teachers WHERE name = ${name}`;
+    const nameParts = name.split(/[\.\s]+/).map(n => n.trim().endsWith(".") ? n.trim().slice(0, -1) : n.trim()).filter(n => n.length > 0);
+    const likePattern = nameParts[0] + " " + nameParts.slice(1).map(n => `${n}%`).join(" ");
+    const result = await sql`SELECT * FROM teachers WHERE name LIKE ${likePattern}`;
     return result[0] || null;
   },
   

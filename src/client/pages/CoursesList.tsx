@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import type { Course, ParsingType } from "@/stores/models";
+import type { Course, ParsedData } from "@/stores/models";
 import { loadAllCourses, deleteCourse } from "../courses";
 
 export default function CoursesList() {
@@ -32,7 +32,7 @@ export default function CoursesList() {
         throw new Error("Failed to process syllabus");
       }
 
-      const course = await response.json() as Course & ParsingType;
+      const course = await response.json() as Course & ParsedData;
 
       toast.success(`Файл ${course.type === 'syllabus' ? "cилабуса" : "програми"} успішно оброблено`);
 

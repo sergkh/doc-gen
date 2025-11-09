@@ -98,6 +98,12 @@ const coursesApi = {
         else {
           const id = (await courses.add(updated))[0].id;
           course.id = id;
+
+          await Promise.all(
+            course.topics
+              .map(c => Object.assign(c, { course_id: course.id }))
+              .map(c => courseTopics.add(c))
+          )
         }
 
         return Response.json(course);

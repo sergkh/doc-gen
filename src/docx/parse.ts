@@ -1,10 +1,10 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
-import type { Course, CourseResult, ParsingType } from '@/stores/models';
+import type { Course, CourseResult, CourseTopic, GeneratedTopicData, ParsedData } from '@/stores/models';
 // @ts-ignore
 import docx4js from "docx4js";
 import path from 'path';
-import { teachers } from '@/stores/db';
+import { courseResults, teachers } from '@/stores/db';
 
 export type OPPCourse = {
   name: string;
@@ -32,7 +32,7 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
   }
 }
 
-export async function parseSylabusOrProgram(filepath: string): Promise<Course & ParsingType | null> {
+export async function parseSylabusOrProgram(filepath: string): Promise<Course & ParsedData | null> {
   try {
     const text = (await docx2text(filepath)).trim();
     if (/СИЛАБУС/g.test(text.substring(0, 200))) {
@@ -76,7 +76,7 @@ export function parseResults(text: string, type: 'ЗК' | 'СК' | 'РН'): Cour
 
 
 // Best effort parsing of syllabus
-async function parseSylabus(text: string): Promise<Course & ParsingType | null> {
+async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
   try {
     console.log("Parsing syllabus:");
     // approx first 500 characters of the text
@@ -153,8 +153,15 @@ async function parseSylabus(text: string): Promise<Course & ParsingType | null> 
     const postrequisites: number[] = [];
 
     // Parse results (ЗК, СК, РН)
-    // Note: We can't match results by content alone, so we'll leave this empty
-    const results: number[] = [];
+    const resultsPart = text.substring(text.indexOf("КОМПЕТЕНТН"), text.indexOf("ПЛАН"));
+    const allResults = await courseResults.all();
+    
+    const results: number[] = Array.from(resultsPart.matchAll(/(ЗК|СК|П?РН)\s?(\d+)\.?\s/g)).map(m => {
+      const type = m[1] === "ПРН" ? "РН" : m[1];
+      const no = parseInt(m[2] || "-1");
+      const result = allResults.find(r => r.type === type && r.no === no);
+      return result?.id;      
+    }).filter(r => r !== undefined) || [];
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
     const topics: { name: string; index: number }[] = [];
@@ -228,7 +235,7 @@ async function parseSylabus(text: string): Promise<Course & ParsingType | null> 
     }
 
     // Create Course object
-    const course: Course & ParsingType = {
+    const course: Course & ParsedData = {
       id: -1,
       name,
       teacher_id: teacher.id,
@@ -255,7 +262,8 @@ async function parseSylabus(text: string): Promise<Course & ParsingType | null> 
         literature
       },
       generated: null,
-      type: 'syllabus'
+      type: 'syllabus',
+      topics: []
     };
 
 
@@ -268,7 +276,7 @@ async function parseSylabus(text: string): Promise<Course & ParsingType | null> 
   }
 }
 
-async function parseProgram(text: string): Promise<Course & ParsingType | null> {
+async function parseProgram(text: string): Promise<Course & ParsedData | null> {
   try {
     console.log("Parsing program:");
     // approx first 500 characters of the text
@@ -286,7 +294,7 @@ async function parseProgram(text: string): Promise<Course & ParsingType | null> 
 
     // Extract specialty
     const specialtyMatch = header.match(/Спеціальність\s+(\d+)\s*«([^»]+)»/i);
-    const specialty = specialtyMatch ? `${specialtyMatch[1]} ${specialtyMatch[2]}` : "";
+    const specialty = specialtyMatch ? `${specialtyMatch[1]} – «${specialtyMatch[2]}»` : "";
 
     // Extract area/direction (from "Галузь знань")
     const areaMatch = header.match(/Галузь знань\s+(\d+)\s+([^\n]+)/i);
@@ -356,27 +364,125 @@ async function parseProgram(text: string): Promise<Course & ParsingType | null> 
     const postrequisites: number[] = [];
 
     // Parse results (ЗК, СК, РН)
-    // Note: We can't match results by content alone, so we'll leave this empty
-    const results: number[] = [];
+    const allResults = await courseResults.all();
+    
+    const results = Array.from(text.matchAll(/(ЗК|СК|П?РН)\s?(\d+)\.?\s/g)).map(m => {
+      const type = m[1] === "ПРН" ? "РН" : m[1];
+      const no = parseInt(m[2] || "-1");
+      const result = allResults.find(r => r.type === type && r.no === no);
+      return result?.id;      
+    }).filter(r => r !== undefined) || [];    
 
-    // Parse topics from "5. Програма навчальної дисципліни"
-    const topics: { name: string; index: number }[] = [];
-    const programMatch = text.match(/5\.\s*Програма навчальної дисципліни\s+([\s\S]*?)(?=6\.|Структура)/i);
-    if (programMatch?.[1]) {
-      const programText = programMatch[1];
-      // Extract topics from "Тема X. ..." pattern
-      const topicPattern = /Тема\s+(\d+)\.\s+([^\n]+)/gi;
-      let topicMatch;
-      while ((topicMatch = topicPattern.exec(programText)) !== null) {
-        if (topicMatch[1] && topicMatch[2]) {
-          const index = parseInt(topicMatch[1], 10);
-          const topicName = topicMatch[2].trim();
-          if (topicName) {
-            topics.push({ name: topicName, index });
-          }
+    const programPart = text.substring(text.indexOf("5. Програма"), text.indexOf("6. Структура навчальної дисципліни"));
+    console.log("programPart", programPart);
+    
+    // Parse attestations and topics from the program section
+    const attestations: { name: string; semester: number }[] = [];
+    const topics: CourseTopic[] = [];
+    
+    // Split the program part into lines for easier processing
+    const lines = programPart.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+    
+    let currentAttestation: { number: number; name: string; semester: number } | null = null;
+    let currentTopic: { index: number; name: string; subtopics: string[] } | null = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      
+      // Check for attestation: "Атестація 1. Основні підходи до аналізу даних"
+      const attestationMatch = line.match(/Атестація\s+(\d+)\.?\s+(.+)/i);
+      const topicMatch = line.match(/Тема\s+(\d+)\.\s+(.+)/i);
+      
+      if (attestationMatch?.[1] && attestationMatch[2]) {
+        // Save previous topic if exists
+        if (currentTopic) {
+          topics.push({
+            id: -1,
+            course_id: -1,
+            index: currentTopic.index,
+            name: currentTopic.name,
+            lection: '',
+            data: {
+              attestation: currentAttestation?.number || 1,
+              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
+              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 },
+              
+            },
+            generated: {
+              subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)
+            }            
+          });
+          currentTopic = null;
         }
+        
+        const attestationNumber = parseInt(attestationMatch[1], 10);
+        const attestationName = attestationMatch[2].trim();
+
+        // Determine semester based on attestation number (usually 1 or 2)
+        const semester = attestationNumber > 2 ? 2 : 1;
+        
+        currentAttestation = { number: attestationNumber, name: attestationName, semester };
+        attestations.push({ name: attestationName, semester });
+        continue;
+      }
+      
+      // Check for topic: "Тема 1. Вступ до аналізу даних..."
+      if (topicMatch?.[1] && topicMatch[2] && line) {
+        // Save previous topic if exists
+        if (currentTopic) {
+          topics.push({
+            id: -1,
+            course_id: -1,
+            index: currentTopic.index,
+            name: currentTopic.name,
+            lection: '',
+            data: {
+              attestation: currentAttestation?.number || 1,
+              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
+              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+            },
+            generated: { 
+              subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s) 
+            }
+          });
+        }
+        
+        const topicNumber = parseInt(topicMatch[1], 10);
+        const topicName = topicMatch[2].trim();
+        currentTopic = { index: topicNumber, name: topicName, subtopics: [] };
+        continue;
+      }
+      
+      // If we have a current topic and the line doesn't match attestation or topic pattern,
+      // it's likely content for the current topic
+      if (currentTopic && !attestationMatch && !topicMatch && line) {
+        line.split('.').map(s => s.trim()).forEach(s => {
+          if (s.length > 0) currentTopic?.subtopics.push(s)
+        });
       }
     }
+    
+    // Save the last topic if exists
+    if (currentTopic) {
+      topics.push({
+        id: -1,
+        course_id: -1,
+        index: currentTopic.index,
+        name: currentTopic.name,
+        lection: '',
+        data: {
+          attestation: currentAttestation?.number || 1,
+          fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
+          inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+        },
+        generated: {
+          subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)
+        }
+      });
+    }
+    
+    console.log("Parsed topics:", topics);
 
     // Parse literature
     const literature = {
@@ -385,45 +491,34 @@ async function parseProgram(text: string): Promise<Course & ParsingType | null> 
       internet: [] as string[]
     };
 
+    const literaturePart = text.substring(Math.min(text.indexOf("джерела"), text.indexOf("літерат")));
+
     // Extract main literature
-    const mainLitMatch = text.match(/Основні\s+([\s\S]*?)(?=Додаткові|Інформаційні|13\.)/i);
+    const mainLitMatch = literaturePart.match(/Основні+([\s\S]*?)(?=Додаткові|Інформаційні\.)/i);
     if (mainLitMatch?.[1]) {
       const mainLitText = mainLitMatch[1];
-      const mainLines = mainLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10 && !/^\d+\./.test(l));
-      literature.main = mainLines;
+      const mainLines = mainLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10);
+      literature.main = mainLines.sort();
     }
 
     // Extract additional literature
-    const addLitMatch = text.match(/Додаткові\s+([\s\S]*?)(?=Інформаційні|13\.|$)/i);
+    const addLitMatch = literaturePart.match(/Додаткові\s+([\s\S]*?)(?=Інформаційні|$)/i);
     if (addLitMatch?.[1]) {
       const addLitText = addLitMatch[1];
-      const addLines = addLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10 && !/^\d+\./.test(l));
-      literature.additional = addLines;
+      const addLines = addLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10);
+      literature.additional = addLines.sort();
     }
 
     // Extract internet resources
-    const internetMatch = text.match(/Інформаційні\s+ресурси?\s+([\s\S]*?)(?=13\.|$)/i);
+    const internetMatch = literaturePart.match(/Інформаційні\s+ресурси?\s+([\s\S]*?)$/i);
     if (internetMatch?.[1]) {
       const internetText = internetMatch[1];
       const internetLines = internetText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 5);
-      literature.internet = internetLines.filter(l => /http/i.test(l) || l.length > 10);
-    }
-
-    // Parse attestations from "11.1 Розподіл балів за видами навчальної діяльності"
-    const attestations: { name: string; semester: number }[] = [];
-    const attestationMatch = text.match(/Атестація\s+(\d+)[\s\S]*?Всього за атестацію\s+\d+/gi);
-    if (attestationMatch) {
-      attestationMatch.forEach((match) => {
-        const semesterMatch = match.match(/Атестація\s+(\d+)/i);
-        if (semesterMatch?.[1]) {
-          const semester = parseInt(semesterMatch[1], 10);
-          attestations.push({ name: `Атестація ${semester}`, semester });
-        }
-      });
+      literature.internet = internetLines.sort();
     }
 
     // Create Course object
-    const course: Course & ParsingType = {
+    const course: Course & ParsedData = {
       id: -1,
       name,
       teacher_id: teacher.id,
@@ -450,7 +545,8 @@ async function parseProgram(text: string): Promise<Course & ParsingType | null> 
         literature
       },
       generated: null,
-      type: 'program'
+      type: 'program',
+      topics: topics
     };
 
     console.log("Parsed program:", course);
