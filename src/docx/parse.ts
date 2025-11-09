@@ -140,10 +140,6 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
       teacher.id = id;
     }
 
-    // Extract description
-    const descriptionMatch = text.match(/ОПИС НАВЧАЛЬНОЇ ДИСЦИПЛІНИ\s+([\s\S]*?)(?=Призначення|Мета|ПЕРЕЛІК|ПЛАН|РЕКОМЕНДОВАНІ)/i);
-    const description = descriptionMatch?.[1]?.trim() || "";
-
     // Extract prerequisites (from "При вивченні даної дисципліни використовуються знання, отримані з таких дисциплін")
     // Note: We can't match prerequisites by name alone, so we'll leave this empty
     const prerequisites: number[] = [];
@@ -246,7 +242,7 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
         credits,
         specialty,
         area,
-        description,
+        description: "",
         prerequisites,
         postrequisites,
         results,
@@ -350,10 +346,6 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
       console.error("Could not find or create teacher");
       return null;
     }
-
-    // Extract description
-    const descriptionMatch = text.match(/Опис навчальної дисципліни\s+([\s\S]*?)(?=Мета та завдання|3\.|Передумови)/i);
-    const description = descriptionMatch?.[1]?.trim() || "";
 
     // Extract prerequisites (from "Передумови для вивчення дисципліни")
     // Note: We can't match prerequisites by name alone, so we'll leave this empty
@@ -529,7 +521,7 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
         credits,
         specialty,
         area,
-        description,
+        description: "",
         prerequisites,
         postrequisites,
         results,

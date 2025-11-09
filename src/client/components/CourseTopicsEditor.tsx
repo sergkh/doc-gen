@@ -478,9 +478,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
         <h2 className="text-[#fbf0df] font-bold text-lg">Теми курсу:</h2>
         <button
           onClick={handleAddTopic}
-          className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
+          className="text-[#fbf0df] hover:text-[#f3d5a3] px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
         >
-          <FontAwesomeIcon icon={faPlus} /> Додати тему
+          <FontAwesomeIcon icon={faPlus} />
         </button>
       </div>
 
@@ -706,7 +706,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <div className="font-bold text-[#f3d5a3] flex-shrink-0">
+                        <div className="font-bold text-[#f3d5a3] break-words min-w-0">
                           {topic.index}. {topic.name || `Тема ${topic.index}`}
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
@@ -741,6 +741,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                               { value: 0, label: "0 СРС" },
                               { value: 2, label: "2 СРС" },
                               { value: 4, label: "4 СРС" },
+                              { value: 5, label: "5 СРС" },
                               { value: 6, label: "6 СРС" },
                               { value: 7, label: "7 СРС" },
                               { value: 8, label: "8 СРС" },
