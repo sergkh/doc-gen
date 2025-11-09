@@ -45,32 +45,28 @@ export async function runPrompts(
 
     console.log(`Generating ${type} prompt ${prompt.field}`);
 
-    try {
-      const systemPrompt = format(prompt.system_prompt, contextProvider(results));
-      const formattedPrompt = format(prompt.prompt, contextProvider(results));
+    const systemPrompt = format(prompt.system_prompt, contextProvider(results));
+    const formattedPrompt = format(prompt.prompt, contextProvider(results));
 
-      const response = await client.chat.completions.create({
-        model: prompt.model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: formattedPrompt
-          }
-        ]
-      });
+    const response = await client.chat.completions.create({
+      model: prompt.model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: formattedPrompt
+        }
+      ]
+    });
 
-      const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
-      results[prompt.field] = jsonResponse.items;
+    const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
+    results[prompt.field] = jsonResponse.items;
 
-      console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(jsonResponse.items)}`);
-    } catch (err) { 
-      console.error(err);     
-    }
+    console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(jsonResponse.items)}`);
   }
 
   return results;
