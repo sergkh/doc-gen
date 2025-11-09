@@ -117,6 +117,42 @@ const templatesApi = {
         );
       }
     }
+  },
+  "/api/templates/:id/download": {
+    async GET(req: BunRequest) {
+      try {
+        const { id } = req.params as { id: string };
+        const templateId = Number(id);
+        
+        const template = await templates.get(templateId);
+        if (!template) {
+          return new Response("Template not found", { status: 404 });
+        }
+
+        // Read the file from the file system
+        const fullPath = path.join(process.cwd(), template.file);
+        const file = await Bun.file(fullPath);
+        
+        if (!(await file.exists())) {
+          return new Response("Template file not found", { status: 404 });
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        
+        return new Response(arrayBuffer, {
+          headers: {
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition": `attachment; filename="template.docx"`,
+          },
+        });
+      } catch (error) {
+        console.error("Error downloading template:", error);
+        return new Response(
+          `Error downloading template: ${error instanceof Error ? error.message : "Unknown error"}`,
+          { status: 500 }
+        );
+      }
+    }
   }
 };
 

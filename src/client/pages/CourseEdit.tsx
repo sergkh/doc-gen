@@ -3,8 +3,6 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { useDropzone } from "react-dropzone";
-import toast from "react-hot-toast";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
 import { loadAllTeachers } from "../teachers";
 import { loadAllResults } from "../results";
@@ -28,7 +26,6 @@ export default function CourseEdit() {
   const [postrequisiteInfos, setPostrequisiteInfos] = useState<ShortCourseInfo[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
   useEffect(() => { 
@@ -78,58 +75,6 @@ export default function CourseEdit() {
     await upsertCourse(item);
     navigate("/courses");
   };
-
-  const handleFileUpload = async (file: File) => {
-    setIsUploading(true);
-    const uploadPromise = (async () => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/courses/from-sylabus", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to process syllabus");
-      }
-
-      const course = await response.json() as Course;
-      setItem(course);
-      return course;
-    })();
-
-    toast.promise(uploadPromise, {
-      loading: "Завантаження та обробка файлу...",
-      success: "Файл syllabus успішно оброблено",
-      error: "Не вдалося обробити файл syllabus",
-    });
-
-    try {
-      await uploadPromise;
-    } catch (error) {
-      console.error("Error uploading syllabus:", error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        handleFileUpload(file);
-      }
-    },
-    accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    maxFiles: 1,
-    disabled: isUploading,
-    onDropRejected: () => {
-      toast.error("Будь ласка, перетягніть файл .docx");
-    }
-  });
 
   const handleAddPrerequisite = (courseId: string) => {
     if (!item || !courseId) return;
@@ -304,21 +249,6 @@ export default function CourseEdit() {
             >
               <FontAwesomeIcon icon={faTimes} />
             </button>
-          </div>
-        </div>
-        
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
-          <label className="block text-[#fbf0df] font-bold mb-2">Завантажити з Силабуса (.docx):</label>
-          <div
-            {...getRootProps()}
-            className={`border-2 ${isDragActive ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
-          >
-            <input {...getInputProps()} />
-            {isUploading ? (<span className="text-[#fbf0df]">Завантаження...</span>) : (
-              <span className="text-[#fbf0df]">
-                {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
-              </span>
-            )}
           </div>
         </div>
 

@@ -78,3 +78,13 @@ export async function upsertCourse(course: Course): Promise<Course> {
 
   return await res.json() as Course;
 }
+
+export async function deleteCourse(id: number): Promise<void> {
+  const res = await fetch(`/api/courses/${id}`, {
+    method: "DELETE"
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка видалення дисципліни: ${res.status}`);
+  }
+}

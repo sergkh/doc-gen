@@ -21,11 +21,16 @@ const courses = {
 
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
-      (name, teacher_id, data) VALUES (${c.name}, ${c.teacher_id}, ${c.data})`;
+      (name, teacher_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.data}, ${c.generated}) RETURNING *`;
   },
   
   get: async (id: number): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id WHERE c.id = ${id}`;
+    return result[0] || null;
+  },
+
+  findByName: async (name: string): Promise<Course | null> => {
+    const result = await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
     return result[0] || null;
   },
 
@@ -43,6 +48,13 @@ const courses = {
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${course.id}`;
   },
+
+  delete: async (id: number) => {
+    // Delete course topics first (no foreign key cascade)
+    await sql`DELETE FROM course_topics WHERE course_id = ${id}`;
+    // Then delete the course
+    return await sql`DELETE FROM courses WHERE id = ${id}`;
+  },
 };
 
 const teachers = {
@@ -55,8 +67,13 @@ const teachers = {
     return result[0] || null;
   },
 
+  findByName: async (name: string): Promise<Teacher | null> => {
+    const result = await sql`SELECT * FROM teachers WHERE name = ${name}`;
+    return result[0] || null;
+  },
+  
   add: async (teacher: Teacher) => {
-    return await sql`INSERT INTO teachers (name, email) VALUES (${teacher.name}, ${teacher.email})`;
+    return await sql`INSERT INTO teachers (name, email) VALUES (${teacher.name}, ${teacher.email}) RETURNING *`;
   },
 
   update: async (teacher: Teacher) => {

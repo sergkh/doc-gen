@@ -14,7 +14,7 @@ interface JobStatusResponse {
   status: JobStatus;
   progress: number;
   error?: string;
-  filename?: string;
+  filename: string;
 }
 
 interface SavedJob {
@@ -91,7 +91,7 @@ export default function GeneratorPage() {
             }
 
             const blob = await downloadResponse.blob();
-            await handleDownload(blob, status.filename || "result.docx");
+            await handleDownload(blob, status.filename);
 
             // Cleanup
             clearJobState();
@@ -165,7 +165,7 @@ export default function GeneratorPage() {
                   const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
                   if (downloadResponse.ok) {
                     const blob = await downloadResponse.blob();
-                    const filename = status.filename || "result.docx";
+                    const filename = status.filename;
                     await handleDownload(blob, filename);
                   }
                   clearJobState();
@@ -176,7 +176,7 @@ export default function GeneratorPage() {
               } else {
                 // Job still in progress, resume polling
                 setIsGenerating(true);
-                pollJobStatus(savedJob.jobId, savedJob.navigateToEdit || false, savedJob.courseId);
+                pollJobStatus(savedJob.jobId, savedJob.navigateToEdit || false,  savedJob.courseId);
               }
             } else {
               // Job not found, clear it

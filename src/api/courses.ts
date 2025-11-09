@@ -1,13 +1,8 @@
+import { parseSylabusOrProgram } from "@/docx/parse";
 import { courses, courseTopics } from "@/stores/db";
 import type { Course, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
-
-async function parseSylabus(filePath: string): Promise<Course> {
-  // TODO: Implement syllabus parsing logic
-  throw new Error("parseSylabus not implemented");
-}
-
 
 const coursesApi = {
   "/api/courses": {
@@ -39,9 +34,24 @@ const coursesApi = {
       console.log("Updating course with ID:", id, course);
       await courses.update(course);
       return Response.json({ success: true });
+    },
+    async DELETE(req: BunRequest) {
+      try {
+        const { id } = req.params as { id: string };
+        const courseId = Number(id);
+        console.log("Deleting course with ID:", id);
+        await courses.delete(courseId);
+        return Response.json({ success: true });
+      } catch (error) {
+        console.error("Error deleting course:", error);
+        return new Response(
+          `Error deleting course: ${error instanceof Error ? error.message : "Unknown error"}`,
+          { status: 500 }
+        );
+      }
     }
   },
-  "/api/courses/from-sylabus": {
+  "/api/courses/parse-docx": {
     async POST(req: BunRequest) {
       try {
         const formData = await req.formData();
@@ -68,13 +78,28 @@ const coursesApi = {
         const uploadsDir = path.join(process.cwd(), "uploads");
         const uploadPath = path.join(uploadsDir, uploadFileName);
 
-        // Save the file (Bun.write will create directories if needed)
         await Bun.write(uploadPath, file);
         console.log("Saving uploaded file to:", uploadPath);
 
-        // Parse the syllabus file
-        const course = await parseSylabus(uploadPath);
+        const course = await parseSylabusOrProgram(uploadPath);        
         
+        if (!course) {
+          return new Response("Не вдалось розібрати файл", { status: 400 });
+        }
+
+        const dbCourse = await courses.findByName(course.name);
+        
+        const updated = dbCourse ? { ...dbCourse, ...course, id: dbCourse.id } : course;
+      
+        console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);
+        
+        if(dbCourse) {
+          await courses.update(updated) }
+        else {
+          const id = (await courses.add(updated))[0].id;
+          course.id = id;
+        }
+
         return Response.json(course);
       } catch (error) {
         console.error("Error processing syllabus:", error);

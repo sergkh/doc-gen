@@ -12,7 +12,7 @@ interface Job {
   progress: number;
   error?: string;
   result?: ArrayBuffer;
-  filename?: string;
+  filename: string;
 }
 
 const jobs = new Map<string, Job>();
@@ -21,7 +21,7 @@ function generateJobId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-function wordResp(file: ArrayBuffer, name: string): Response {
+function wordResp(file: ArrayBuffer, name: string = "result.docx"): Response {
   return new Response(file, { 
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -56,7 +56,6 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
     const doc = await renderDoc(template.file, renderDataWithAuthors);
     
     job.result = doc;
-    job.filename = `generated_${new Date().toISOString().split('T')[0]}.docx`;
     job.status = "completed";
     job.progress = 100;
   } catch (error) {
@@ -88,7 +87,12 @@ const generationApi = {
       }
 
       const jobId = generateJobId();
-      const job: Job = { id: jobId, status: "pending", progress: 0 };
+      const job: Job = { 
+        id: jobId, 
+        status: "pending", 
+        progress: 0,
+        filename: `${template.name}.docx`,
+      };
       jobs.set(jobId, job);
 
       // Start generation in background
@@ -133,7 +137,7 @@ const generationApi = {
 
       jobs.delete(jobId);
 
-      return wordResp(job.result, job.filename);
+      return wordResp(job.result);
     }
   }
 };

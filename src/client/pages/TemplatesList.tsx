@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faDownload } from "@fortawesome/free-solid-svg-icons";
 import type { Template } from "@/stores/models";
 import { loadAllTemplates, deleteTemplate } from "../templates";
 
@@ -25,6 +25,27 @@ export default function TemplatesList() {
     } catch (error) {
       console.error("Error deleting template:", error);
       alert("Не вдалося видалити шаблон");
+    }
+  };
+
+  const handleDownload = async (template: Template) => {
+    try {
+      const response = await fetch(`/api/templates/${template.id}/download`);
+      if (!response.ok) {
+        throw new Error("Failed to download template");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${template.name}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      alert("Не вдалося завантажити шаблон");
     }
   };
 
@@ -52,6 +73,14 @@ export default function TemplatesList() {
                     <div className="font-bold">{t.name}</div>
                   </div>
                   <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleDownload(t)} 
+                      className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      aria-label="Завантажити шаблон"
+                      title="Завантажити шаблон"
+                    >
+                      <FontAwesomeIcon icon={faDownload} />
+                    </button>
                     <button 
                       onClick={() => navigate(`/templates/${t.id}`)} 
                       className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"

@@ -195,3 +195,7 @@ export type Prompt = {
   system_prompt: string,
   prompt: string
 }
+
+export type ParsingType = {
+  type: 'syllabus' | 'program';
+}
