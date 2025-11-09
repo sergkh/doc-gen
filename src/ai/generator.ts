@@ -86,7 +86,7 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
     const prompts = await runPrompts(topic.generated || {}, "topic", key, (state) => ({
       ...state,
       courseName: course.name,
-      courseDescription: course.data.description,
+      courseDescription: course.data.description ?? "",
       name: topic.name, 
       lection: topic.lection || topic.name,
       subtopics: topic.generated?.subtopics || state['subtopics'].items.join(", ") || ""
@@ -96,7 +96,7 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
       ...topic,
       generated: {
         ...prompts,
-        quiz: prompts['quiz'].map((q: any, idx: number) => Object.assign(q, { index: idx+1 } as QuizQuestion)),        
+        quiz: prompts['quiz']?.map((q: any, idx: number) => Object.assign(q, { index: idx+1 } as QuizQuestion)),        
       } as GeneratedTopicData
     } as CourseTopic
 
@@ -111,7 +111,7 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
   const prompts = await runPrompts(course.generated || {}, "course", key, (state) => ({
     ...state,
     courseName: course.name,
-    courseDescription: course.data.description,
+    courseDescription: course.data.description ?? "",
     topics: updatedTopics.map(t => t.name).join(", "),
     subtopics: updatedTopics.flatMap(t => t.generated?.subtopics || []).join(", ")
   }));
