@@ -2,12 +2,217 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit } from "@fortawesome/free-solid-svg-icons";
-import { Reorder } from "motion/react";
+import { Reorder, useDragControls } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
 
 interface CourseTopicsEditorProps {
   courseId: number;
+}
+
+interface TopicItemProps {
+  topic: CourseTopic;
+  courseId: number;
+  bgColor: string;
+  onEdit: (topic: CourseTopic) => void;
+  onDelete: (id: number) => void;
+  onUpdateAttestation: (topic: CourseTopic, newAttestation: number) => void;
+  onUpdateFulltimeHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdatePracticalHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdateFulltimeSrsHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdateInabscentiaHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdateInabscentiaPracticalHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdateInabscentiaSrsHours: (topic: CourseTopic, newHours: number) => void;
+}
+
+function TopicItem({
+  topic,
+  courseId,
+  bgColor,
+  onEdit,
+  onDelete,
+  onUpdateAttestation,
+  onUpdateFulltimeHours,
+  onUpdatePracticalHours,
+  onUpdateFulltimeSrsHours,
+  onUpdateInabscentiaHours,
+  onUpdateInabscentiaPracticalHours,
+  onUpdateInabscentiaSrsHours,
+}: TopicItemProps) {
+  const navigate = useNavigate();
+  const dragControls = useDragControls();
+  
+  const attestation = topic.data?.attestation || 1;
+  const hours = topic.data?.fulltime?.hours || 2;
+  const practicalHours = topic.data?.fulltime?.practical_hours || 0;
+  const srsHours = topic.data?.fulltime?.srs_hours || 0;
+  const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
+  const inabscentiaPracticalHours = topic.data?.inabscentia?.practical_hours || 0;
+  const inabscentiaSrsHours = topic.data?.inabscentia?.srs_hours || 0;
+
+  return (
+    <Reorder.Item
+      value={topic}
+      className={`${bgColor} border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 transition-colors`}
+      style={{ cursor: 'default' }}
+      dragListener={false}
+      dragControls={dragControls}
+    >
+      <div className="flex items-start justify-between gap-2 flex-col sm:flex-row">
+        <div className="flex items-start gap-2 flex-1 min-w-0 w-full">
+          <div 
+            className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+            onPointerDown={(event) => dragControls.start(event)}
+          >
+            <FontAwesomeIcon icon={faGripVertical} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+              <div className="font-bold text-[#f3d5a3] wrap-break-words min-w-0">
+                {topic.index}. {topic.name || `Тема ${topic.index}`}
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
+                <InPlaceEditor
+                  value={hours}
+                  options={[
+                    { value: 2, label: "2 год." },
+                    { value: 4, label: "4 год." },
+                    { value: 6, label: "6 год." },
+                    { value: 8, label: "8 год." },
+                  ]}
+                  displayText={`${hours} год.`}
+                  title="Натисніть для зміни годин"
+                  onChange={(newHours) => onUpdateFulltimeHours(topic, newHours)}
+                />
+                <InPlaceEditor
+                  value={practicalHours}
+                  options={[
+                    { value: 0, label: "0 пр." },
+                    { value: 2, label: "2 пр." },
+                    { value: 4, label: "4 пр." },
+                    { value: 6, label: "6 пр." },
+                    { value: 8, label: "8 пр." },
+                  ]}
+                  displayText={`${practicalHours} пр.`}
+                  title="Натисніть для зміни практичних годин"
+                  onChange={(newPracticalHours) => onUpdatePracticalHours(topic, newPracticalHours)}
+                />
+                <InPlaceEditor
+                  value={srsHours}
+                  options={[
+                    { value: 0, label: "0 СРС" },
+                    { value: 2, label: "2 СРС" },
+                    { value: 4, label: "4 СРС" },
+                    { value: 5, label: "5 СРС" },
+                    { value: 6, label: "6 СРС" },
+                    { value: 7, label: "7 СРС" },
+                    { value: 8, label: "8 СРС" },
+                    { value: 10, label: "10 СРС" },
+                    { value: 12, label: "12 СРС" },
+                    { value: 14, label: "14 СРС" },
+                    { value: 16, label: "16 СРС" },
+                    { value: 18, label: "18 СРС" },
+                  ]}
+                  displayText={`${srsHours} СРС`}
+                  title="Натисніть для зміни СРС годин денної форми"
+                  onChange={(newSrsHours) => onUpdateFulltimeSrsHours(topic, newSrsHours)}
+                />                          
+                <InPlaceEditor
+                  value={inabscentiaHours}
+                  options={[
+                    { value: 0, label: "0 год. заоч." },
+                    { value: 1, label: "1 год. заоч." },
+                    { value: 2, label: "2 год. заоч." },
+                    { value: 4, label: "4 год. заоч." },
+                    { value: 6, label: "6 год. заоч." },
+                    { value: 8, label: "8 год. заоч." },
+                  ]}
+                  displayText={`${inabscentiaHours} год. заоч.`}
+                  title="Натисніть для зміни годин заочної форми"
+                  onChange={(newHours) => onUpdateInabscentiaHours(topic, newHours)}
+                />
+                <InPlaceEditor
+                  value={inabscentiaPracticalHours}
+                  options={[
+                    { value: 0, label: "0 пр. заоч." },
+                    { value: 1, label: "1 пр. заоч." },
+                    { value: 2, label: "2 пр. заоч." },
+                    { value: 4, label: "4 пр. заоч." },
+                    { value: 6, label: "6 пр. заоч." },
+                    { value: 8, label: "8 пр. заоч." },
+                  ]}
+                  displayText={`${inabscentiaPracticalHours} пр. заоч.`}
+                  title="Натисніть для зміни практичних годин заочної форми"
+                  onChange={(newPracticalHours) => onUpdateInabscentiaPracticalHours(topic, newPracticalHours)}
+                />
+                <InPlaceEditor
+                  value={inabscentiaSrsHours}
+                  options={[
+                    { value: 0, label: "0 СРС заоч." },
+                    { value: 2, label: "2 СРС заоч." },
+                    { value: 4, label: "4 СРС заоч." },
+                    { value: 6, label: "6 СРС заоч." },
+                    { value: 8, label: "8 СРС заоч." },
+                    { value: 10, label: "10 СРС заоч." },
+                    { value: 12, label: "12 СРС заоч." },
+                    { value: 14, label: "14 СРС заоч." },
+                    { value: 16, label: "16 СРС заоч." },
+                    { value: 18, label: "18 СРС заоч." },
+                  ]}
+                  displayText={`${inabscentiaSrsHours} СРС заоч.`}
+                  title="Натисніть для зміни СРС годин заочної форми"
+                  onChange={(newSrsHours) => onUpdateInabscentiaSrsHours(topic, newSrsHours)}
+                />
+                <InPlaceEditor
+                  value={attestation}
+                  options={[
+                    { value: 1, label: "Атест. 1" },
+                    { value: 2, label: "Атест. 2" },
+                    { value: 3, label: "Атест. 3" },
+                    { value: 4, label: "Атест. 4" },
+                  ]}
+                  displayText={`Атест. ${attestation}`}
+                  title="Натисніть для зміни атестації"
+                  onChange={(newAttestation) => onUpdateAttestation(topic, newAttestation)}
+                />                          
+              </div>
+            </div>
+            <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
+              {topic.lection}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 sm:ml-4 flex-shrink-0">
+          {topic.generated && (
+            <button
+              onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}
+              className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+              aria-label="Редагувати згенеровані дані"
+              title="Редагувати згенеровані дані"
+            >
+              <FontAwesomeIcon icon={faEdit} />
+            </button>
+          )}
+          <button
+            onClick={() => onEdit(topic)}
+            className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+            aria-label="Редагувати тему"
+            title="Редагувати тему"
+          >
+            <FontAwesomeIcon icon={faPen} />
+          </button>
+          <button
+            onClick={() => onDelete(topic.id)}
+            className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+            aria-label="Видалити тему"
+            title="Видалити тему"
+          >
+            <FontAwesomeIcon icon={faTrash} />
+          </button>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
 }
 
 export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps) {
@@ -678,12 +883,6 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             
             // Otherwise show the normal topic item
             const attestation = topic.data?.attestation || 1;
-            const hours = topic.data?.fulltime?.hours || 2;
-            const practicalHours = topic.data?.fulltime?.practical_hours || 0;
-            const srsHours = topic.data?.fulltime?.srs_hours || 0;
-            const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
-            const inabscentiaPracticalHours = topic.data?.inabscentia?.practical_hours || 0;
-            const inabscentiaSrsHours = topic.data?.inabscentia?.srs_hours || 0;
             // Background colors based on attestation index
             const attestationBgColors = {
               1: "bg-[#2a2a2a]", // Default dark gray
@@ -694,162 +893,21 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             const bgColor = attestationBgColors[attestation as keyof typeof attestationBgColors] || attestationBgColors[1];
             
             return (
-              <Reorder.Item
+              <TopicItem
                 key={topic.id}
-                value={topic}
-                className={`${bgColor} border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 cursor-grab active:cursor-grabbing transition-colors`}
-              >
-                <div className="flex items-start justify-between gap-2 flex-col sm:flex-row">
-                  <div className="flex items-start gap-2 flex-1 min-w-0 w-full">
-                    <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing flex-shrink-0">
-                      <FontAwesomeIcon icon={faGripVertical} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                        <div className="font-bold text-[#f3d5a3] break-words min-w-0">
-                          {topic.index}. {topic.name || `Тема ${topic.index}`}
-                        </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
-                          <InPlaceEditor
-                            value={hours}
-                            options={[
-                              { value: 2, label: "2 год." },
-                              { value: 4, label: "4 год." },
-                              { value: 6, label: "6 год." },
-                              { value: 8, label: "8 год." },
-                            ]}
-                            displayText={`${hours} год.`}
-                            title="Натисніть для зміни годин"
-                            onChange={(newHours) => handleUpdateFulltimeHours(topic, newHours)}
-                          />
-                          <InPlaceEditor
-                            value={practicalHours}
-                            options={[
-                              { value: 0, label: "0 пр." },
-                              { value: 2, label: "2 пр." },
-                              { value: 4, label: "4 пр." },
-                              { value: 6, label: "6 пр." },
-                              { value: 8, label: "8 пр." },
-                            ]}
-                            displayText={`${practicalHours} пр.`}
-                            title="Натисніть для зміни практичних годин"
-                            onChange={(newPracticalHours) => handleUpdatePracticalHours(topic, newPracticalHours)}
-                          />
-                          <InPlaceEditor
-                            value={srsHours}
-                            options={[
-                              { value: 0, label: "0 СРС" },
-                              { value: 2, label: "2 СРС" },
-                              { value: 4, label: "4 СРС" },
-                              { value: 5, label: "5 СРС" },
-                              { value: 6, label: "6 СРС" },
-                              { value: 7, label: "7 СРС" },
-                              { value: 8, label: "8 СРС" },
-                              { value: 10, label: "10 СРС" },
-                              { value: 12, label: "12 СРС" },
-                              { value: 14, label: "14 СРС" },
-                              { value: 16, label: "16 СРС" },
-                              { value: 18, label: "18 СРС" },
-                            ]}
-                            displayText={`${srsHours} СРС`}
-                            title="Натисніть для зміни СРС годин денної форми"
-                            onChange={(newSrsHours) => handleUpdateFulltimeSrsHours(topic, newSrsHours)}
-                          />                          
-                          <InPlaceEditor
-                            value={inabscentiaHours}
-                            options={[
-                              { value: 0, label: "0 год. заоч." },
-                              { value: 1, label: "1 год. заоч." },
-                              { value: 2, label: "2 год. заоч." },
-                              { value: 4, label: "4 год. заоч." },
-                              { value: 6, label: "6 год. заоч." },
-                              { value: 8, label: "8 год. заоч." },
-                            ]}
-                            displayText={`${inabscentiaHours} год. заоч.`}
-                            title="Натисніть для зміни годин заочної форми"
-                            onChange={(newHours) => handleUpdateInabscentiaHours(topic, newHours)}
-                          />
-                          <InPlaceEditor
-                            value={inabscentiaPracticalHours}
-                            options={[
-                              { value: 0, label: "0 пр. заоч." },
-                              { value: 1, label: "1 пр. заоч." },
-                              { value: 2, label: "2 пр. заоч." },
-                              { value: 4, label: "4 пр. заоч." },
-                              { value: 6, label: "6 пр. заоч." },
-                              { value: 8, label: "8 пр. заоч." },
-                            ]}
-                            displayText={`${inabscentiaPracticalHours} пр. заоч.`}
-                            title="Натисніть для зміни практичних годин заочної форми"
-                            onChange={(newPracticalHours) => handleUpdateInabscentiaPracticalHours(topic, newPracticalHours)}
-                          />
-                          <InPlaceEditor
-                            value={inabscentiaSrsHours}
-                            options={[
-                              { value: 0, label: "0 СРС заоч." },
-                              { value: 2, label: "2 СРС заоч." },
-                              { value: 4, label: "4 СРС заоч." },
-                              { value: 6, label: "6 СРС заоч." },
-                              { value: 8, label: "8 СРС заоч." },
-                              { value: 10, label: "10 СРС заоч." },
-                              { value: 12, label: "12 СРС заоч." },
-                              { value: 14, label: "14 СРС заоч." },
-                              { value: 16, label: "16 СРС заоч." },
-                              { value: 18, label: "18 СРС заоч." },
-                            ]}
-                            displayText={`${inabscentiaSrsHours} СРС заоч.`}
-                            title="Натисніть для зміни СРС годин заочної форми"
-                            onChange={(newSrsHours) => handleUpdateInabscentiaSrsHours(topic, newSrsHours)}
-                          />
-                          <InPlaceEditor
-                            value={attestation}
-                            options={[
-                              { value: 1, label: "Атест. 1" },
-                              { value: 2, label: "Атест. 2" },
-                              { value: 3, label: "Атест. 3" },
-                              { value: 4, label: "Атест. 4" },
-                            ]}
-                            displayText={`Атест. ${attestation}`}
-                            title="Натисніть для зміни атестації"
-                            onChange={(newAttestation) => handleUpdateAttestation(topic, newAttestation)}
-                          />                          
-                        </div>
-                      </div>
-                      <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
-                        {topic.lection}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 sm:ml-4 flex-shrink-0">
-                    {topic.generated && (
-                      <button
-                        onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}
-                        className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                        aria-label="Редагувати згенеровані дані"
-                        title="Редагувати згенеровані дані"
-                      >
-                        <FontAwesomeIcon icon={faEdit} />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleEditTopic(topic)}
-                      className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                      aria-label="Редагувати тему"
-                      title="Редагувати тему"
-                    >
-                      <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTopic(topic.id)}
-                      className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                      aria-label="Видалити тему"
-                      title="Видалити тему"
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </div>
-              </Reorder.Item>
+                topic={topic}
+                courseId={courseId}
+                bgColor={bgColor}
+                onEdit={handleEditTopic}
+                onDelete={handleDeleteTopic}
+                onUpdateAttestation={handleUpdateAttestation}
+                onUpdateFulltimeHours={handleUpdateFulltimeHours}
+                onUpdatePracticalHours={handleUpdatePracticalHours}
+                onUpdateFulltimeSrsHours={handleUpdateFulltimeSrsHours}
+                onUpdateInabscentiaHours={handleUpdateInabscentiaHours}
+                onUpdateInabscentiaPracticalHours={handleUpdateInabscentiaPracticalHours}
+                onUpdateInabscentiaSrsHours={handleUpdateInabscentiaSrsHours}
+              />
             );
           })}
         </Reorder.Group>

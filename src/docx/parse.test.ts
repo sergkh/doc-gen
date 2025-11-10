@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { describe, it, expect } from "bun:test";
-import { parseResults, parseOPP } from "./parse";
+import { parseOPPResults, parseOPP, parseSpecialtyAndArea } from "./parse";
 
-describe("parseResults", () => {
+describe("parseOPPResults", () => {
   describe("ЗК (General Competencies)", () => {
     it("should parse ЗК results with period", () => {
       const text = "ЗК1. Здатність до абстрактного мислення, аналізу та синтезу.";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
@@ -19,7 +19,7 @@ describe("parseResults", () => {
 
     it("should parse multiple ЗК results on same line", () => {
       const text = "ЗК1. Здатність до абстрактного мислення, аналізу та синтезу. ЗК2. Здатність застосовувати знання у практичних ситуаціях.";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       
       expect(results).toHaveLength(2);
       expect(results[0].no).toBe(1);
@@ -30,7 +30,7 @@ describe("parseResults", () => {
 
     it("should parse ЗК results across multiple lines", () => {
       const text = "ЗК1. Здатність до абстрактного мислення,\nаналізу та синтезу.\n\nЗК2. Інший результат.";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       
       expect(results).toHaveLength(2);
       expect(results[0].no).toBe(1);
@@ -43,7 +43,7 @@ describe("parseResults", () => {
   describe("СК (Special Competencies)", () => {
     it("should parse СК results", () => {
       const text = "СК1. Здатність до математичного формулювання та досліджування неперервних та дискретних математичних моделей.";
-      const results = parseResults(text, "СК");
+      const results = parseOPPResults(text, "СК");
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe("СК");
@@ -53,7 +53,7 @@ describe("parseResults", () => {
 
     it("should parse multiple СК results", () => {
       const text = "СК1. Перша компетентність. СК2. Друга компетентність. СК3. Третя компетентність.";
-      const results = parseResults(text, "СК");
+      const results = parseOPPResults(text, "СК");
       
       expect(results).toHaveLength(3);
       results.forEach((result, index) => {
@@ -67,7 +67,7 @@ describe("parseResults", () => {
   describe("РН (Program Results)", () => {
     it("should parse РН results", () => {
       const text = "РН1. Застосовувати знання основних форм і законів абстрактно-логічного мислення.";
-      const results = parseResults(text, "РН");
+      const results = parseOPPResults(text, "РН");
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe("РН");
@@ -77,7 +77,7 @@ describe("parseResults", () => {
 
     it("should parse mixed format РН results", () => {
       const text = "РН1. Перший результат. РН2. Другий результат. РН15. П'ятнадцятий результат.";
-      const results = parseResults(text, "РН");
+      const results = parseOPPResults(text, "РН");
       
       expect(results).toHaveLength(3);
       expect(results[0].no).toBe(1);
@@ -88,19 +88,19 @@ describe("parseResults", () => {
 
  describe("Edge cases", () => {
     it("should handle empty text", () => {
-      const results = parseResults("", "ЗК");
+      const results = parseOPPResults("", "ЗК");
       expect(results).toHaveLength(0);
     });
 
     it("should handle text without matching patterns", () => {
       const text = "Це текст без результатів ЗК або СК.";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       expect(results).toHaveLength(0);
     });
 
     it("should normalize whitespace", () => {
       const text = "ЗК1.  Опис   з   багатьма   пробілами  .";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       
       expect(results).toHaveLength(1);
       expect(results[0].name).not.toMatch(/\s{2,}/);
@@ -108,7 +108,7 @@ describe("parseResults", () => {
 
     it("should handle large numbers", () => {
       const text = "ЗК100. Результат з великим номером.";
-      const results = parseResults(text, "ЗК");
+      const results = parseOPPResults(text, "ЗК");
       
       expect(results).toHaveLength(1);
       expect(results[0].no).toBe(100);
@@ -141,9 +141,9 @@ describe("parseResults", () => {
 РН3 Використовувати знання закономірностей випадкових явищ.
       `;
 
-      const зкResults = parseResults(text, "ЗК");
-      const скResults = parseResults(text, "СК");
-      const рнResults = parseResults(text, "РН");
+      const зкResults = parseOPPResults(text, "ЗК");
+      const скResults = parseOPPResults(text, "СК");
+      const рнResults = parseOPPResults(text, "РН");
 
       expect(зкResults.length).toBeGreaterThan(0);
       expect(скResults.length).toBeGreaterThan(0);
@@ -167,4 +167,77 @@ describe("parseResults", () => {
       expect(рн3?.name).toContain("Використовувати знання закономірностей");
     });
   });
+
+  describe("parseSpecialtyAndArea", () => {
+    it("should parse specialty and area from program text", () => {
+      const text = `
+РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
+Інтелектуальний аналіз даних
+Рівень вищої освіти Перший (бакалаврський)
+Галузь знань 12 Інформаційні технології
+Спеціальність 122 «Комп’ютерні науки» 
+Освітньо-професійна програма Комп’ютерні науки
+  `;
+      const [specialty, area] = parseSpecialtyAndArea(text);
+      expect(specialty).toBe("122 – Комп’ютерні науки");
+      expect(area).toBe("12 – Інформаційні технології");
+    });
+
+    it("should parse specialty and area from program text with F", () => {
+      const text = `
+РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
+Інтелектуальний аналіз даних
+Рівень вищої освіти Перший (бакалаврський)
+Галузь знань F Інформаційні технології
+Спеціальність F3 Комп’ютерні науки
+Освітньо-професійна програма Комп’ютерні науки
+  `;
+      const [specialty, area] = parseSpecialtyAndArea(text);
+      expect(specialty).toBe("F3 – Комп’ютерні науки");
+      expect(area).toBe("F – Інформаційні технології");
+    });
+
+    it("should parse specialty and area from sylabus text", () => {
+      const text = `
+СИЛАБУС 
+НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
+«ІНТЕЛЕКТУАЛЬНИЙ АНАЛІЗ ДАНИХ»
+Рівень вищої освіти: Перший (бакалаврський)
+Спеціальність: 122 Комп’ютерні науки
+Рік навчання:   4-й,  семестр  7-й
+Кількість кредитів ECTS:   3 кредити
+  `;
+      const [specialty, area] = parseSpecialtyAndArea(text);
+      expect(specialty).toBe("122 – Комп’ютерні науки");
+      expect(area).toBe("12 – Інформаційні технології");
+    });
+
+    it("should parse specialty and area from sylabus text with F", () => {
+      const text = `
+СИЛАБУС 
+НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
+«ІНТЕЛЕКТУАЛЬНИЙ АНАЛІЗ ДАНИХ»
+Рівень вищої освіти: Перший (бакалаврський)
+Спеціальність: F3 Комп’ютерні науки
+Рік навчання:   4-й,  семестр  7-й
+Кількість кредитів ECTS:   3 кредити
+  `;
+      const [specialty, area] = parseSpecialtyAndArea(text);
+      expect(specialty).toBe("122 – Комп’ютерні науки");
+      expect(area).toBe("12 – Інформаційні технології");
+    });
+
+    it("should parse specialty and area from program text with 12/F types", () => {
+      const text = `
+Рівень вищої освіти Перший (бакалаврський)
+Галузь знань 12 Інформаційні технології  / F Інформаційні технології
+Спеціальність 122 «Комп’ютерні науки» / F3 «Комп’ютерні науки» 
+Освітньо-професійна програма Комп’ютерні науки
+  `;
+      const [specialty, area] = parseSpecialtyAndArea(text);
+      expect(specialty).toBe("12 Інформаційні технології  / F Інформаційні технології");
+      expect(area).toBe("12 Інформаційні технології / F Інформаційні технології");
+    });
+  });
+
 });

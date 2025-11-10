@@ -276,7 +276,7 @@ export default function GeneratorPage() {
 
         <div>
           <label className="text-[#fbf0df] font-bold mb-2">
-            OpenAI API Key (опціонально):
+            <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">OpenAI API Key</a> (опціонально):
           </label>
           <input
             type="password"
@@ -287,7 +287,8 @@ export default function GeneratorPage() {
             className="w-2xl bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50 placeholder:opacity-50"
           />
           <div className="text-sm text-[#fbf0df] opacity-70 mt-1">
-            Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.
+            Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.<br/>
+            Краще брати свій ключ, оскільки серверний ключ має обмежену кількість запитів на годину.
           </div>
         </div>
 
