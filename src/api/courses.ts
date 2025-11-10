@@ -3,6 +3,7 @@ import { courses, courseTopics } from "@/stores/db";
 import type { Course, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
+import { computeFileHash } from "@/api/utils/files";
 
 const coursesApi = {
   "/api/courses": {
@@ -71,11 +72,11 @@ const coursesApi = {
           return new Response("Invalid file type. Expected .docx file", { status: 400 });
         }
 
-        // Generate unique filename
-        const timestamp = Date.now();
-        const sanitizedFileName = fileName.replace(/[^a-z0-9.-]/gi, "_");
-        const uploadFileName = `${timestamp}_${sanitizedFileName}`;
-        const uploadsDir = path.join(process.cwd(), "uploads");
+        // Generate unique filename using hash
+        const hash = await computeFileHash(file);
+        const fileExtension = path.extname(file.name);
+        const uploadFileName = `${hash}${fileExtension}`;
+        const uploadsDir = path.join(process.cwd(), "uploads", "courses");
         const uploadPath = path.join(uploadsDir, uploadFileName);
 
         await Bun.write(uploadPath, file);
@@ -93,6 +94,7 @@ const coursesApi = {
       
         console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);
         
+        // TODO: properly merge course and topics from update
         if(dbCourse) {
           await courses.update(updated) }
         else {

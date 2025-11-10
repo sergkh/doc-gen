@@ -21,9 +21,9 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
   try {
     const text = await docx2text(filepath);
     
-    const generalResults = parseResults(text, 'ЗК');
-    const specialResults = parseResults(text, 'СК');
-    const programResults = parseResults(text, 'РН');
+    const generalResults = parseOPPResults(text, 'ЗК');
+    const specialResults = parseOPPResults(text, 'СК');
+    const programResults = parseOPPResults(text, 'РН');
     
     return { generalResults, specialResults, programResults } as OPP;
   } catch (error) {
@@ -48,7 +48,7 @@ export async function parseSylabusOrProgram(filepath: string): Promise<Course & 
   }
 }
 
-export function parseResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
+export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
   const results: CourseResult[] = [];
 
   // They all ends with a dot or a newline.
@@ -74,6 +74,16 @@ export function parseResults(text: string, type: 'ЗК' | 'СК' | 'РН'): Cour
   return results;
 }
 
+async function parseSylabusOrProgramResults(text: string): Promise<number[]> {
+  const allResults = await courseResults.all();
+    
+  return Array.from(text.matchAll(/(ЗК|СК|П?РН)\s?(\d+)\.?\s/g)).map(m => {
+    const type = m[1] === "ПРН" ? "РН" : m[1];
+    const no = parseInt(m[2] || "-1");
+    const result = allResults.find(r => r.type === type && r.no === no);
+    return result?.id;      
+  }).filter(r => r !== undefined) || [] as number[];
+}
 
 // Best effort parsing of syllabus
 async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
@@ -140,24 +150,12 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
       teacher.id = id;
     }
 
-    // Extract prerequisites (from "При вивченні даної дисципліни використовуються знання, отримані з таких дисциплін")
-    // Note: We can't match prerequisites by name alone, so we'll leave this empty
+    // TODO: match prerequisites and postrequisites by name
     const prerequisites: number[] = [];
-
-    // Extract postrequisites (from "Основні положення навчальної дисципліни можуть застосовуватися при вивченні дисципліни")
-    // Note: We can't match postrequisites by name alone, so we'll leave this empty
     const postrequisites: number[] = [];
 
-    // Parse results (ЗК, СК, РН)
-    const resultsPart = text.substring(text.indexOf("КОМПЕТЕНТН"), text.indexOf("ПЛАН"));
-    const allResults = await courseResults.all();
-    
-    const results: number[] = Array.from(resultsPart.matchAll(/(ЗК|СК|П?РН)\s?(\d+)\.?\s/g)).map(m => {
-      const type = m[1] === "ПРН" ? "РН" : m[1];
-      const no = parseInt(m[2] || "-1");
-      const result = allResults.find(r => r.type === type && r.no === no);
-      return result?.id;      
-    }).filter(r => r !== undefined) || [];
+    const results = 
+      await parseSylabusOrProgramResults(text.substring(text.indexOf("КОМПЕТЕНТН"), text.indexOf("ПЛАН")));
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
     const topics: { name: string; index: number }[] = [];
@@ -347,26 +345,13 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
       return null;
     }
 
-    // Extract prerequisites (from "Передумови для вивчення дисципліни")
-    // Note: We can't match prerequisites by name alone, so we'll leave this empty
+    // TODO: match prerequisites and postrequisites by name
     const prerequisites: number[] = [];
-
-    // Extract postrequisites (if mentioned)
-    // Note: We can't match postrequisites by name alone, so we'll leave this empty
     const postrequisites: number[] = [];
 
-    // Parse results (ЗК, СК, РН)
-    const allResults = await courseResults.all();
-    
-    const results = Array.from(text.matchAll(/(ЗК|СК|П?РН)\s?(\d+)\.?\s/g)).map(m => {
-      const type = m[1] === "ПРН" ? "РН" : m[1];
-      const no = parseInt(m[2] || "-1");
-      const result = allResults.find(r => r.type === type && r.no === no);
-      return result?.id;      
-    }).filter(r => r !== undefined) || [];    
+    const results = await parseSylabusOrProgramResults(text);
 
     const programPart = text.substring(text.indexOf("5. Програма"), text.indexOf("6. Структура навчальної дисципліни"));
-    console.log("programPart", programPart);
     
     // Parse attestations and topics from the program section
     const attestations: { name: string; semester: number }[] = [];
@@ -473,8 +458,6 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
         }
       });
     }
-    
-    console.log("Parsed topics:", topics);
 
     // Parse literature
     const literature = {
