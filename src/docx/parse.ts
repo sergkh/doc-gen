@@ -127,7 +127,7 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
     const lecturerName = lecturer.split(' ').slice(-3).join(' ');
     
     const emailMatch = text.match(/e-mail[\)]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    const email = emailMatch?.[1]?.trim() || "";
+    const email = emailMatch?.[1]?.trim() || null;
 
     // TODO: might not always work
     let teacher = await teachers.findByName(lecturerName);    
@@ -314,14 +314,14 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
     
     // Extract email if available
     const emailMatch = text.match(/e-mail[\)]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-    const email = emailMatch?.[1]?.trim() || "";
+    const email = emailMatch?.[1]?.trim() || null;
 
     // Find or create teacher
     let teacher = teacherName ? await teachers.findByName(teacherName) : null;
     
     if (!teacher && teacherName) {
       // Create new teacher
-      teacher = { id: 0, name: teacherName, email: email || "" };
+      teacher = { id: 0, name: teacherName, email: email };
       console.log("Creating new teacher:", teacher);
       const result = await teachers.add(teacher);
       teacher.id = result[0].id;

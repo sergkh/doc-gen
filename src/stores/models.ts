@@ -74,7 +74,7 @@ export type Course = {
 export type Teacher = {
   id: number,
   name: string,
-  email: string
+  email: string | null
 }
 
 export type GeneratedTopicData = {

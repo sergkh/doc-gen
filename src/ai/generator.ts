@@ -21,7 +21,7 @@ function createOpenAIClient(apiKey?: string | null): OpenAI {
 function format(template: string, data: Record<string, any>): string {
   return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
     const result = data[key.trim()];
-    if (!result) throw new Error(`Missing dependency: ${key.trim()}`);
+    if (result === undefined) throw new Error(`Missing dependency: ${key.trim()}`);
     return result;
   });
 }
