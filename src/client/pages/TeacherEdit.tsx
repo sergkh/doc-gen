@@ -30,7 +30,7 @@ export default function TeacherEdit() {
 
   const isValid = useMemo(() => {
     if (!item) return false;
-    return item.name.trim() !== "" && item.email.trim() !== "" && item.email.includes("@");
+    return item.name.trim() !== "" && item.email?.trim() !== "" && item.email?.includes("@");
   }, [item]);
 
   if (!item) {
@@ -63,7 +63,7 @@ export default function TeacherEdit() {
               <input
                 type="email"
                 className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                value={item.email}
+                value={item.email ?? ""}
                 onChange={(e) => update({ email: e.target.value })}
               />
             </div>
