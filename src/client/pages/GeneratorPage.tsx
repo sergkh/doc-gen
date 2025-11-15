@@ -275,7 +275,7 @@ export default function GeneratorPage() {
         <h1 className="font-mono">Генератор документів</h1>
 
         <div>
-          <label className="text-[#fbf0df] font-bold mb-2">
+          <label className="text-amber-50 font-bold mb-2">
             <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">OpenAI API Key</a> (опціонально):
           </label>
           <input
@@ -284,25 +284,25 @@ export default function GeneratorPage() {
             onChange={(e) => handleApiKeyChange(e.target.value)}
             disabled={isGenerating}
             placeholder="Ключ API OpenAI"
-            className="w-2xl bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50 placeholder:opacity-50"
+            className="w-2xl bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50 placeholder:opacity-50"
           />
-          <div className="text-sm text-[#fbf0df] opacity-70 mt-1">
+          <div className="text-sm text-amber-50 opacity-70 mt-1">
             Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.<br/>
             Краще брати свій ключ, оскільки серверний ключ має обмежену кількість запитів на годину.
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Дисципліна:</label>
+            <label className="block text-amber-50 font-bold mb-2">Дисципліна:</label>
             {isLoading ? (
-              <div className="text-[#fbf0df]">Завантаження...</div>
+              <div className="text-amber-50">Завантаження...</div>
             ) : (
               <select
                 value={selectedCourseId}
                 onChange={(e) => setSelectedCourseId(e.target.value)}
                 disabled={isGenerating}
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
               >
                 <option value="">-- Оберіть дисципліну --</option>
                 {courses.map((course) => (
@@ -315,15 +315,15 @@ export default function GeneratorPage() {
           </div>
 
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Шаблон:</label>
+            <label className="block text-amber-50 font-bold mb-2">Шаблон:</label>
             {isLoading ? (
-              <div className="text-[#fbf0df]">Завантаження...</div>
+              <div className="text-amber-50">Завантаження...</div>
             ) : (
               <select
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
                 disabled={isGenerating}
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
               >
                 <option value="">-- Оберіть шаблон --</option>
                 {templates.map((template) => (
@@ -337,12 +337,12 @@ export default function GeneratorPage() {
         </div>
 
         {isGenerating && (
-          <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
+          <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[#fbf0df] font-bold">Генерація...</span>
-              <span className="text-[#fbf0df]">{progress}%</span>
+              <span className="text-amber-50 font-bold">Генерація...</span>
+              <span className="text-amber-50">{progress}%</span>
             </div>
-            <div className="w-full bg-[#2a2a2a] rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-zinc-800 rounded-full h-4 overflow-hidden">
               <div
                 className="bg-green-600 h-full transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
@@ -369,7 +369,7 @@ export default function GeneratorPage() {
             {isGenerating && navigateToEdit ? "Генерую..." : "Згенерувати і редагувати"}
           </button>
           {isGenerating && (
-            <span className="text-[#fbf0df] font-mono">
+            <span className="text-amber-50 font-mono">
               Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
             </span>
           )}

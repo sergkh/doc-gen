@@ -62,16 +62,16 @@ export default function PromptEditor({
   };
 
   return (
-    <div className="bg-[#2a2a2a] border-2 border-[#f3d5a3] rounded-lg p-4 flex flex-col gap-3">
+    <div className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-[#fbf0df] font-bold">
+        <h3 className="text-amber-50 font-bold">
           {prompt.id === 0 ? "Додати промпт" : "Редагувати промпт"}
         </h3>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="text-[#fbf0df] hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30"
+            className="text-amber-50 hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30"
             aria-label="Зберегти"
             title="Зберегти"
           >
@@ -79,7 +79,7 @@ export default function PromptEditor({
           </button>
           <button
             onClick={onCancel}
-            className="text-[#fbf0df] hover:text-white"
+            className="text-amber-50 hover:text-white"
             aria-label="Скасувати"
             title="Скасувати"
           >
@@ -88,43 +88,43 @@ export default function PromptEditor({
         </div>
       </div>
       <div>
-        <label className="block text-[#fbf0df] font-bold mb-2">Поле:</label>
+        <label className="block text-amber-50 font-bold mb-2">Поле:</label>
         <input
-          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
           value={field}
           onChange={(e) => setField(e.target.value)}
           placeholder="Назва поля (наприклад: subtopics, keywords)"
         />
       </div>
       <div>
-        <label className="block text-[#fbf0df] font-bold mb-2">Модель:</label>
+        <label className="block text-amber-50 font-bold mb-2">Модель:</label>
         <select
-          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
           value={model}
           onChange={(e) => setModel(e.target.value)}
         >
           {AVAILABLE_MODELS.map((m) => (
-            <option key={m} value={m} className="bg-[#2a2a2a] text-[#fbf0df]">
+            <option key={m} value={m} className="bg-zinc-800 text-amber-50">
               {m}
             </option>
           ))}
         </select>
       </div>
       <div>
-        <label className="block text-[#fbf0df] font-bold mb-2">Системний промпт:</label>
+        <label className="block text-amber-50 font-bold mb-2">Системний промпт:</label>
         <textarea
           rows={1}
-          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
           placeholder="Системний промпт"
         />
       </div>
       <div>
-        <label className="block text-[#fbf0df] font-bold mb-2">Промпт:</label>
+        <label className="block text-amber-50 font-bold mb-2">Промпт:</label>
         <textarea
           rows={15}
-          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
           value={userPrompt}
           onChange={(e) => setUserPrompt(e.target.value)}
           placeholder="Промпт користувача"

@@ -97,7 +97,7 @@ export default function CoursesList() {
           <h1 className="font-mono">Дисципліни</h1>
           <button
             onClick={() => navigate("/courses/new")}
-            className="text-[#fbf0df] hover:text-[#f3d5a3] px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+            className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
             <FontAwesomeIcon icon={faPlus} />
           </button>
@@ -105,11 +105,11 @@ export default function CoursesList() {
 
         <div className="flex flex-col gap-3">
           {items.length === 0 ? (
-            <div className="text-[#fbf0df] font-mono">Немає дисциплін</div>
+            <div className="text-amber-50 font-mono">Немає дисциплін</div>
           ) : (
             <ul className="flex flex-col gap-3">
               {items.map(d => (
-                <li key={d.id} className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 text-[#fbf0df] font-mono flex items-center justify-between">
+                <li key={d.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-bold">{d.name}</div>
                     <div className="text-sm opacity-80">Автор: {d.teacher ?? d.teacher_id}</div>
@@ -117,7 +117,7 @@ export default function CoursesList() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => navigate(`/courses/${d.id}`)} 
-                      className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                       aria-label="Редагувати дисципліну"
                       title="Редагувати дисципліну"
                     >
@@ -125,7 +125,7 @@ export default function CoursesList() {
                     </button>
                     <button 
                       onClick={() => handleDelete(d)} 
-                      className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                       aria-label="Видалити дисципліну"
                       title="Видалити дисципліну"
                     >
@@ -138,15 +138,15 @@ export default function CoursesList() {
           )}
         </div>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono">
-          <label className="block text-[#fbf0df] font-bold mb-2">Створити з Силабуса чи Робочої програми (.docx):</label>
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono">
+          <label className="block text-amber-50 font-bold mb-2">Створити з Силабуса чи Робочої програми (.docx):</label>
           <div
             {...getRootProps()}
-            className={`border-2 ${isDragActive ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
+            className={`border-2 ${isDragActive ? "border-amber-200 border-dashed bg-zinc-800" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <input {...getInputProps()} />
-            {isUploading ? (<span className="text-[#fbf0df]">Завантаження...</span>) : (
-              <span className="text-[#fbf0df]">
+            {isUploading ? (<span className="text-amber-50">Завантаження...</span>) : (
+              <span className="text-amber-50">
                 {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
               </span>
             )}

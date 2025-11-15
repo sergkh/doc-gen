@@ -76,7 +76,7 @@ export default function TemplateEdit() {
     return (
       <div className="max-w-7xl mx-auto text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Шаблон не знайдено</div>
+          <div className="text-amber-50 font-mono">Шаблон не знайдено</div>
         </div>
       </div>
     );
@@ -87,34 +87,34 @@ export default function TemplateEdit() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</h1>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Назва:</label>
+              <label className="block text-amber-50 font-bold mb-2">Назва:</label>
               <input
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.name}
                 onChange={(e) => update({ name: e.target.value })}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">
+              <label className="block text-amber-50 font-bold mb-2">
                 Файл {item.id < 0 ? "(обов'язково)" : "(за бажанням)"}:
               </label>
               <div
                 {...getRootProps()}
-                className={`border-2 ${isDragActive ? "border-[#f3d5a3] border-dashed bg-[#2a2a2a]" : "border-[#fbf0df]"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-[#f3d5a3]"}`}
+                className={`border-2 ${isDragActive ? "border-amber-200 border-dashed bg-zinc-800" : "border-amber-50"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-amber-200"}`}
               >
                 <input {...getInputProps()} />
                 {isUploading ? (
-                  <span className="text-[#fbf0df]">Завантаження...</span>
+                  <span className="text-amber-50">Завантаження...</span>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <span className="text-[#fbf0df]">
+                    <span className="text-amber-50">
                       {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
                     </span>
                     {selectedFile && (
-                      <div className="text-sm text-[#fbf0df] opacity-80 mt-2">
+                      <div className="text-sm text-amber-50 opacity-80 mt-2">
                         Вибрано: {selectedFile.name}
                       </div>
                     )}

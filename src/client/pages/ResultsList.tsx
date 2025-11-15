@@ -112,7 +112,7 @@ export default function ResultsList() {
           <h1 className="font-mono">Результати навчання</h1>
           <button
             onClick={() => navigate("/results/new")}
-            className="text-[#fbf0df] hover:text-[#f3d5a3] px-2 py-2 rounded-lg font-bold flex items-center gap-2"
+            className="text-amber-50 hover:text-amber-200 px-2 py-2 rounded-lg font-bold flex items-center gap-2"
           >
             <FontAwesomeIcon icon={faPlus} />
           </button>
@@ -123,25 +123,25 @@ export default function ResultsList() {
           className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
             isDragActive
               ? "border-blue-500 bg-blue-500/10"
-              : "border-[#fbf0df] bg-[#1a1a1a]"
+              : "border-amber-50 bg-zinc-900"
           } ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
         >
           <input {...getInputProps()} />
           <div className="flex flex-col items-center gap-3">            
             {isUploading ? (
-              <p className="text-[#fbf0df] font-mono font-bold">
-                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-[#fbf0df]"}/> Завантаження...
+              <p className="text-amber-50 font-mono font-bold">
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Завантаження...
               </p>
             ) : (
-              <p className="text-[#fbf0df] font-mono font-bold text-lg">
-                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-[#fbf0df]"}/> Перетягніть файл OПП в форматі .docx сюди або натисніть для вибору
+              <p className="text-amber-50 font-mono font-bold text-lg">
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Перетягніть файл OПП в форматі .docx сюди або натисніть для вибору
               </p>
             )}
           </div>
         </div>
 
         {items.length === 0 ? (
-          <div className="text-[#fbf0df] font-mono">Немає результатів</div>
+          <div className="text-amber-50 font-mono">Немає результатів</div>
         ) : (
           <div className="flex flex-col gap-6">
             {(["ЗК", "СК", "РН"] as const).map(type => {
@@ -150,22 +150,22 @@ export default function ResultsList() {
 
               return (
                 <div key={type} className="flex flex-col gap-3">
-                  <h2 className="text-[#f3d5a3] font-bold text-lg font-mono">
+                  <h2 className="text-amber-200 font-bold text-lg font-mono">
                     {RESULT_TYPES[type]}
                   </h2>
                   <ul className="flex flex-col gap-3">
                     {results.map(result => (
-                      <li key={result.id} className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 text-[#fbf0df] font-mono flex items-center justify-between">
+                      <li key={result.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-[#f3d5a3]">{result.no}.</span>
+                            <span className="font-bold text-amber-200">{result.no}.</span>
                             <span className="font-bold">{result.name}</span>
                           </div>
                         </div>
                         <div className="flex gap-2">
                           <button 
                             onClick={() => navigate(`/results/${result.id}`)} 
-                            className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                            className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                             aria-label="Редагувати результат"
                             title="Редагувати результат"
                           >
@@ -173,7 +173,7 @@ export default function ResultsList() {
                           </button>
                           <button 
                             onClick={() => handleDelete(result)} 
-                            className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                            className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                             aria-label="Видалити результат"
                             title="Видалити результат"
                           >

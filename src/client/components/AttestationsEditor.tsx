@@ -47,20 +47,20 @@ export default function AttestationsEditor({
 
   return (
     <div className="col-span-2">
-      <label className="block text-[#fbf0df] font-bold mb-2">Атестації:</label>
+      <label className="block text-amber-50 font-bold mb-2">Атестації:</label>
       <div className="flex flex-col gap-2">
         {attestations.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attestations.map((attestation, index) => (
               <div
                 key={index}
-                className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
               >
-                <span className="text-[#fbf0df] font-mono text-sm">{attestation.name}</span>
+                <span className="text-amber-50 font-mono text-sm">{attestation.name}</span>
                 <select
                   value={attestation.semester || 1}
                   onChange={(e) => onUpdateSemester(index, Number(e.target.value))}
-                  className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                  className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
                 >
                   <option value={1}>1 семестр</option>
                   <option value={2}>2 семестр</option>
@@ -80,14 +80,14 @@ export default function AttestationsEditor({
           <input
             ref={attestationInputRef}
             type="text"
-            className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+            className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
             placeholder="Назва атестації"
             onKeyDown={handleKeyDown}
           />
           <select
             ref={attestationSemesterRef}
             defaultValue="1"
-            className="bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+            className="bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
           >
             <option value="1">1 семестр</option>
             <option value="2">2 семестр</option>

@@ -53,7 +53,7 @@ function TopicItem({
   return (
     <Reorder.Item
       value={topic}
-      className={`${bgColor} border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2 transition-colors`}
+      className={`${bgColor} border border-amber-50 rounded-lg p-3 flex flex-col gap-2 transition-colors`}
       style={{ cursor: 'default' }}
       dragListener={false}
       dragControls={dragControls}
@@ -61,17 +61,17 @@ function TopicItem({
       <div className="flex items-start justify-between gap-2 flex-col sm:flex-row">
         <div className="flex items-start gap-2 flex-1 min-w-0 w-full">
           <div 
-            className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+            className="mt-1 text-amber-50 opacity-60 cursor-grab active:cursor-grabbing shrink-0 touch-none"
             onPointerDown={(event) => dragControls.start(event)}
           >
             <FontAwesomeIcon icon={faGripVertical} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-              <div className="font-bold text-[#f3d5a3] wrap-break-words min-w-0">
+              <div className="font-bold text-amber-200 wrap-break-words min-w-0">
                 {topic.index}. {topic.name || `Тема ${topic.index}`}
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#fbf0df] opacity-70 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-amber-50 opacity-70 flex-wrap">
                 <InPlaceEditor
                   value={hours}
                   options={[
@@ -177,7 +177,7 @@ function TopicItem({
                 />                          
               </div>
             </div>
-            <div className="text-sm text-[#fbf0df] opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
+            <div className="text-sm text-amber-50 opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
               {topic.lection}
             </div>
           </div>
@@ -186,7 +186,7 @@ function TopicItem({
           {topic.generated && (
             <button
               onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}
-              className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+              className="text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
               aria-label="Редагувати згенеровані дані"
               title="Редагувати згенеровані дані"
             >
@@ -195,7 +195,7 @@ function TopicItem({
           )}
           <button
             onClick={() => onEdit(topic)}
-            className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+            className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
             aria-label="Редагувати тему"
             title="Редагувати тему"
           >
@@ -203,7 +203,7 @@ function TopicItem({
           </button>
           <button
             onClick={() => onDelete(topic.id)}
-            className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+            className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
             aria-label="Видалити тему"
             title="Видалити тему"
           >
@@ -678,19 +678,19 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   };
 
   return (
-    <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+    <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[#fbf0df] font-bold text-lg">Теми курсу:</h2>
+        <h2 className="text-amber-50 font-bold text-lg">Теми курсу:</h2>
         <button
           onClick={handleAddTopic}
-          className="text-[#fbf0df] hover:text-[#f3d5a3] px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
+          className="text-amber-50 hover:text-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
         >
           <FontAwesomeIcon icon={faPlus} />
         </button>
       </div>
 
       {topics.length === 0 && !editingTopic ? (
-        <div className="text-[#fbf0df] opacity-60">Немає тем</div>
+        <div className="text-amber-50 opacity-60">Немає тем</div>
       ) : (
         <Reorder.Group
           axis="y"
@@ -704,33 +704,33 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
               return (
                 <div
                   key={topic.id}
-                  className="bg-[#2a2a2a] border-2 border-[#f3d5a3] rounded-lg p-4 flex flex-col gap-3"
+                  className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[#fbf0df] font-bold">
+                    <h3 className="text-amber-50 font-bold">
                       Редагувати тему
                     </h3>
                     <button
                       onClick={handleCancelEdit}
-                      className="text-[#fbf0df] hover:text-white"
+                      className="text-amber-50 hover:text-white"
                     >
                       <FontAwesomeIcon icon={faTimes} />
                     </button>
                   </div>
                   <div>
-                    <label className="block text-[#fbf0df] font-bold mb-2">Назва теми:</label>
+                    <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
                     <input
-                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                       value={topicName}
                       onChange={(e) => setTopicName(e.target.value)}
                       placeholder="Введіть назву теми"
                     />
                   </div>
                   <div>
-                    <label className="block text-[#fbf0df] font-bold mb-2">Підтеми (по одній на рядок):</label>
+                    <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
                     <textarea
                       rows={3}
-                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
                       value={topicSubtopics}
                       onChange={(e) => setTopicSubtopics(e.target.value)}
                       placeholder="Введіть підтеми, по одній на рядок"
@@ -739,9 +739,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">Години (денна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">Години (денна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicHours}
                           onChange={(e) => setTopicHours(Number(e.target.value))}
                         >
@@ -752,9 +752,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (денна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">Практ. год. (денна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicPracticalHours}
                           onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
                         >
@@ -766,9 +766,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (денна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">СРС год. (денна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicSrsHours}
                           onChange={(e) => setTopicSrsHours(Number(e.target.value))}
                         >
@@ -785,9 +785,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">Години (заочна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicInabscentiaHours}
                           onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
                         >
@@ -799,9 +799,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (заочна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">Практ. год. (заочна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicInabscentiaPracticalHours}
                           onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
                         >
@@ -815,9 +815,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (заочна):</label>
+                        <label className="block text-amber-50 font-bold mb-2">СРС год. (заочна):</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicInabscentiaSrsHours}
                           onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
                         >
@@ -834,9 +834,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+                        <label className="block text-amber-50 font-bold mb-2">Атестація:</label>
                         <select
-                          className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                           value={topicAttestation}
                           onChange={(e) => setTopicAttestation(Number(e.target.value))}
                         >
@@ -849,14 +849,14 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[#fbf0df] font-bold mb-2">Текст лекції:</label>
+                    <label className="block text-amber-50 font-bold mb-2">Текст лекції:</label>
                     <textarea
                       rows={5}
                       onDrop={handleFileDrop}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
-                      className={`w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
-                        isDragging ? "bg-[#2a2a2a] border-[#f3d5a3] border-dashed" : ""
+                      className={`w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
+                        isDragging ? "bg-zinc-800 border-amber-200 border-dashed" : ""
                       }`}
                       value={topicLection}
                       onChange={(e) => setTopicLection(e.target.value)}
@@ -885,10 +885,10 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             const attestation = topic.data?.attestation || 1;
             // Background colors based on attestation index
             const attestationBgColors = {
-              1: "bg-[#2a2a2a]", // Default dark gray
-              2: "bg-[#2a2a3a]", // Slightly blue-tinted
-              3: "bg-[#3a2a2a]", // Slightly red-tinted
-              4: "bg-[#2a3a2a]"  // Slightly green-tinted
+              1: "bg-zinc-800", // Default dark gray
+              2: "bg-slate-800", // Slightly blue-tinted
+              3: "bg-red-900", // Slightly red-tinted
+              4: "bg-green-900"  // Slightly green-tinted
             };
             const bgColor = attestationBgColors[attestation as keyof typeof attestationBgColors] || attestationBgColors[1];
             
@@ -914,32 +914,32 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       )}
 
       {editingTopic && editingTopic.id === 0 && (
-        <div className="bg-[#2a2a2a] border-2 border-[#f3d5a3] rounded-lg p-4 flex flex-col gap-3">
+        <div className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[#fbf0df] font-bold">
+            <h3 className="text-amber-50 font-bold">
               {editingTopic.id === 0 ? "Додати тему" : "Редагувати тему"}
             </h3>
             <button
               onClick={handleCancelEdit}
-              className="text-[#fbf0df] hover:text-white"
+              className="text-amber-50 hover:text-white"
             >
               <FontAwesomeIcon icon={faTimes} />
             </button>
           </div>
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Назва теми:</label>
+            <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
             <input
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
               value={topicName}
               onChange={(e) => setTopicName(e.target.value)}
               placeholder="Введіть назву теми"
             />
           </div>
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Підтеми (по одній на рядок):</label>
+            <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
             <textarea
               rows={3}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               value={topicSubtopics}
               onChange={(e) => setTopicSubtopics(e.target.value)}
               placeholder="Введіть підтеми, по одній на рядок"
@@ -948,9 +948,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">Години (денна):</label>
+                <label className="block text-amber-50 font-bold mb-2">Години (денна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicHours}
                   onChange={(e) => setTopicHours(Number(e.target.value))}
                 >
@@ -961,9 +961,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (денна):</label>
+                <label className="block text-amber-50 font-bold mb-2">Практ. год. (денна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicPracticalHours}
                   onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
                 >
@@ -975,9 +975,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (денна):</label>
+                <label className="block text-amber-50 font-bold mb-2">СРС год. (денна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicSrsHours}
                   onChange={(e) => setTopicSrsHours(Number(e.target.value))}
                 >
@@ -994,9 +994,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">Години (заочна):</label>
+                <label className="block text-amber-50 font-bold mb-2">Години (заочна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicInabscentiaHours}
                   onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
                 >
@@ -1008,9 +1008,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">Практ. год. (заочна):</label>
+                <label className="block text-amber-50 font-bold mb-2">Практ. год. (заочна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicInabscentiaPracticalHours}
                   onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
                 >
@@ -1024,9 +1024,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">СРС год. (заочна):</label>
+                <label className="block text-amber-50 font-bold mb-2">СРС год. (заочна):</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicInabscentiaSrsHours}
                   onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
                 >
@@ -1043,9 +1043,9 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                 </select>
               </div>
               <div>
-                <label className="block text-[#fbf0df] font-bold mb-2">Атестація:</label>
+                <label className="block text-amber-50 font-bold mb-2">Атестація:</label>
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value={topicAttestation}
                   onChange={(e) => setTopicAttestation(Number(e.target.value))}
                 >
@@ -1058,14 +1058,14 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             </div>
           </div>
           <div>
-            <label className="block text-[#fbf0df] font-bold mb-2">Текст лекції:</label>
+            <label className="block text-amber-50 font-bold mb-2">Текст лекції:</label>
             <textarea
               rows={5}
               onDrop={handleFileDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              className={`w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
-                isDragging ? "bg-[#2a2a2a] border-[#f3d5a3] border-dashed" : ""
+              className={`w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
+                isDragging ? "bg-zinc-800 border-amber-200 border-dashed" : ""
               }`}
               value={topicLection}
               onChange={(e) => setTopicLection(e.target.value)}

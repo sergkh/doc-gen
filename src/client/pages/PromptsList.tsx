@@ -165,7 +165,7 @@ export default function PromptsList() {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Завантаження...</div>
+          <div className="text-amber-50 font-mono">Завантаження...</div>
         </div>
       </div>
     );
@@ -178,7 +178,7 @@ export default function PromptsList() {
           <h1 className="font-mono">Промпти</h1>
           <div className="flex items-center gap-3">
             <select
-              className="bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-3 rounded outline-none focus:text-white"
+              className="bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-3 rounded outline-none focus:text-white"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value as "course" | "topic")}
             >
@@ -187,7 +187,7 @@ export default function PromptsList() {
             </select>
             <button
               onClick={handleAddPrompt}
-              className="text-[#fbf0df] hover:text-[#f3d5a3] px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
+              className="text-amber-50 hover:text-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
             >
               <FontAwesomeIcon icon={faPlus} />
             </button>
@@ -195,10 +195,10 @@ export default function PromptsList() {
         </div>
 
         {prompts.length === 0 && editingPromptId === null ? (
-          <div className="text-[#fbf0df] opacity-60">Немає промптів</div>
+          <div className="text-amber-50 opacity-60">Немає промптів</div>
         ) : (
           <div className="flex flex-col gap-3">
-            <h2 className="text-[#f3d5a3] font-bold text-lg font-mono">
+            <h2 className="text-amber-200 font-bold text-lg font-mono">
               {PROMPT_TYPES[selectedType]}
             </h2>
             <Reorder.Group
@@ -227,19 +227,19 @@ export default function PromptsList() {
                   <Reorder.Item
                     key={prompt.id}
                     value={prompt}
-                    className="bg-[#1a1a1a] border border-[#fbf0df] rounded-lg p-3 flex items-start justify-between cursor-grab active:cursor-grabbing transition-colors"
+                    className="bg-zinc-900 border border-amber-50 rounded-lg p-3 flex items-start justify-between cursor-grab active:cursor-grabbing transition-colors"
                   >
                     <div className="flex items-start gap-2 flex-1">
-                      <div className="mt-1 text-[#fbf0df] opacity-60 cursor-grab active:cursor-grabbing">
+                      <div className="mt-1 text-amber-50 opacity-60 cursor-grab active:cursor-grabbing">
                         <FontAwesomeIcon icon={faGripVertical} />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-bold text-[#f3d5a3]">
+                          <span className="font-bold text-amber-200">
                             {prompt.index}. {prompt.field}
                           </span>
                         </div>
-                        <div className="text-sm text-[#fbf0df] opacity-80 line-clamp-2 overflow-hidden">
+                        <div className="text-sm text-amber-50 opacity-80 line-clamp-2 overflow-hidden">
                           <div>
                             <span className="font-bold">Промпт:</span> {prompt.prompt.substring(0, 100)}...
                           </div>
@@ -249,7 +249,7 @@ export default function PromptsList() {
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => handleEditPrompt(prompt)}
-                        className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                        className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                         aria-label="Редагувати промпт"
                         title="Редагувати промпт"
                       >
@@ -257,7 +257,7 @@ export default function PromptsList() {
                       </button>
                       <button
                         onClick={() => handleDeletePrompt(prompt)}
-                        className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                        className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                         aria-label="Видалити промпт"
                         title="Видалити промпт"
                       >

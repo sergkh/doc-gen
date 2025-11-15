@@ -220,7 +220,7 @@ export default function CourseEdit() {
     return (
       <div className="max-w-7xl mx-auto text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Курс не знайдено</div>
+          <div className="text-amber-50 font-mono">Курс не знайдено</div>
         </div>
       </div>
     );
@@ -235,7 +235,7 @@ export default function CourseEdit() {
             <button
               onClick={handleSave}
               disabled={!isValid}
-              className="text-[#fbf0df] hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30"
+              className="text-amber-50 hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30"
               aria-label="Зберегти"
               title="Зберегти"
             >
@@ -243,7 +243,7 @@ export default function CourseEdit() {
             </button>
             <button
               onClick={() => navigate("/courses")}
-              className="text-[#fbf0df] hover:text-red-400"
+              className="text-amber-50 hover:text-red-400"
               aria-label="Скасувати"
               title="Скасувати"
             >
@@ -252,11 +252,11 @@ export default function CourseEdit() {
           </div>
         </div>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">          
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Назва:</label>
-              <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Назва:</label>
+              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.name} onChange={(e) => update({name: e.target.value})} />
             </div>
             <div className="flex items-start justify-end gap-2">
@@ -270,41 +270,41 @@ export default function CourseEdit() {
               )}
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Кредити:</label>
-              <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Кредити:</label>
+              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={String(item.data.credits || "")} onChange={(e) => updateData({credits: Number(e.target.value) || 0})} />
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Години:</label>
-              <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Години:</label>
+              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={String(item.data.hours || "")} onChange={(e) => updateData({hours: Number(e.target.value) || 0})} />
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Спеціальність:</label>
-              <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
+              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.specialty} onChange={(e) => updateData({specialty: e.target.value})} />
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Напрям:</label>
-              <input className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Напрям:</label>
+              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
             </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="optional-checkbox"
-                className="w-5 h-5 cursor-pointer accent-[#fbf0df]"
+                className="w-5 h-5 cursor-pointer accent-amber-50"
                 checked={item.data.optional}
                 onChange={(e) => updateData({optional: e.target.checked})}
               />
-              <label htmlFor="optional-checkbox" className="text-[#fbf0df] font-bold cursor-pointer">
+              <label htmlFor="optional-checkbox" className="text-amber-50 font-bold cursor-pointer">
                 Вибіркова дисципліна
               </label>
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Форма контролю:</label>
+              <label className="block text-amber-50 font-bold mb-2">Форма контролю:</label>
               <select
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.control_type || "credit"}
                 onChange={(e) => updateData({control_type: e.target.value as "exam" | "credit" | "both"})}
               >
@@ -314,12 +314,12 @@ export default function CourseEdit() {
               </select>
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Рік навчання (денна):</label>
+              <label className="block text-amber-50 font-bold mb-2">Рік навчання (денна):</label>
               <input 
                 type="number"
                 min="1"
                 max="6"
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.fulltime?.study_year || 1} 
                 onChange={(e) => {
                   const fulltime = { ...item.data.fulltime, study_year: Number(e.target.value) || 1 };
@@ -328,12 +328,12 @@ export default function CourseEdit() {
               />
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Рік навчання (заочна):</label>
+              <label className="block text-amber-50 font-bold mb-2">Рік навчання (заочна):</label>
               <input 
                 type="number"
                 min="1"
                 max="6"
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.inabscentia?.study_year || 1} 
                 onChange={(e) => {
                   const inabscentia = { ...item.data.inabscentia, study_year: Number(e.target.value) || 1 };
@@ -342,9 +342,9 @@ export default function CourseEdit() {
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Викладач:</label>
+              <label className="block text-amber-50 font-bold mb-2">Викладач:</label>
               <select
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.teacher_id}
                 onChange={e => update({teacher_id: e.target.value})}
               >
@@ -353,16 +353,16 @@ export default function CourseEdit() {
               </select>              
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Передумови:</label>
+              <label className="block text-amber-50 font-bold mb-2">Передумови:</label>
               <div className="flex flex-col gap-2">
                 {item.data.prerequisites.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-2">
                     {prerequisiteInfos.map((prereq) => (
                       <div
                         key={prereq.id}
-                        className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                        className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
                       >
-                        <span className="text-[#fbf0df] font-mono text-sm">{prereq.name}</span>
+                        <span className="text-amber-50 font-mono text-sm">{prereq.name}</span>
                         <button
                           onClick={() => handleRemovePrerequisite(prereq.id)}
                           className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
@@ -375,7 +375,7 @@ export default function CourseEdit() {
                   </div>
                 )}
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value=""
                   onChange={(e) => {
                     if (e.target.value) {
@@ -394,16 +394,16 @@ export default function CourseEdit() {
               </div>
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Залежні дисципліни:</label>
+              <label className="block text-amber-50 font-bold mb-2">Залежні дисципліни:</label>
               <div className="flex flex-col gap-2">
                 {item.data.postrequisites.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-2">
                     {postrequisiteInfos.map((postreq) => (
                       <div
                         key={postreq.id}
-                        className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                        className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
                       >
-                        <span className="text-[#fbf0df] font-mono text-sm">{postreq.name}</span>
+                        <span className="text-amber-50 font-mono text-sm">{postreq.name}</span>
                         <button
                           onClick={() => handleRemovePostrequisite(postreq.id)}
                           className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
@@ -416,7 +416,7 @@ export default function CourseEdit() {
                   </div>
                 )}
                 <select
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   value=""
                   onChange={(e) => {
                     if (e.target.value) {
@@ -435,8 +435,8 @@ export default function CourseEdit() {
               </div>
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Додатковий опис:</label>
-              <textarea rows={5} className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+              <label className="block text-amber-50 font-bold mb-2">Додатковий опис:</label>
+              <textarea rows={5} className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.data.description} onChange={(e) => updateData({description: e.target.value})} />
             </div>            
             {(["ЗК", "СК", "РН"] as const).map(type => (
@@ -450,19 +450,19 @@ export default function CourseEdit() {
               />
             ))}
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Семестри:</label>
+              <label className="block text-amber-50 font-bold mb-2">Семестри:</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Денна форма:</label>
+                  <label className="block text-amber-50 font-bold mb-2 text-sm">Денна форма:</label>
                   <div className="flex flex-col gap-2">
                     {(item.data.fulltime?.semesters || []).length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {(item.data.fulltime?.semesters || []).map((semester) => (
                           <div
                             key={semester}
-                            className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                            className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
                           >
-                            <span className="text-[#fbf0df] font-mono text-sm">{semester} семестр</span>
+                            <span className="text-amber-50 font-mono text-sm">{semester} семестр</span>
                             <button
                               onClick={() => handleRemoveSemester('fulltime', semester)}
                               className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
@@ -475,7 +475,7 @@ export default function CourseEdit() {
                       </div>
                     )}
                     <select
-                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                       value=""
                       onChange={(e) => {
                         if (e.target.value) {
@@ -494,16 +494,16 @@ export default function CourseEdit() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Заочна форма:</label>
+                  <label className="block text-amber-50 font-bold mb-2 text-sm">Заочна форма:</label>
                   <div className="flex flex-col gap-2">
                     {(item.data.inabscentia?.semesters || []).length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
                         {(item.data.inabscentia?.semesters || []).map((semester) => (
                           <div
                             key={semester}
-                            className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-1.5 flex items-center gap-2"
+                            className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
                           >
-                            <span className="text-[#fbf0df] font-mono text-sm">{semester} семестр</span>
+                            <span className="text-amber-50 font-mono text-sm">{semester} семестр</span>
                             <button
                               onClick={() => handleRemoveSemester('inabscentia', semester)}
                               className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
@@ -516,7 +516,7 @@ export default function CourseEdit() {
                       </div>
                     )}
                     <select
-                      className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                       value=""
                       onChange={(e) => {
                         if (e.target.value) {
@@ -548,10 +548,10 @@ export default function CourseEdit() {
         {item?.id && <CourseTopicsEditor courseId={item.id} />}
 
         <div className="col-span-2">
-          <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Основна література (одна на рядок):</label>
+          <label className="block text-amber-50 font-bold mb-2 text-sm">Основна література (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
             value={(item.data.literature?.main || []).join("\n")}
             onChange={(e) => {
               const main = e.target.value
@@ -569,10 +569,10 @@ export default function CourseEdit() {
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Додаткова (одна на рядок):</label>
+          <label className="block text-amber-50 font-bold mb-2 text-sm">Додаткова (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
             value={(item.data.literature?.additional || []).join("\n")}
             onChange={(e) => {
               const additional = e.target.value
@@ -590,10 +590,10 @@ export default function CourseEdit() {
           />
         </div>
         <div className="col-span-2">
-          <label className="block text-[#fbf0df] font-bold mb-2 text-sm">Інтернет-ресурси (одна на рядок):</label>
+          <label className="block text-amber-50 font-bold mb-2 text-sm">Інтернет-ресурси (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
             value={(item.data.literature?.internet || []).join("\n")}
             onChange={(e) => {
               const internet = e.target.value

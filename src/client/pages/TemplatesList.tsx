@@ -56,7 +56,7 @@ export default function TemplatesList() {
           <h1 className="font-mono">Шаблони</h1>
           <button
             onClick={() => navigate("/templates/new")}
-            className="text-[#fbf0df] hover:text-[#f3d5a3] px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+            className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
           >
             <FontAwesomeIcon icon={faPlus} />
           </button>
@@ -64,18 +64,18 @@ export default function TemplatesList() {
 
         <div className="flex flex-col gap-3">
           {items.length === 0 ? (
-            <div className="text-[#fbf0df] font-mono">Немає шаблонів</div>
+            <div className="text-amber-50 font-mono">Немає шаблонів</div>
           ) : (
             <ul className="flex flex-col gap-3">
               {items.map(t => (
-                <li key={t.id} className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 text-[#fbf0df] font-mono flex items-center justify-between">
+                <li key={t.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-bold">{t.name}</div>
                   </div>
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleDownload(t)} 
-                      className="text-[#fbf0df] hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                       aria-label="Завантажити шаблон"
                       title="Завантажити шаблон"
                     >
@@ -83,7 +83,7 @@ export default function TemplatesList() {
                     </button>
                     <button 
                       onClick={() => navigate(`/templates/${t.id}`)} 
-                      className="text-[#fbf0df] hover:text-[#f3d5a3] opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                       aria-label="Редагувати шаблон"
                       title="Редагувати шаблон"
                     >
@@ -91,7 +91,7 @@ export default function TemplatesList() {
                     </button>
                     <button 
                       onClick={() => handleDelete(t)} 
-                      className="text-[#fbf0df] hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
                       aria-label="Видалити шаблон"
                       title="Видалити шаблон"
                     >

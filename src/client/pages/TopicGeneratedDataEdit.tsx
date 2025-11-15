@@ -199,7 +199,7 @@ export default function TopicGeneratedDataEdit() {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Завантаження...</div>
+          <div className="text-amber-50 font-mono">Завантаження...</div>
         </div>
       </div>
     );
@@ -209,7 +209,7 @@ export default function TopicGeneratedDataEdit() {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Тема не знайдена</div>
+          <div className="text-amber-50 font-mono">Тема не знайдена</div>
         </div>
       </div>
     );
@@ -220,11 +220,11 @@ export default function TopicGeneratedDataEdit() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">Редагувати згенеровані дані: {topic.name}</h1>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-4">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-4">
           {/* Subtopics */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Підтеми з програми (по одній на рядок):</label>
+              <label className="block text-amber-50 font-bold">Підтеми з програми (по одній на рядок):</label>
               <button
                 onClick={() => setSubtopics("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -237,7 +237,7 @@ export default function TopicGeneratedDataEdit() {
               rows={5}
               value={subtopics}
               onChange={(e) => setSubtopics(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть підтеми, по одній на рядок"
             />
           </div>
@@ -245,7 +245,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Keywords */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Перелік термінів для методички з самостійної роботи (через кому):</label>
+              <label className="block text-amber-50 font-bold">Перелік термінів для методички з самостійної роботи (через кому):</label>
               <button
                 onClick={() => setKeywords("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -258,7 +258,7 @@ export default function TopicGeneratedDataEdit() {
               rows={3}
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть ключові слова через кому"
             />
           </div>
@@ -266,7 +266,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Topics */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Теми для самостійної роботи ({selfQuestions.length}):</label>
+              <label className="block text-amber-50 font-bold">Теми для самостійної роботи ({selfQuestions.length}):</label>
               <button
                 onClick={() => setSelfQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -279,8 +279,8 @@ export default function TopicGeneratedDataEdit() {
               {selfQuestions.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {selfQuestions.map((t, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{t}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{t}</span>
                       <button
                         onClick={() => handleRemoveTopic(index)}
                         className="text-red-400 hover:text-red-300"
@@ -297,7 +297,7 @@ export default function TopicGeneratedDataEdit() {
                   value={newSelfQuestion}
                   onChange={(e) => setNewSelfQuestion(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddTopic()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати тему"
                 />
                 <button
@@ -313,7 +313,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Self Questions Short */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Короткі питання для самостійної роботи ({selfQuestionsShort.length}):</label>
+              <label className="block text-amber-50 font-bold">Короткі питання для самостійної роботи ({selfQuestionsShort.length}):</label>
               <button
                 onClick={() => setSelfQuestionsShort([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -326,8 +326,8 @@ export default function TopicGeneratedDataEdit() {
               {selfQuestionsShort.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {selfQuestionsShort.map((q, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{q}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{q}</span>
                       <button
                         onClick={() => handleRemoveSelfQuestionShort(index)}
                         className="text-red-400 hover:text-red-300"
@@ -344,7 +344,7 @@ export default function TopicGeneratedDataEdit() {
                   value={newSelfQuestionShort}
                   onChange={(e) => setNewSelfQuestionShort(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddSelfQuestionShort()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати коротке питання"
                 />
                 <button
@@ -360,7 +360,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Referats */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Теми рефератів ({referats.length}):</label>
+              <label className="block text-amber-50 font-bold">Теми рефератів ({referats.length}):</label>
               <button
                 onClick={() => setReferats([])}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -373,8 +373,8 @@ export default function TopicGeneratedDataEdit() {
               {referats.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {referats.map((r, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{r}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{r}</span>
                       <button
                         onClick={() => handleRemoveReferat(index)}
                         className="text-red-400 hover:text-red-300"
@@ -391,7 +391,7 @@ export default function TopicGeneratedDataEdit() {
                   value={newReferat}
                   onChange={(e) => setNewReferat(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddReferat()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати реферат"
                 />
                 <button
@@ -407,7 +407,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Key Questions */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Ключові питання ({keyQuestions.length}):</label>
+              <label className="block text-amber-50 font-bold">Ключові питання ({keyQuestions.length}):</label>
               <button
                 onClick={() => setKeyQuestions([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -420,8 +420,8 @@ export default function TopicGeneratedDataEdit() {
               {keyQuestions.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {keyQuestions.map((q, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{q}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{q}</span>
                       <button
                         onClick={() => handleRemoveKeyQuestion(index)}
                         className="text-red-400 hover:text-red-300"
@@ -438,7 +438,7 @@ export default function TopicGeneratedDataEdit() {
                   value={newKeyQuestion}
                   onChange={(e) => setNewKeyQuestion(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddKeyQuestion()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати питання"
                 />
                 <button
@@ -454,7 +454,7 @@ export default function TopicGeneratedDataEdit() {
           {/* Quiz */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Тестові завдання ({quiz.length}):</label>
+              <label className="block text-amber-50 font-bold">Тестові завдання ({quiz.length}):</label>
               <button
                 onClick={() => setQuiz([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"

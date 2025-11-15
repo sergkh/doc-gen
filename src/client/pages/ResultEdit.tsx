@@ -37,7 +37,7 @@ export default function ResultEdit() {
     return (
       <div className="max-w-7xl mx-auto text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Результат не знайдено</div>
+          <div className="text-amber-50 font-mono">Результат не знайдено</div>
         </div>
       </div>
     );
@@ -48,12 +48,12 @@ export default function ResultEdit() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">{item.id >= 0 ? "Редагувати результат" : "Додати результат"}</h1>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-3">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Тип:</label>
+              <label className="block text-amber-50 font-bold mb-2">Тип:</label>
               <select
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.type}
                 onChange={(e) => update({ type: e.target.value })}
               >
@@ -63,20 +63,20 @@ export default function ResultEdit() {
               </select>
             </div>
             <div>
-              <label className="block text-[#fbf0df] font-bold mb-2">Номер:</label>
+              <label className="block text-amber-50 font-bold mb-2">Номер:</label>
               <input
                 type="number"
                 min="1"
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.no || ""}
                 onChange={(e) => update({ no: Number(e.target.value) || 0 })}
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-[#fbf0df] font-bold mb-2">Назва:</label>
+              <label className="block text-amber-50 font-bold mb-2">Назва:</label>
               <textarea
                 rows={4}
-                className="w-full bg-transparent border-0 text-[#fbf0df] font-mono text-base py-1.5 px-2 outline-none focus:text-white resize-y"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white resize-y"
                 value={item.name}
                 onChange={(e) => update({ name: e.target.value })}
                 placeholder="Введіть назву результату"

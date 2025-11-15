@@ -32,18 +32,18 @@ function Navigation() {
   const linkClassName = (isActive: boolean) => 
     `font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
       isActive
-        ? "bg-[#fbf0df] text-[#1a1a1a] font-bold"
-        : "text-[#fbf0df] hover:bg-[#2a2a2a]"
+        ? "bg-amber-50 text-zinc-900 font-bold"
+        : "text-amber-50 hover:bg-zinc-800"
     }`;
 
   return (
-    <nav className="bg-[#1a1a1a] border-b-2 border-[#fbf0df] mb-4">
+    <nav className="bg-zinc-900 border-b-2 border-amber-50 mb-4">
       <div className="max-w-7xl mx-auto px-4">
         {/* Mobile header with hamburger */}
         <div className="flex items-center justify-between p-4 md:hidden">
           <button
             onClick={toggleMenu}
-            className="text-[#fbf0df] hover:text-white transition-colors p-2"
+            className="text-amber-50 hover:text-white transition-colors p-2"
             aria-label="Toggle menu"
           >
             <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} size="lg" />
@@ -160,21 +160,21 @@ export function App() {
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#1a1a1a',
-            color: '#fbf0df',
-            border: '2px solid #fbf0df',
+            background: '#18181b',
+            color: '#fffbeb',
+            border: '2px solid #fffbeb',
             fontFamily: 'monospace',
           },
           success: {
             iconTheme: {
               primary: '#10b981',
-              secondary: '#fbf0df',
+              secondary: '#fffbeb',
             },
           },
           error: {
             iconTheme: {
               primary: '#ef4444',
-              secondary: '#fbf0df',
+              secondary: '#fffbeb',
             },
           },
         }}

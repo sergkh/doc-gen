@@ -48,9 +48,9 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
     <div>
       <div className="flex flex-col gap-4">
         {quiz.map((question, qIndex) => (
-          <div key={qIndex} className="bg-[#2a2a2a] border border-[#fbf0df] rounded-lg p-3 flex flex-col gap-2">
+          <div key={qIndex} className="bg-zinc-800 border border-amber-50 rounded-lg p-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-[#fbf0df] font-bold">Питання {question.index}:</span>
+              <span className="text-amber-50 font-bold">Питання {question.index}:</span>
               <button
                 onClick={() => handleRemoveQuestion(qIndex)}
                 className="text-red-400 hover:text-red-300"
@@ -62,7 +62,7 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
               rows={3}
               value={question.question}
               onChange={(e) => handleUpdateQuestion(qIndex, "question", e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Текст питання"
             />
             <div className="flex flex-col gap-2">
@@ -72,7 +72,7 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
                   type="text"
                   value={option}
                   onChange={(e) => handleUpdateOption(qIndex, oIndex, e.target.value)}
-                  className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-sm py-1 px-2 rounded outline-none focus:text-white"
+                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:text-white"
                   placeholder={`Варіант ${oIndex + 1}`}
                 />
               ))}

@@ -141,7 +141,7 @@ export default function CourseGeneratedDataEdit() {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Завантаження...</div>
+          <div className="text-amber-50 font-mono">Завантаження...</div>
         </div>
       </div>
     );
@@ -151,7 +151,7 @@ export default function CourseGeneratedDataEdit() {
     return (
       <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
         <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-[#fbf0df] font-mono">Курс не знайдено</div>
+          <div className="text-amber-50 font-mono">Курс не знайдено</div>
         </div>
       </div>
     );
@@ -162,11 +162,11 @@ export default function CourseGeneratedDataEdit() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <h1 className="font-mono">Редагувати згенеровані дані: {course.name}</h1>
 
-        <div className="bg-[#1a1a1a] border-2 border-[#fbf0df] rounded-xl p-3 font-mono flex flex-col gap-4">
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-4">
           {/* Discipline Questions */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Питання до дисципліни:</label>
+              <label className="block text-amber-50 font-bold">Питання до дисципліни:</label>
               <button
                 onClick={() => setDisciplineQuestions([])}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -179,8 +179,8 @@ export default function CourseGeneratedDataEdit() {
               {disciplineQuestions.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {disciplineQuestions.map((q, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{q}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{q}</span>
                       <button
                         onClick={() => handleRemoveDisciplineQuestion(index)}
                         className="text-red-400 hover:text-red-300"
@@ -197,7 +197,7 @@ export default function CourseGeneratedDataEdit() {
                   value={newDisciplineQuestion}
                   onChange={(e) => setNewDisciplineQuestion(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddDisciplineQuestion()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати питання"
                 />
                 <button
@@ -213,7 +213,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Self Method Goal */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Мета самостійної роботи:</label>
+              <label className="block text-amber-50 font-bold">Мета самостійної роботи:</label>
               <button
                 onClick={() => setSelfMethodGoal("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -226,7 +226,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={selfMethodGoal}
               onChange={(e) => setSelfMethodGoal(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть мету самостійної роботи"
             />
           </div>
@@ -234,7 +234,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Self Method Task */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Завдання самостійної роботи:</label>
+              <label className="block text-amber-50 font-bold">Завдання самостійної роботи:</label>
               <button
                 onClick={() => setSelfMethodTask("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -247,7 +247,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={selfMethodTask}
               onChange={(e) => setSelfMethodTask(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть завдання самостійної роботи"
             />
           </div>
@@ -255,7 +255,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Self Method General */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Загальна інформація про самостійну роботу:</label>
+              <label className="block text-amber-50 font-bold">Загальна інформація про самостійну роботу:</label>
               <button
                 onClick={() => setSelfMethodGeneral("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -268,7 +268,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={selfMethodGeneral}
               onChange={(e) => setSelfMethodGeneral(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть загальну інформацію про самостійну роботу"
             />
           </div>
@@ -276,7 +276,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Self Method Individual Topics */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Індивідуальні теми самостійної роботи:</label>
+              <label className="block text-amber-50 font-bold">Індивідуальні теми самостійної роботи:</label>
               <button
                 onClick={() => setSelfMethodIndividualTopics([]) }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -289,8 +289,8 @@ export default function CourseGeneratedDataEdit() {
               {selfMethodIndividualTopics.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {selfMethodIndividualTopics.map((topic, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-[#2a2a2a] border border-[#fbf0df] rounded-lg px-3 py-2">
-                      <span className="flex-1 text-[#fbf0df]">{topic}</span>
+                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
+                      <span className="flex-1 text-amber-50">{topic}</span>
                       <button
                         onClick={() => handleRemoveSelfMethodIndividualTopic(index)}
                         className="text-red-400 hover:text-red-300"
@@ -307,7 +307,7 @@ export default function CourseGeneratedDataEdit() {
                   value={newSelfMethodIndividualTopic}
                   onChange={(e) => setNewSelfMethodIndividualTopic(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleAddSelfMethodIndividualTopic()}
-                  className="flex-1 bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                   placeholder="Додати тему"
                 />
                 <button
@@ -323,7 +323,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Goal */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Мета програми:</label>
+              <label className="block text-amber-50 font-bold">Мета програми:</label>
               <button
                 onClick={() => setProgramGoal("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -336,7 +336,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programGoal}
               onChange={(e) => setProgramGoal(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть мету програми"
             />
           </div>
@@ -344,7 +344,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Task */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Завдання програми:</label>
+              <label className="block text-amber-50 font-bold">Завдання програми:</label>
               <button
                 onClick={() => setProgramTask("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -357,7 +357,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programTask}
               onChange={(e) => setProgramTask(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть завдання програми"
             />
           </div>
@@ -365,7 +365,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Subject */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Предмет програми:</label>
+              <label className="block text-amber-50 font-bold">Предмет програми:</label>
               <button
                 onClick={() => setProgramSubject("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -378,7 +378,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programSubject}
               onChange={(e) => setProgramSubject(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть предмет програми"
             />
           </div>
@@ -386,7 +386,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Orientation */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Орієнтація програми:</label>
+              <label className="block text-amber-50 font-bold">Орієнтація програми:</label>
               <button
                 onClick={() => setProgramOrientation("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -399,7 +399,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programOrientation}
               onChange={(e) => setProgramOrientation(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть орієнтацію програми"
             />
           </div>
@@ -407,7 +407,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Brief Results */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Короткі результати програми:</label>
+              <label className="block text-amber-50 font-bold">Короткі результати програми:</label>
               <button
                 onClick={() => setProgramBriefResults("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -420,7 +420,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programBriefResults}
               onChange={(e) => setProgramBriefResults(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть короткі результати програми"
             />
           </div>
@@ -428,7 +428,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Brief Skills */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Короткі вміння програми:</label>
+              <label className="block text-amber-50 font-bold">Короткі вміння програми:</label>
               <button
                 onClick={() => setProgramBriefSkills("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -441,7 +441,7 @@ export default function CourseGeneratedDataEdit() {
               rows={5}
               value={programBriefSkills}
               onChange={(e) => setProgramBriefSkills(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть короткі вміння програми"
             />
           </div>
@@ -449,7 +449,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Intro */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Вступ до програми:</label>
+              <label className="block text-amber-50 font-bold">Вступ до програми:</label>
               <button
                 onClick={() => setProgramIntro("")}
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -462,7 +462,7 @@ export default function CourseGeneratedDataEdit() {
               rows={10}
               value={programIntro}
               onChange={(e) => setProgramIntro(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть вступ до програми"
             />
           </div>
@@ -470,7 +470,7 @@ export default function CourseGeneratedDataEdit() {
           {/* Program Brief Intro */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[#fbf0df] font-bold">Короткий вступ до програми:</label>
+              <label className="block text-amber-50 font-bold">Короткий вступ до програми:</label>
               <button
                 onClick={() => setProgramBriefIntro("") }
                 className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
@@ -483,7 +483,7 @@ export default function CourseGeneratedDataEdit() {
               rows={10}
               value={programBriefIntro}
               onChange={(e) => setProgramBriefIntro(e.target.value)}
-              className="w-full bg-transparent border border-[#fbf0df] text-[#fbf0df] font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
               placeholder="Введіть короткий вступ до програми"
             />
           </div>

@@ -38,7 +38,7 @@ export default function InPlaceEditor({
         onChange={handleChange}
         onBlur={handleBlur}
         autoFocus
-        className="bg-[#1a1a1a] border border-[#fbf0df] text-[#fbf0df] font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+        className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {options.map((option) => (
@@ -56,7 +56,7 @@ export default function InPlaceEditor({
         e.stopPropagation();
         setIsEditing(true);
       }}
-      className="bg-[#1a1a1a] px-2 py-0.5 rounded hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+      className="bg-zinc-900 px-2 py-0.5 rounded hover:bg-zinc-800 transition-colors cursor-pointer"
       title={title}
     >
       {displayText}
