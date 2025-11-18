@@ -15,6 +15,7 @@ export async function loadResult(id: string): Promise<CourseResult> {
     return {
       id: -1,
       no: 0,
+      specialty_id: null,
       type: "ЗК",
       name: ""
     };
@@ -33,7 +34,7 @@ export async function upsertResult(result: CourseResult): Promise<void> {
   const method = result.id >= 0 ? "PUT" : "POST";
   const url = result.id >= 0 ? `/api/results/${result.id}` : `/api/results`;
 
-  const resultData = result.id >= 0 ? result : { id: result.id, no: result.no, type: result.type, name: result.name };
+  const resultData = result.id >= 0 ? result : { id: result.id, no: result.no, specialty_id: result.specialty_id, type: result.type, name: result.name };
 
   const res = await fetch(url, {
     method,
@@ -70,6 +71,16 @@ export async function uploadResultsFromDocx(file: File): Promise<CourseResult[]>
   if (!res.ok) {
     const errorText = await res.text();
     throw new Error(`Помилка завантаження файлу: ${res.status} - ${errorText}`);
+  }
+
+  return await res.json() as CourseResult[];
+}
+
+export async function loadResultsBySpecialty(specialtyId: number): Promise<CourseResult[]> {
+  const res = await fetch(`/api/specialties/${specialtyId}/results`);
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження результатів: ${res.status}`);
   }
 
   return await res.json() as CourseResult[];

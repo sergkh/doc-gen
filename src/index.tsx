@@ -7,6 +7,7 @@ import generationApi from "@/api/generation.ts";
 import resultsApi from "@/api/results.ts";
 import templatesApi from "@/api/templates.ts";
 import promptsApi from "@/api/prompts.ts";
+import specialtiesApi from "@/api/specialties.ts";
 
 const server = serve({
   routes: {    
@@ -16,7 +17,8 @@ const server = serve({
     ...teachersApi,
     ...resultsApi,
     ...templatesApi,
-    ...promptsApi
+    ...promptsApi,
+    ...specialtiesApi
   },
 
   development: process.env.NODE_ENV !== "production" && {

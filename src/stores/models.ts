@@ -1,6 +1,7 @@
 export type CourseResult = {
   id: number,
   no: number,
+  specialty_id: number | null,
   type: string,
   name: string
 }
@@ -71,10 +72,15 @@ export type Course = {
   generated: GeneratedCourseData | null  
 };
 
+export type TeacherPosition = "аспірант" | "асистент" | "старший викладач" | "доцент" | "професор";
+export type AcademicTitle = "кандидат технічних наук" | "кандидат економічних наук" | "PhD економічних наук" | null;
+
 export type Teacher = {
   id: number,
   name: string,
-  email: string | null
+  email: string | null,
+  position: TeacherPosition | null,
+  academic_title: AcademicTitle
 }
 
 export type GeneratedTopicData = {
@@ -199,4 +205,12 @@ export type Prompt = {
 export type ParsedData = {
   type: 'syllabus' | 'program';
   topics: CourseTopic[]
+}
+
+export type Specialty = {
+  id: number,
+  code: string,
+  name: string,
+  area_code: string,
+  area: string
 }

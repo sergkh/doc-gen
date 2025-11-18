@@ -15,7 +15,9 @@ export async function loadTeacher(id: string): Promise<Teacher> {
     return {
       id: -1,
       name: "",
-      email: ""
+      email: null,
+      position: null,
+      academic_title: null
     };
   }
 
@@ -32,7 +34,12 @@ export async function upsertTeacher(teacher: Teacher): Promise<void> {
   const method = teacher.id >= 0 ? "PUT" : "POST";
   const url = teacher.id >= 0 ? `/api/teachers/${teacher.id}` : `/api/teachers`;
 
-  const teacherData = teacher.id >= 0 ? teacher : { name: teacher.name, email: teacher.email };
+  const teacherData = teacher.id >= 0 ? teacher : { 
+    name: teacher.name, 
+    email: teacher.email, 
+    position: teacher.position, 
+    academic_title: teacher.academic_title 
+  };
 
   const res = await fetch(url, {
     method,

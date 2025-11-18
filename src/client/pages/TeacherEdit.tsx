@@ -1,7 +1,10 @@
-import type { Teacher } from "@/stores/models";
+import type { Teacher, TeacherPosition, AcademicTitle } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { loadTeacher, upsertTeacher } from "../teachers";
+
+const POSITIONS: TeacherPosition[] = ["аспірант", "асистент", "старший викладач", "доцент", "професор"];
+const ACADEMIC_TITLES: (AcademicTitle)[] = [null, "кандидат технічних наук", "кандидат економічних наук", "PhD економічних наук"];
 
 export default function TeacherEdit() {
   const { id } = useParams();
@@ -30,7 +33,7 @@ export default function TeacherEdit() {
 
   const isValid = useMemo(() => {
     if (!item) return false;
-    return item.name.trim() !== "" && item.email?.trim() !== "" && item.email?.includes("@");
+    return item.name.trim() !== "" && (item.email === null || item.email?.trim() === "" || item.email?.includes("@"));
   }, [item]);
 
   if (!item) {
@@ -64,8 +67,34 @@ export default function TeacherEdit() {
                 type="email"
                 className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.email ?? ""}
-                onChange={(e) => update({ email: e.target.value })}
+                onChange={(e) => update({ email: e.target.value || null })}
               />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-amber-50 font-bold mb-2">Посада:</label>
+              <select
+                className="w-full bg-zinc-900 border-2 border-amber-50 rounded-lg px-3 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200"
+                value={item.position ?? ""}
+                onChange={(e) => update({ position: e.target.value === "" ? null : e.target.value as TeacherPosition })}
+              >
+                <option value="">Не вказано</option>
+                {POSITIONS.map(position => (
+                  <option key={position} value={position}>{position}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-amber-50 font-bold mb-2">Вчене звання:</label>
+              <select
+                className="w-full bg-zinc-900 border-2 border-amber-50 rounded-lg px-3 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200"
+                value={item.academic_title ?? ""}
+                onChange={(e) => update({ academic_title: e.target.value === "" ? null : e.target.value as AcademicTitle })}
+              >
+                <option value="">Не вказано</option>
+                {ACADEMIC_TITLES.filter(title => title !== null).map(title => (
+                  <option key={title} value={title}>{title}</option>
+                ))}
+              </select>
             </div>
           </div>
 

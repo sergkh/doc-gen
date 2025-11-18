@@ -4,8 +4,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import type { CourseResult } from "@/stores/models";
-import { loadAllResults, deleteResult, uploadResultsFromDocx } from "../results";
+import type { CourseResult, Specialty } from "@/stores/models";
+import { deleteResult, uploadResultsFromDocx, loadResultsBySpecialty } from "../results";
+import { loadAllSpecialties } from "../specialties";
 
 const RESULT_TYPES = {
   "ЗК": "Загальні компетентності",
@@ -17,11 +18,39 @@ export default function ResultsList() {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<CourseResult[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number | null>(null);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadAllResults().then(setItems).catch(console.error);
+    loadAllSpecialties().then(setSpecialties).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (selectedSpecialtyId === null) {
+      setItems([]);
+      setSelectedSpecialty(null);
+      return;
+    }
+
+    setIsLoading(true);
+    loadResultsBySpecialty(selectedSpecialtyId)
+      .then((results) => {
+        setItems(results);
+        const specialty = specialties.find(s => s.id === selectedSpecialtyId);
+        setSelectedSpecialty(specialty || null);
+      })
+      .catch((error) => {
+        console.error("Error loading results:", error);
+        toast.error("Не вдалося завантажити результати");
+        setItems([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [selectedSpecialtyId, specialties]);
 
   const groupedResults = useMemo(() => {
     const grouped: Record<string, CourseResult[]> = {
@@ -31,17 +60,17 @@ export default function ResultsList() {
     };
 
     items.forEach(result => {
-      const group = grouped[result.type];
-      if (group) {
-        group.push(result);
+      const typeGroup = grouped[result.type];
+      if (typeGroup) {
+        typeGroup.push(result);
       }
     });
 
     // Sort each group by 'no'
     Object.keys(grouped).forEach(type => {
-      const group = grouped[type];
-      if (group) {
-        group.sort((a, b) => a.no - b.no);
+      const typeGroup = grouped[type];
+      if (typeGroup) {
+        typeGroup.sort((a, b) => a.no - b.no);
       }
     });
 
@@ -53,23 +82,27 @@ export default function ResultsList() {
       return;
     }
 
-    toast.promise(deleteResult(result.id), {
-      loading: "Видалення результату...",
-      success: () => {
-        setItems(items.filter(r => r.id !== result.id));
-        return "Результат успішно видалено";
-      },
-      error: "Не вдалося видалити результат",
-    });
+    try {
+      await deleteResult(result.id);
+      if (selectedSpecialtyId !== null) {
+        const results = await loadResultsBySpecialty(selectedSpecialtyId);
+        setItems(results);
+      }
+      toast.success("Результат успішно видалено");
+    } catch (error) {
+      toast.error("Не вдалося видалити результат");
+    }
   };
 
   const processFile = async (file: File) => {
     setIsUploading(true);
     const uploadPromise = (async () => {
       const uploadedResults = await uploadResultsFromDocx(file);
-      // Reload all results to show the newly uploaded ones
-      const allResults = await loadAllResults();
-      setItems(allResults);
+      // Reload results for the selected specialty if one is selected
+      if (selectedSpecialtyId !== null) {
+        const results = await loadResultsBySpecialty(selectedSpecialtyId);
+        setItems(results);
+      }
       return uploadedResults;
     })();
 
@@ -110,12 +143,26 @@ export default function ResultsList() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <h1 className="font-mono">Результати навчання</h1>
-          <button
-            onClick={() => navigate("/results/new")}
-            className="text-amber-50 hover:text-amber-200 px-2 py-2 rounded-lg font-bold flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedSpecialtyId ?? ""}
+              onChange={(e) => setSelectedSpecialtyId(e.target.value === "" ? null : Number(e.target.value))}
+              className="bg-zinc-900 border-2 border-amber-50 rounded-lg px-3 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200"
+            >
+              <option value="">Виберіть спеціальність</option>
+              {specialties.map(specialty => (
+                <option key={specialty.id} value={specialty.id}>
+                  {specialty.code ? `${specialty.code} - ` : ""}{specialty.name} ({specialty.area})
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => navigate("/results/new")}
+              className="text-amber-50 hover:text-amber-200 px-2 py-2 rounded-lg font-bold flex items-center gap-2"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          </div>
         </div>
 
         <div
@@ -140,19 +187,28 @@ export default function ResultsList() {
           </div>
         </div>
 
-        {items.length === 0 ? (
-          <div className="text-amber-50 font-mono">Немає результатів</div>
+        {selectedSpecialtyId === null ? (
+          <div className="text-amber-50 font-mono">Виберіть спеціальність для перегляду результатів</div>
+        ) : isLoading ? (
+          <div className="text-amber-50 font-mono">Завантаження...</div>
+        ) : items.length === 0 ? (
+          <div className="text-amber-50 font-mono">Немає результатів для цієї спеціальності</div>
         ) : (
           <div className="flex flex-col gap-6">
+            {selectedSpecialty && (
+              <h2 className="text-amber-200 font-bold text-xl font-mono border-b-2 border-amber-50 pb-2">
+                {selectedSpecialty.code ? `${selectedSpecialty.code} - ` : ""}{selectedSpecialty.name} ({selectedSpecialty.area})
+              </h2>
+            )}
             {(["ЗК", "СК", "РН"] as const).map(type => {
               const results = groupedResults[type];
               if (!results || results.length === 0) return null;
 
               return (
                 <div key={type} className="flex flex-col gap-3">
-                  <h2 className="text-amber-200 font-bold text-lg font-mono">
+                  <h3 className="text-amber-200 font-bold text-lg font-mono">
                     {RESULT_TYPES[type]}
-                  </h2>
+                  </h3>
                   <ul className="flex flex-col gap-3">
                     {results.map(result => (
                       <li key={result.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">

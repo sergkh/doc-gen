@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, KeyValue, Prompt, ShortCourseInfo, Teacher, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, KeyValue, Prompt, ShortCourseInfo, Specialty, Teacher, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -75,13 +75,15 @@ const teachers = {
   },
   
   add: async (teacher: Teacher) => {
-    return await sql`INSERT INTO teachers (name, email) VALUES (${teacher.name}, ${teacher.email}) RETURNING *`;
+    return await sql`INSERT INTO teachers (name, email, position, academic_title) VALUES (${teacher.name}, ${teacher.email}, ${teacher.position}, ${teacher.academic_title}) RETURNING *`;
   },
 
   update: async (teacher: Teacher) => {
     return await sql`UPDATE teachers 
       SET name = ${teacher.name}, 
           email = ${teacher.email}, 
+          position = ${teacher.position},
+          academic_title = ${teacher.academic_title},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${teacher.id}
       RETURNING *`;
@@ -135,7 +137,21 @@ const courseTopics = {
 
 const courseResults = {
   all: async (): Promise<CourseResult[]> => {
-    return await sql`SELECT * FROM course_results ORDER BY type, no` as CourseResult[];
+    return await sql`
+      SELECT 
+        cr.id,
+        cr.no,
+        cr.specialty_id,
+        cr.type,
+        cr.name,
+        s.code as specialty_code,
+        s.name as specialty_name,
+        s.area_code as specialty_area_code,
+        s.area as specialty_area
+      FROM course_results cr
+      LEFT JOIN specialties s ON cr.specialty_id = s.id
+      ORDER BY cr.specialty_id, cr.type, cr.no
+    ` as CourseResult[];
   },
 
   list: async (ids: number[]): Promise<CourseResult[]> => {
@@ -143,13 +159,22 @@ const courseResults = {
     return await sql`SELECT * FROM course_results WHERE id IN ${sql(ids)} ORDER BY type, no` as CourseResult[];
   },
 
+  bySpecialty: async (specialtyId: number): Promise<CourseResult[]> => {
+    return await sql`
+      SELECT *
+      FROM course_results cr      
+      WHERE cr.specialty_id = ${specialtyId} ORDER BY cr.type, cr.no` as CourseResult[];
+  },
+
   get: async (id: number): Promise<CourseResult | null> => {
-    const result = await sql`SELECT * FROM course_results WHERE id = ${id}`;
+    const result = await sql`
+      SELECT * FROM course_results cr WHERE cr.id = ${id}
+    `;
     return result[0] || null;
   },
 
   add: async (result: CourseResult) : Promise<number> => {
-    return (await sql`INSERT INTO course_results (no, type, name) VALUES (${result.no}, ${result.type}, ${result.name}) RETURNING *`)[0].id;
+    return (await sql`INSERT INTO course_results (no, type, name, specialty_id) VALUES (${result.no}, ${result.type}, ${result.name}, ${result.specialty_id}) RETURNING *`)[0].id;
   },
 
   update: async (result: CourseResult) => {
@@ -157,6 +182,7 @@ const courseResults = {
       SET no = ${result.no}, 
           type = ${result.type}, 
           name = ${result.name}, 
+          specialty_id = ${result.specialty_id},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${result.id}
       RETURNING *`;
@@ -238,4 +264,39 @@ const prompts = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults, templates, prompts };
+const specialties = {
+  all: async (): Promise<Specialty[]> => {
+    return await sql`SELECT * FROM specialties ORDER BY code, name` as Specialty[];
+  },
+
+  get: async (id: number): Promise<Specialty | null> => {
+    const result = await sql`SELECT * FROM specialties WHERE id=${id}`;
+    return result[0] || null;
+  },
+
+  findByName: async (name: string): Promise<Specialty | null> => {
+    const result = await sql`SELECT * FROM specialties WHERE name=${name}`;
+    return result[0] || null;
+  },
+  
+  add: async (specialty: Specialty) => {
+    return await sql`INSERT INTO specialties (code, name, area_code, area) VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}) RETURNING *`;
+  },
+
+  update: async (specialty: Specialty) => {
+    return await sql`UPDATE specialties 
+      SET name = ${specialty.name}, 
+          code = ${specialty.code},
+          area_code = ${specialty.area_code},
+          area = ${specialty.area}, 
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${specialty.id}
+      RETURNING *`;
+  },
+
+  delete: async (id: number) => {
+    return await sql`DELETE FROM specialties WHERE id = ${id}`;
+  },
+};
+
+export { courses, teachers, courseTopics , courseResults, templates, prompts, specialties };
