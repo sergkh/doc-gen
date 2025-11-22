@@ -16,6 +16,7 @@ const templatesApi = {
         const formData = await req.formData();
         const file = formData.get("file") as File;
         const name = formData.get("name") as string;
+        const dataStr = formData.get("data") as string | null;
 
         if (!file) {
           return new Response("No file provided", { status: 400 });
@@ -28,8 +29,11 @@ const templatesApi = {
         // Save the file and get the path
         const filePath = await saveUploadedFile(file);
 
+        // Parse data if provided
+        const data = dataStr ? JSON.parse(dataStr) : undefined;
+
         // Create template
-        const template = { id: 0, name, file: filePath } as Template;
+        const template = { id: 0, name, file: filePath, data } as Template;
         const result = await templates.add(template);
         
         return Response.json({ success: true, template: result[0] });
@@ -66,6 +70,7 @@ const templatesApi = {
         const formData = await req.formData();
         const file = formData.get("file") as File | null;
         const name = formData.get("name") as string;
+        const dataStr = formData.get("data") as string | null;
 
         let filePath = existingTemplate.file;
         
@@ -79,10 +84,14 @@ const templatesApi = {
           }
         }
 
+        // Parse data if provided, otherwise keep existing data
+        const data = dataStr ? JSON.parse(dataStr) : existingTemplate.data;
+
         const template = {
           id: templateId,
           name: name || existingTemplate.name,
-          file: filePath
+          file: filePath,
+          data
         } as Template;
 
         const result = await templates.update(template);

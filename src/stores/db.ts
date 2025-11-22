@@ -204,13 +204,14 @@ const templates = {
   },
 
   add: async (template: Template) => {
-    return await sql`INSERT INTO templates (name, file) VALUES (${template.name}, ${template.file}) RETURNING *`;
+    return await sql`INSERT INTO templates (name, file, data) VALUES (${template.name}, ${template.file}, ${template.data}) RETURNING *`;
   },
 
   update: async (template: Template) => {
     return await sql`UPDATE templates 
       SET name = ${template.name}, 
           file = ${template.file}, 
+          data = ${template.data},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${template.id}
       RETURNING *`;

@@ -1,9 +1,10 @@
-import type { Template } from "@/stores/models";
+import type { Template, TemplateParameter } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { loadTemplate, upsertTemplate } from "../templates";
 import toast from "react-hot-toast";
+import TemplateParametersEditor from "../components/TemplateParametersEditor";
 
 export default function TemplateEdit() {
   const { id } = useParams();
@@ -19,6 +20,17 @@ export default function TemplateEdit() {
   const update = (json: Partial<Template>) => {
     if (!item) return;
     setItem({ ...item, ...json } as Template);
+  };
+
+  const handleParametersChange = (parameters: TemplateParameter[]) => {
+    if (!item) return;
+    setItem({
+      ...item,
+      data: {
+        ...item.data,
+        parameters
+      }
+    } as Template);
   };
 
   const handleFileSelect = (file: File) => {
@@ -123,6 +135,11 @@ export default function TemplateEdit() {
               </div>
             </div>
           </div>
+
+          <TemplateParametersEditor
+            parameters={item.data?.parameters || []}
+            onChange={handleParametersChange}
+          />
 
           <div className="flex gap-2">
             <button

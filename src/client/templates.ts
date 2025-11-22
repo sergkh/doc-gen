@@ -15,7 +15,8 @@ export async function loadTemplate(id: string): Promise<Template> {
     return {
       id: -1,
       name: "",
-      file: ""
+      file: "",
+      data: {}
     };
   }
 
@@ -34,14 +35,10 @@ export async function upsertTemplate(template: Template, file?: File): Promise<v
 
   const formData = new FormData();
   formData.append("name", template.name);
-  if (file) {
-    formData.append("file", file);
-  }
+  formData.append("data", JSON.stringify(template.data));
+  if (file) formData.append("file", file);
 
-  const res = await fetch(url, {
-    method,
-    body: formData
-  });
+  const res = await fetch(url, { method, body: formData });
 
   if (!res.ok) {
     throw new Error(`Помилка збереження шаблону: ${res.status}`);
@@ -49,10 +46,7 @@ export async function upsertTemplate(template: Template, file?: File): Promise<v
 }
 
 export async function deleteTemplate(id: number): Promise<void> {
-  const res = await fetch(`/api/templates/${id}`, {
-    method: "DELETE"
-  });
-
+  const res = await fetch(`/api/templates/${id}`, { method: "DELETE" });
   if (!res.ok) {
     throw new Error(`Помилка видалення шаблону: ${res.status}`);
   }

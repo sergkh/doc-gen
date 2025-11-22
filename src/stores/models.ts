@@ -184,12 +184,24 @@ export type CourseGenerationData = {
       srs: number
     }
   }
+} & Record<string, any>; // parameters input by the user for the template
+
+export type TemplateParameter = {
+  name: string,
+  description?: string,
+  type: "text" | "number" | "boolean" | "list" | "object", 
+  subtype?: "text" | "number" | "boolean" | "object",
+  dictionary?: string | string[],
+  optionsUrl?: string
 }
 
 export type Template = {
   id: number,
   name: string,
-  file: string
+  file: string,
+  data: {
+    parameters?: TemplateParameter[]
+  }  
 }
 
 export type Prompt = {

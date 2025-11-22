@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS course_topics(
   index INTEGER NOT NULL,
   name VARCHAR(512) NOT NULL,
   lection TEXT NOT NULL,
-  generated JSONB,
-  data JSONB,
+  generated JSONB not null default '{}'::jsonb,
+  data JSONB not null default '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS templates(
   id SERIAL PRIMARY KEY,
   name VARCHAR(512) NOT NULL UNIQUE,
   file VARCHAR(512) NOT NULL,
+  data JSONB not null default '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

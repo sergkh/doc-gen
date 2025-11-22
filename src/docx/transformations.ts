@@ -82,6 +82,7 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
 export async function loadFullCourseInfo(
   course: Course, 
   topics: CourseTopic[],
+  params: Record<string, any>,
   onProgress?: (progress: number) => void,
   apiKey?: string
 ): Promise<CourseGenerationData> {
@@ -126,7 +127,7 @@ export async function loadFullCourseInfo(
       srs: updatedTopics.map(t => t.data.inabscentia.srs_hours).sum(),
     }
   }
-  
+
   return {
     course: updatedCourse,
     topics: updatedTopics,
@@ -138,6 +139,7 @@ export async function loadFullCourseInfo(
     attestations,
     oneSemesterOnly,
     semesters,
-    hours
+    hours,
+    ...params // parameters input by the user for the template
   } as CourseGenerationData
 }
