@@ -32,7 +32,7 @@ COPY --from=prerelease /usr/src/app/src ./src
 
 
 # run the app
-USER bun
+#USER bun
 ENV NODE_ENV=production
 EXPOSE 3000/tcp
 ENTRYPOINT [ "bun", "src/index.tsx" ]
