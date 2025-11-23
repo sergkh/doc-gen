@@ -6,7 +6,6 @@ import coursesApi from "@/api/courses.ts";
 import generationApi from "@/api/generation.ts";
 import resultsApi from "@/api/results.ts";
 import templatesApi from "@/api/templates.ts";
-import promptsApi from "@/api/prompts.ts";
 import specialtiesApi from "@/api/specialties.ts";
 
 const server = serve({
@@ -17,7 +16,6 @@ const server = serve({
     ...teachersApi,
     ...resultsApi,
     ...templatesApi,
-    ...promptsApi,
     ...specialtiesApi
   },
 

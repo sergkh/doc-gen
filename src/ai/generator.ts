@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion } from "@/stores/models.ts";
-import { courses, courseTopics, prompts } from "@/stores/db.ts";
+import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion, Template } from "@/stores/models.ts";
+import { courses, courseTopics } from "@/stores/db.ts";
 
 function deepEqual(a: any, b: any): boolean {
   try {
@@ -85,6 +85,7 @@ async function retryWithBackoff<T>(
 // Gets all configured prompts for given type and runs them if they weren't run before
 // prompts are run in order of their index, so can rely on previous prompts results
 export async function runPrompts(
+  template: Template,
   state: Record<string, any>,
   type: "topic" | "course",
   apiKey: string | null,
@@ -93,7 +94,7 @@ export async function runPrompts(
   const client = createOpenAIClient(apiKey);
   const results = {...state} as Record<string, any>;
 
-  const promptsToRun = await prompts.getByType(type);
+  const promptsToRun = template.prompts.filter(p => p.type === type);
 
   for (const prompt of promptsToRun) {
     // this field is already generated
@@ -131,13 +132,13 @@ export async function runPrompts(
 }
 
 // Runs set of prompts for course and topics
-export async function generateCourseInfo(course: Course, topics: CourseTopic[], progress: (progress: number) => void, apiKey?: string): Promise<{ course: Course, topics: CourseTopic[] }> {
+export async function generateCourseInfo(template: Template, course: Course, topics: CourseTopic[], progress: (progress: number) => void, apiKey?: string): Promise<{ course: Course, topics: CourseTopic[] }> {
   const key = apiKey ?? null;
   let updatedTopics = [] as CourseTopic[]
   
   // do not parallelize as it might be rate limited by the OpenAI API
   for (const topic of topics) {
-    const prompts = await runPrompts(topic.generated || {}, "topic", key, (state) => ({
+    const prompts = await runPrompts(template, topic.generated || {}, "topic", key, (state) => ({
       ...state,
       courseName: course.name,
       courseDescription: course.data.description ?? "",
@@ -162,7 +163,7 @@ export async function generateCourseInfo(course: Course, topics: CourseTopic[], 
     updatedTopics.push(updated);
   }
 
-  const prompts = await runPrompts(course.generated || {}, "course", key, (state) => ({
+  const prompts = await runPrompts(template, course.generated || {}, "course", key, (state) => ({
     ...state,
     courseName: course.name,
     courseDescription: course.data.description ?? "",

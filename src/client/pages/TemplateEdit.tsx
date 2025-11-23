@@ -1,9 +1,11 @@
-import type { Template } from "@/stores/models";
+import type { Template, TemplateParameter, Prompt } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { loadTemplate, upsertTemplate } from "../templates";
 import toast from "react-hot-toast";
+import TemplateParametersEditor from "../components/TemplateParametersEditor";
+import TemplatePromptsEditor from "../components/TemplatePromptsEditor";
 
 export default function TemplateEdit() {
   const { id } = useParams();
@@ -13,12 +15,37 @@ export default function TemplateEdit() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    loadTemplate(id || "new").then(setItem).catch(console.error);
+    loadTemplate(id || "new").then((template) => {
+      // Ensure prompts is initialized
+      if (!template.prompts) {
+        template.prompts = [];
+      }
+      setItem(template);
+    }).catch(console.error);
   }, [id]);
 
   const update = (json: Partial<Template>) => {
     if (!item) return;
     setItem({ ...item, ...json } as Template);
+  };
+
+  const handleParametersChange = (parameters: TemplateParameter[]) => {
+    if (!item) return;
+    setItem({
+      ...item,
+      data: {
+        ...item.data,
+        parameters
+      }
+    } as Template);
+  };
+
+  const handlePromptsChange = (prompts: Prompt[]) => {
+    if (!item) return;
+    setItem({
+      ...item,
+      prompts
+    } as Template);
   };
 
   const handleFileSelect = (file: File) => {
@@ -123,6 +150,16 @@ export default function TemplateEdit() {
               </div>
             </div>
           </div>
+
+          <TemplateParametersEditor
+            parameters={item.data?.parameters || []}
+            onChange={handleParametersChange}
+          />
+
+          <TemplatePromptsEditor
+            prompts={item.prompts || []}
+            onChange={handlePromptsChange}
+          />
 
           <div className="flex gap-2">
             <button

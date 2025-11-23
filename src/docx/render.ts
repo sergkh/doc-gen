@@ -12,9 +12,15 @@ const helpers = {
 }
 
 // shorten name from LastName FirstName MiddleName to LastName F. M.
-const shortenName = (name: string) => {
-  const parts = name.split(" ");
-  return parts[0] + " " + parts.slice(1).map(b => b.slice(0, 1).toUpperCase() + ".").join(" ")
+const shortenName = (input: string | {name?: string}) => {
+  // if we get the full Teacher object, get the name
+  if (typeof input === "object" && input.name) return shortenName(input.name);
+  
+  if (typeof input === "string") {
+    const parts = input.split(" ");
+    return parts[0] + " " + parts.slice(1).map(b => b.slice(0, 1).toUpperCase() + ".").join(" ");
+  }  
+  return input;
 }
 
 // Helper functions that can be used in templates like:
@@ -61,7 +67,7 @@ const parser = expressionParser.configure({
         return trimmed + ".";
       },
       shortName(input) {
-        if (!input) return input;        
+        if (!input) return input;
         if (Array.isArray(input)) return input.map(n => shortenName(n))
         return shortenName(input);
       }

@@ -30,7 +30,7 @@ function wordResp(file: ArrayBuffer, name: string = "result.docx"): Response {
   });
 }
 
-async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string) {
+async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string, parameters?: Record<string, any>) {
   try {
     job.status = "generating";
     job.progress = 5;
@@ -40,20 +40,14 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
       throw new Error("No topics found");
     }
 
-    const renderData = await loadFullCourseInfo(course, topics, (progress) => {
+    const renderData = await loadFullCourseInfo(template, course, topics, parameters ?? {}, (progress) => {
       job.progress = progress;
     }, apiKey);
 
     job.status = "rendering";
     job.progress = 95;
 
-    // Add authors to render data
-    const renderDataWithAuthors = {
-      ...renderData,
-      authors: [renderData.course.teacher]
-    };
-
-    const doc = await renderDoc(template.file, renderDataWithAuthors);
+    const doc = await renderDoc(template.file, renderData);
     
     job.result = doc;
     job.status = "completed";
@@ -69,7 +63,7 @@ const generationApi = {
   "/api/courses/:courseId/generate/:templateId": {
     async POST(req: BunRequest) {
       const { courseId, templateId } = req.params as { courseId: number; templateId: number };
-      const body = await req.json().catch(() => ({})) as { apiKey?: string };
+      const body = await req.json().catch(() => ({})) as { apiKey?: string; parameters?: Record<string, any> };
       
       const course = await courses.get(courseId);
       if (!course) {
@@ -96,7 +90,7 @@ const generationApi = {
       jobs.set(jobId, job);
 
       // Start generation in background
-      runGenerationJob(job, course, template, body.apiKey).catch((error) => {
+      runGenerationJob(job, course, template, body.apiKey, body.parameters).catch((error) => {
         job.status = "error";
         job.error = error instanceof Error ? error.message : "Unknown error";
       });
