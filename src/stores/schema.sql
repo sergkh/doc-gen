@@ -47,23 +47,10 @@ CREATE TABLE IF NOT EXISTS templates(
   name VARCHAR(512) NOT NULL UNIQUE,
   file VARCHAR(512) NOT NULL,
   data JSONB not null default '{}'::jsonb,
+  prompts JSONB not null default '[]'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE TABLE IF NOT EXISTS prompts(
-  id SERIAL PRIMARY KEY,
-  index INTEGER NOT NULL,
-  type VARCHAR(64) NOT NULL,
-  field VARCHAR(512) NOT NULL,
-  system_prompt TEXT NOT NULL,
-  prompt TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_index_type ON prompts (index, type);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_field_type ON prompts (field, type);
 
 CREATE TABLE IF NOT EXISTS specialties(
   id SERIAL PRIMARY KEY,

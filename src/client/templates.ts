@@ -16,7 +16,8 @@ export async function loadTemplate(id: string): Promise<Template> {
       id: -1,
       name: "",
       file: "",
-      data: {}
+      data: {},
+      prompts: []
     };
   }
 
@@ -35,7 +36,8 @@ export async function upsertTemplate(template: Template, file?: File): Promise<v
 
   const formData = new FormData();
   formData.append("name", template.name);
-  formData.append("data", JSON.stringify(template.data));
+  formData.append("data", JSON.stringify(template.data || {}));
+  formData.append("prompts", JSON.stringify(template.prompts || []));
   if (file) formData.append("file", file);
 
   const res = await fetch(url, { method, body: formData });

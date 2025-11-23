@@ -40,7 +40,7 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
       throw new Error("No topics found");
     }
 
-    const renderData = await loadFullCourseInfo(course, topics, parameters ?? {}, (progress) => {
+    const renderData = await loadFullCourseInfo(template, course, topics, parameters ?? {}, (progress) => {
       job.progress = progress;
     }, apiKey);
 

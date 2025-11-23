@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -80,6 +80,7 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
  * Hours are mostly calculated from the hours set in course topics data.
  */
 export async function loadFullCourseInfo(
+  template: Template,
   course: Course, 
   topics: CourseTopic[],
   params: Record<string, any>,
@@ -90,7 +91,7 @@ export async function loadFullCourseInfo(
   
   // Generate course info - this is the slowest part (as might use AI)
   // Progress from 5% to 70% (65% for AI generation)
-  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(course, topics, (progress: number) => {
+  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(template, course, topics, (progress: number) => {
     onProgress?.(5 + progress * 0.65); // Scale progress to 65%
   }, apiKey);
   

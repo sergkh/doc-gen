@@ -201,12 +201,13 @@ export type Template = {
   file: string,
   data: {
     parameters?: TemplateParameter[]
-  }  
+  },
+  prompts: Prompt[]
 }
 
 export type Prompt = {
-  id: number,
-  index: number,
+  id?: number,
+  index?: number,
   type: "course" | "topic",
   field: string,
   model: string,

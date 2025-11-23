@@ -15,7 +15,6 @@ import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
-import PromptsList from "./client/pages/PromptsList";
 
 function Navigation() {
   const location = useLocation();
@@ -86,14 +85,7 @@ function Navigation() {
             className={linkClassName(location.pathname.startsWith("/templates"))}
           >
             Шаблони
-          </Link>
-          <Link
-            to="/prompts"
-            onClick={closeMenu}
-            className={linkClassName(location.pathname.startsWith("/prompts"))}
-          >
-            Промпти
-          </Link>        
+          </Link>     
         </div>
 
         {/* Mobile menu */}
@@ -137,14 +129,7 @@ function Navigation() {
               className={linkClassName(location.pathname.startsWith("/templates"))}
             >
               Шаблони
-            </Link>
-            <Link
-              to="/prompts"
-              onClick={closeMenu}
-              className={linkClassName(location.pathname.startsWith("/prompts"))}
-            >
-              Промпти
-            </Link>        
+            </Link>      
           </div>
         </div>
       </div>
@@ -195,7 +180,6 @@ export function App() {
         <Route path="/results/:id" element={<ResultEdit />} />
         <Route path="/templates" element={<TemplatesList />} />
         <Route path="/templates/:id" element={<TemplateEdit />} />
-        <Route path="/prompts" element={<PromptsList />} />
       </Routes>
     </div>
   );

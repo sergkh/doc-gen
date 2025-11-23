@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, KeyValue, Prompt, ShortCourseInfo, Specialty, Teacher, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Specialty, Teacher, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -204,7 +204,7 @@ const templates = {
   },
 
   add: async (template: Template) => {
-    return await sql`INSERT INTO templates (name, file, data) VALUES (${template.name}, ${template.file}, ${template.data}) RETURNING *`;
+    return await sql`INSERT INTO templates (name, file, data, prompts) VALUES (${template.name}, ${template.file}, ${template.data}, ${template.prompts}) RETURNING *`;
   },
 
   update: async (template: Template) => {
@@ -212,6 +212,7 @@ const templates = {
       SET name = ${template.name}, 
           file = ${template.file}, 
           data = ${template.data},
+          prompts = ${template.prompts},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${template.id}
       RETURNING *`;
@@ -219,49 +220,6 @@ const templates = {
 
   delete: async (id: number) => {
     return await sql`DELETE FROM templates WHERE id = ${id}`;
-  },
-};
-
-const prompts = {
-  get: async (id: number): Promise<Prompt | null> => {
-    const result = await sql`SELECT * FROM prompts WHERE id = ${id}`;
-    return result[0] || null;
-  },
-
-  getByType: async (type: string): Promise<Prompt[]> => {
-    return await sql`SELECT * FROM prompts WHERE type = ${type} ORDER BY index` as Prompt[];
-  },
-
-  add: async (prompt: Prompt) => {
-    return await sql`INSERT INTO prompts 
-      (index, type, field, system_prompt, prompt, model) 
-      VALUES (${prompt.index}, ${prompt.type}, ${prompt.field}, ${prompt.system_prompt}, ${prompt.prompt}, ${prompt.model}) 
-      RETURNING *`;
-  },
-
-  update: async (prompt: Prompt) => {
-    return await sql`UPDATE prompts 
-      SET index = ${prompt.index}, 
-          type = ${prompt.type}, 
-          field = ${prompt.field}, 
-          system_prompt = ${prompt.system_prompt}, 
-          prompt = ${prompt.prompt},
-          model = ${prompt.model},
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${prompt.id}
-      RETURNING *`;
-  },
-
-  delete: async (id: number) => {
-    return await sql`DELETE FROM prompts WHERE id = ${id}`;
-  },
-
-  updateOrdering: async (type: string, promptIds: number[]) => {
-    await Promise.all(
-      promptIds.map(async (promptId, index) => 
-        await sql`UPDATE prompts SET index=${index + 1} WHERE id=${promptId} AND type=${type}`
-      )
-    );
   },
 };
 
@@ -300,4 +258,4 @@ const specialties = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults, templates, prompts, specialties };
+export { courses, teachers, courseTopics , courseResults, templates, specialties };
