@@ -46,6 +46,11 @@ export async function loadCourse(id: string): Promise<Course> {
         inabscentia: {
           semesters: [],
           study_year: 1
+        },
+        literature: {
+          main: [],
+          additional: [],
+          internet: []
         }
       }
     };

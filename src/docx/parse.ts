@@ -1,11 +1,13 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
-import type { Course, CourseResult, CourseTopic, GeneratedTopicData, ParsedData } from '@/stores/models';
+import type { Course, CourseResult, CourseTopic, GeneratedTopicData, ParsedData, Specialty, Teacher } from '@/stores/models';
 // @ts-ignore
 import docx4js from "docx4js";
+import { PDFParse } from 'pdf-parse';
 import path from 'path';
-import { courseResults, teachers } from '@/stores/db';
+import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
+import { extractInformationAI } from '@/ai/extractor';
 
 export type OPPCourse = {
   name: string;
@@ -18,14 +20,60 @@ export type OPP ={
   programResults: CourseResult[];
 }
 
+const specialtyPrompt = `
+  З переданого тексту вибери спеціальність, її код, галузь знань та її код та кваліфікацію.
+  Якщо щось не вказане, поверни null. Результат поверни у вигляді JSON: { specialty: string, code: string, area_code: string, area: string, qualification: string }.
+  Текст:"{{text}}"
+`;
+
+type SpecialtyExtraction = {
+  specialty: string | null;
+  code: string | null;
+  area_code: string | null;
+  area: string | null;
+  qualification: string | null;
+}
+
+function normalizeLiterature(text: string): string[] {
+  return text.split(/\n/).map(l => l.trim()).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
+}
+
 export async function parseOPP(filepath: string): Promise<OPP | null> {
-  try {
-    const text = await docx2text(filepath);
+  try {    
+    const text = await file2text(filepath);
     
+    const header = text.substring(0, 1000);
+    const extractedSpecialty = await extractInformationAI<SpecialtyExtraction>(header, specialtyPrompt);
+    
+    console.log("Extracted specialty:", extractedSpecialty);
+
+    let specialty = extractedSpecialty.code ? await specialties.findByCode(extractedSpecialty.code) : extractedSpecialty.specialty ? await specialties.findByName(extractedSpecialty.specialty) : null;
+
+    if (!specialty) {
+      console.error("Adding new specialty:", extractedSpecialty);
+
+      specialty = {
+        id: 0,
+        name: extractedSpecialty.specialty || "",
+        code: extractedSpecialty.code || "",
+        area_code: extractedSpecialty.area_code || "",
+        area: extractedSpecialty.area || "",
+        qualification: extractedSpecialty.qualification || "",
+      } as Specialty
+
+      const addResult = await specialties.add(specialty);
+      
+      specialty.id = addResult[0].id;
+    }
+
     const generalResults = parseOPPResults(text, 'ЗК');
     const specialResults = parseOPPResults(text, 'СК');
     const programResults = parseOPPResults(text, 'РН');
-    
+
+    [...generalResults, ...specialResults, ...programResults].forEach(result => {
+      result.specialty_id = specialty.id;
+    });
+
     return { generalResults, specialResults, programResults } as OPP;
   } catch (error) {
     console.error("Error parsing OPP:", error);
@@ -33,13 +81,13 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
   }
 }
 
-export async function parseSylabusOrProgram(filepath: string): Promise<Course & ParsedData | null> {
+export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     const text = (await docx2text(filepath)).trim();
     if (/СИЛАБУС/g.test(text.substring(0, 200))) {
-      return await parseSylabus(text);
+      return await parseSylabus(text, dryRun);
     } else if (/РОБОЧА ПРОГРАМА/g.test(text.substring(0, 400))) {
-      return await parseProgram(text);
+      return await parseProgram(text, dryRun);
     }
 
     return null;
@@ -66,7 +114,7 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
     name = name.replace(/\s+/g, ' ').trim();
     
     if (name) {
-      results.push({ id: -1, no, type, name });
+      results.push({ id: -1, no, type, name, specialty_id: 0 });
     }
   }
   
@@ -76,7 +124,7 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
 }
 
 // Best effort parsing of syllabus
-async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
+async function parseSylabus(text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     // save for debugging
     const hash = createHash("sha256").update(text).digest("hex");
@@ -134,7 +182,7 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
     
     if (!teacher) {
       // Create new teacher
-      teacher = { id: 0, name: lecturerName, email }
+      teacher = { id: 0, name: lecturerName, email, position: null, academic_title: null } as Teacher
       console.log("Creating new teacher:", teacher);
       const id = (await teachers.add(teacher))[0].id;
       teacher.id = id;
@@ -174,36 +222,18 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
       }
     }
 
-    // Parse literature
-    const literature = {
-      main: [] as string[],
-      additional: [] as string[],
-      internet: [] as string[]
-    };
+    const literatureText = text.substring(Math.min(text.lastIndexOf("РЕКОМЕНДОВАНІ ДЖЕРЕЛА ІНФОРМАЦІЇ"), text.lastIndexOf("ЛІТЕРАТУРА")));
 
     // Extract main literature
-    const mainLitMatch = text.match(/Основна література\s+([\s\S]*?)(?=Додаткова література|Інтернет|СИСТЕМА)/i);
-    if (mainLitMatch?.[1]) {
-      const mainLitText = mainLitMatch[1];
-      const mainLines = mainLitText.split(/\n/).map(l => l.trim()).filter(l => l && !/^\d+\./.test(l));
-      literature.main = mainLines.filter(l => l.length > 10); // Filter out very short lines
-    }
-
-    // Extract additional literature
-    const addLitMatch = text.match(/Додаткова література\s+([\s\S]*?)(?=Інтернет|СИСТЕМА)/i);
-    if (addLitMatch?.[1]) {
-      const addLitText = addLitMatch[1];
-      const addLines = addLitText.split(/\n/).map(l => l.trim()).filter(l => l && !/^\d+\./.test(l));
-      literature.additional = addLines.filter(l => l.length > 10);
-    }
-
-    // Extract internet resources
-    const internetMatch = text.match(/Інтернет\s+ресурси?\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
-    if (internetMatch?.[1]) {
-      const internetText = internetMatch[1];
-      const internetLines = internetText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 5);
-      literature.internet = internetLines.filter(l => /http/i.test(l) || l.length > 10);
-    }
+    const mainLitMatch = literatureText.match(/Основна література\s+([\s\S]*?)(?=Додаткова література|Інтернет|СИСТЕМА)/i);
+    const addLitMatch = literatureText.match(/Додаткова література\s+([\s\S]*?)(?=Інтернет|СИСТЕМА)/i);
+    const internetMatch = literatureText.match(/Інтернет\s+ресурси?\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
+    
+    const literature = {
+      main: mainLitMatch?.[1] ? normalizeLiterature(mainLitMatch[1]) : [],
+      additional: addLitMatch?.[1] ? normalizeLiterature(addLitMatch[1]) : [],
+      internet: internetMatch?.[1] ? normalizeLiterature(internetMatch[1]) : []
+    };
 
     // Parse attestations from "Розподіл балів за видами навчальної діяльності"
     const attestations: { name: string; semester: number }[] = [];
@@ -260,7 +290,7 @@ async function parseSylabus(text: string): Promise<Course & ParsedData | null> {
   }
 }
 
-async function parseProgram(text: string): Promise<Course & ParsedData | null> {
+async function parseProgram(text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     console.log("Parsing program:");
     // save for debugging
@@ -321,7 +351,7 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
     
     if (!teacher && teacherName) {
       // Create new teacher
-      teacher = { id: 0, name: teacherName, email: email };
+      teacher = { id: 0, name: teacherName, email: email, position: null, academic_title: null } as Teacher;
       console.log("Creating new teacher:", teacher);
       const result = await teachers.add(teacher);
       teacher.id = result[0].id;
@@ -446,38 +476,19 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
       });
     }
 
-    // Parse literature
-    const literature = {
-      main: [] as string[],
-      additional: [] as string[],
-      internet: [] as string[]
-    };
+    // search джерела or література from the end of the text
+    const literatureStart = Math.max(text.lastIndexOf("джерела"), text.lastIndexOf("літерат"));
+    const literaturePart = text.substring(literatureStart);
 
-    const literaturePart = text.substring(Math.min(text.indexOf("джерела"), text.indexOf("літерат")));
-
-    // Extract main literature
     const mainLitMatch = literaturePart.match(/Основні+([\s\S]*?)(?=Додаткові|Інформаційні\.)/i);
-    if (mainLitMatch?.[1]) {
-      const mainLitText = mainLitMatch[1];
-      const mainLines = mainLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10);
-      literature.main = mainLines.sort();
-    }
-
-    // Extract additional literature
     const addLitMatch = literaturePart.match(/Додаткові\s+([\s\S]*?)(?=Інформаційні|$)/i);
-    if (addLitMatch?.[1]) {
-      const addLitText = addLitMatch[1];
-      const addLines = addLitText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 10);
-      literature.additional = addLines.sort();
-    }
-
-    // Extract internet resources
     const internetMatch = literaturePart.match(/Інформаційні\s+ресурси?\s+([\s\S]*?)$/i);
-    if (internetMatch?.[1]) {
-      const internetText = internetMatch[1];
-      const internetLines = internetText.split(/\n/).map(l => l.trim()).filter(l => l && l.length > 5);
-      literature.internet = internetLines.sort();
-    }
+
+    const literature = {
+      main: mainLitMatch?.[1] ? normalizeLiterature(mainLitMatch[1]) : [],
+      additional: addLitMatch?.[1] ? normalizeLiterature(addLitMatch[1]) : [],
+      internet: internetMatch?.[1] ? normalizeLiterature(internetMatch[1]) : []
+    };
 
     // Create Course object
     const course: Course & ParsedData = {
@@ -511,8 +522,6 @@ async function parseProgram(text: string): Promise<Course & ParsedData | null> {
       topics: topics
     };
 
-    console.log("Parsed program:", course);
-
     return course;
   } catch (error) {
     console.error("Error parsing program:", error);
@@ -525,6 +534,27 @@ async function docx2text<T>(filepath: string): Promise<string> {
   const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
   return value;
 }
+
+async function pdf2text(filepath: string): Promise<string> {
+  try {
+  const fileBuffer = await fs.readFile(filepath);
+  const pdf = new PDFParse({ data: fileBuffer });
+    const text = await pdf.getText();
+    return text.text || "";
+  } catch (error) {
+    console.error("Error parsing PDF:", error);
+    return "";
+  }
+}
+
+async function file2text(filepath: string): Promise<string> {
+  if (filepath.endsWith(".pdf")) {
+    return await pdf2text(filepath);
+  } else {
+    return await docx2text(filepath);
+  }
+}
+
 
 async function parseSylabusOrProgramResults(text: string): Promise<number[]> {
   const allResults = await courseResults.all();

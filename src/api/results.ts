@@ -43,7 +43,7 @@ const resultsApi = {
       return Response.json({ success: true });
     }
   },
-  "/api/results/from-docx": {
+  "/api/results/parse": {
     async POST(req: BunRequest) {
       try {
         const formData = await req.formData();
@@ -59,11 +59,13 @@ const resultsApi = {
           file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
           fileName.endsWith(".docx");
         
-        if (!isDocxFile) {
-          return new Response("Invalid file type. Expected .docx file", { status: 400 });
+        const isPdfFile = file.type === "application/pdf" || fileName.endsWith(".pdf");
+        
+        if (!isDocxFile && !isPdfFile) {
+          return new Response("Invalid file type. Expected .docx or .pdf file", { status: 400 });
         }
 
-        const uploadFileName = `${Date.now()}.docx`;
+        const uploadFileName = `${Date.now()}.${isDocxFile ? "docx" : "pdf"}`;
         const uploadsDir = path.join(process.cwd(), "uploads");
         const uploadPath = path.join(uploadsDir, uploadFileName);
 
@@ -74,7 +76,7 @@ const resultsApi = {
         // Parse the docx file
         const opp = await parseOPP(uploadPath);
         if (!opp) throw new Error("Невалідний файл ОПП");
-        console.log("Parsed OPP results: ", opp);
+
         const parsedResults = [...opp.specialResults, ...opp.generalResults, ...opp.programResults];        
               
         const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
@@ -90,6 +92,7 @@ const resultsApi = {
         }));
         
         return Response.json(savedResults.filter(result => result !== null));
+        return Response.json(opp);
       } catch (error) {
         console.error("Error processing docx file:", error);
         return new Response(`Error processing docx file: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });

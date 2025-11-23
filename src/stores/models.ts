@@ -73,14 +73,14 @@ export type Course = {
 };
 
 export type TeacherPosition = "аспірант" | "асистент" | "старший викладач" | "доцент" | "професор";
-export type AcademicTitle = "кандидат технічних наук" | "кандидат економічних наук" | "PhD економічних наук" | null;
+export type AcademicTitle = "кандидат технічних наук" | "кандидат економічних наук" | "PhD економічних наук";
 
 export type Teacher = {
   id: number,
   name: string,
   email: string | null,
   position: TeacherPosition | null,
-  academic_title: AcademicTitle
+  academic_title: AcademicTitle | null
 }
 
 export type GeneratedTopicData = {
@@ -225,5 +225,6 @@ export type Specialty = {
   code: string,
   name: string,
   area_code: string,
-  area: string
+  area: string,
+  qualification: string;
 }

@@ -129,12 +129,13 @@ export default function ResultsList() {
       }
     },
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/pdf': ['.pdf']
     },
     maxFiles: 1,
     disabled: isUploading,
     onDropRejected: () => {
-      toast.error("Будь ласка, виберіть файл .docx");
+      toast.error("Будь ласка, виберіть файл .docx або .pdf");
     }
   });
 

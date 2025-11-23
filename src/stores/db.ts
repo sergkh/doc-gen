@@ -237,9 +237,16 @@ const specialties = {
     const result = await sql`SELECT * FROM specialties WHERE name=${name}`;
     return result[0] || null;
   },
+
+  findByCode: async (code: string): Promise<Specialty | null> => {
+    const result = await sql`SELECT * FROM specialties WHERE code=${code}`;
+    return result[0] || null;
+  },
   
   add: async (specialty: Specialty) => {
-    return await sql`INSERT INTO specialties (code, name, area_code, area) VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}) RETURNING *`;
+    return await sql`INSERT INTO specialties (code, name, area_code, area, qualification) 
+      VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}) 
+      RETURNING *`;
   },
 
   update: async (specialty: Specialty) => {
@@ -248,6 +255,7 @@ const specialties = {
           code = ${specialty.code},
           area_code = ${specialty.area_code},
           area = ${specialty.area}, 
+          qualification = ${specialty.qualification},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${specialty.id}
       RETURNING *`;

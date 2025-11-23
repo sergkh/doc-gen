@@ -63,10 +63,7 @@ export async function uploadResultsFromDocx(file: File): Promise<CourseResult[]>
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch("/api/results/from-docx", {
-    method: "POST",
-    body: formData
-  });
+  const res = await fetch("/api/results/parse", { method: "POST", body: formData });
 
   if (!res.ok) {
     const errorText = await res.text();

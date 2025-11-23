@@ -82,7 +82,7 @@ const coursesApi = {
         await Bun.write(uploadPath, file);
         console.log("Saving uploaded file to:", uploadPath);
 
-        const course = await parseSylabusOrProgram(uploadPath);        
+        const course = await parseSylabusOrProgram(uploadPath, true);        
         
         if (!course) {
           return new Response("Не вдалось розібрати файл", { status: 400 });
