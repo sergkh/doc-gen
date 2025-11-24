@@ -8,14 +8,6 @@ export function createOpenAIClient(apiKey?: string | null): OpenAI {
   return new OpenAI({ apiKey: key });
 }
 
-export function formatPrompt(template: string, data: Record<string, any>): string {
-  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
-    const result = data[key.trim()];
-    if (result === undefined) throw new Error(`Missing dependency: ${key.trim()}`);
-    return result;
-  });
-}
-
 /** Retries an OpenAI API call with exponential backoff on rate limit errors */
 export async function retryWithBackoff<T>(
   callFn: () => Promise<T>,

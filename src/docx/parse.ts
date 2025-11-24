@@ -35,7 +35,15 @@ type SpecialtyExtraction = {
 }
 
 function normalizeLiterature(text: string): string[] {
-  return text.split(/\n/).map(l => l.trim()).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
+  return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
+}
+
+function dropDot(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.endsWith('.')) {
+    return trimmed.substring(0, trimmed.length - 1);
+  }
+  return trimmed;
 }
 
 export async function parseOPP(filepath: string): Promise<OPP | null> {
@@ -311,25 +319,30 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
 
     const [specialty, area] = parseSpecialtyAndArea(header);
 
+    const opysIndex = Math.max(text.indexOf("Опис навчальної дисципліни"), 500);
+    const tableArea = text.substring(opysIndex, opysIndex + 1000);
+
     // Extract credits
-    const creditsMatch = text.match(/Кількість кредитів\s*[–-]\s*(\d+)/i);
+    const creditsMatch = tableArea.match(/Кількість кредитів\s*[–-]\s*(\d+)/i);
     const credits = creditsMatch?.[1] ? parseInt(creditsMatch[1], 10) : 0;
 
     // Extract hours
-    const hoursMatch = text.match(/Загальна кількість годин\s*[–-]\s*(\d+)/i);
+    const hoursMatch = tableArea.match(/Загальна кількість годин\s*[–-]\s*(\d+)/i);
     const hours = hoursMatch?.[1] ? parseInt(hoursMatch[1], 10) : 0;
 
     // Extract year and semesters (different for fulltime and inabscentia)
-    const yearMatch = text.match(/Рік підготовки:\s*(\d+)-й\s*(\d+)-й/i);
+    const yearMatch = tableArea.match(/Рік підготовки:\s*(\d+)-й\s*(\d+)-й/i);
     const studyYear = yearMatch?.[1] ? parseInt(yearMatch[1], 10) : 1;
 
-    const semesterMatch = text.match(/Семестр\s*(\d+)-й\s*(\d+)-й/i);
+    // TODO: fix me:
+    const semesterMatch = tableArea.match(/Семестр\s*(\d+)-й?\s*(\d+)-й/i);
+    
     const fulltimeSemester = semesterMatch?.[1] ? parseInt(semesterMatch[1], 10) : 1;
     const inabscentiaSemester = semesterMatch?.[2] ? parseInt(semesterMatch[2], 10) : 1;
 
     // Extract control type
     let controlType: "exam" | "credit" | "both" = "credit";
-    if (/екзамен/i.test(text)) {
+    if (/екзамен/i.test(tableArea)) {
       controlType = /залік/i.test(text) ? "both" : "exam";
     }
 
@@ -411,7 +424,7 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
         }
         
         const attestationNumber = parseInt(attestationMatch[1], 10);
-        const attestationName = attestationMatch[2].trim();
+        const attestationName = dropDot(attestationMatch[2].trim());
 
         // Determine semester based on attestation number (usually 1 or 2)
         const semester = attestationNumber > 2 ? 2 : 1;
@@ -443,7 +456,7 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
         }
         
         const topicNumber = parseInt(topicMatch[1], 10);
-        const topicName = topicMatch[2].trim();
+        const topicName = dropDot(topicMatch[2]);
         currentTopic = { index: topicNumber, name: topicName, subtopics: [] };
         continue;
       }

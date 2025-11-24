@@ -3,8 +3,7 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import path from "path";
 import expressionParser from "docxtemplater/expressions.js";
-import type { Course, CourseGenerationData, CourseTopic } from "@/stores/models";
-import { generateCourseInfo } from "@/ai/generator";
+import type { QuizQuestion } from "@/stores/models";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 
 const helpers = {
@@ -23,10 +22,23 @@ const shortenName = (input: string | {name?: string}) => {
   return input;
 }
 
+const randomizeQuestion = (question: QuizQuestion, index: number) => {
+  return {
+    ...question,
+    index: index,
+    options: question.options.sort(() => Math.random() - 0.5)
+  } as QuizQuestion;
+}
+
 // Helper functions that can be used in templates like:
 // { someArray | join }
 const parser = expressionParser.configure({
   filters: {
+      iterate(input) {
+        const num = Number(input);
+        if (isNaN(num)) return input;
+        return Array.from({ length: num }, (_, i) => i + 1);
+      },
       uppercase(input) {
           if (!input) return input;
           if (Array.isArray(input)) return input.map(i => i.toUpperCase());
@@ -70,6 +82,19 @@ const parser = expressionParser.configure({
         if (!input) return input;
         if (Array.isArray(input)) return input.map(n => shortenName(n))
         return shortenName(input);
+      },
+      // accepts list of topics and returns list of questions
+      randomTopicsQuestions(input, count = "1") {        
+        if (!input || !Array.isArray(input)) return input;
+        const num = Number(count);
+        if (isNaN(num)) return input;
+        
+        const questionsPool = input.flatMap(t => t.generated?.quiz || []);
+
+        return questionsPool
+          .sort(() => Math.random() - 0.5)
+          .slice(0, num)
+          .map((q, idx) => randomizeQuestion(q, idx+1));
       }
   }
 });

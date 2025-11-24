@@ -1,4 +1,5 @@
-import { createOpenAIClient, formatPrompt } from "./common";
+import { formatPrompt } from "@/client/util/util";
+import { createOpenAIClient } from "./common";
 
 // Extracts information with prompt from text
 export async function extractInformationAI<T>(text: string, prompt: string, model: string | null = null, apiKey: string | null = null): Promise<T> {

@@ -1,6 +1,7 @@
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, QuizQuestion, Template } from "@/stores/models.ts";
 import { courses, courseTopics } from "@/stores/db.ts";
-import { createOpenAIClient, formatPrompt, retryWithBackoff } from "./common";
+import { createOpenAIClient, retryWithBackoff } from "./common";
+import { formatPrompt } from "@/client/util/util";
 
 function deepEqual(a: any, b: any): boolean {
   try {

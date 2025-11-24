@@ -314,8 +314,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
 
   const handleSaveTopic = async () => {
     if (!editingTopic) return;
-    if (!topicName.trim() || !topicLection.trim()) {
-      alert("Назва та текст лекції обов'язкові");
+    if (!topicName.trim()) {
+      alert("Назва лекції обов'язкова");
       return;
     }
 

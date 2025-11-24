@@ -7,6 +7,12 @@ interface TemplateParametersEditorProps {
   onChange: (parameters: TemplateParameter[]) => void;
 }
 
+const ObjectTypes = [
+  { name: "Викладач", url: "/api/teachers" },
+  { name: "Спеціальність", url: "/api/specialties" },
+  { name: "Тема дисципліни", url: "/api/courses/{{courseId}}/topics" }
+];
+
 export default function TemplateParametersEditor({
   parameters,
   onChange
@@ -154,8 +160,9 @@ export default function TemplateParametersEditor({
                     }
                   >
                     <option value="">-- Виберіть тип обʼєкта --</option>
-                    <option value="/api/teachers">Список викладачів</option>
-                    <option value="/api/specialties">Список спеціальностей</option>
+                    {ObjectTypes.map((type) => (
+                      <option key={type.name} value={type.url}>{type.name}</option>
+                    ))}                    
                   </select>
                 </div>
               )}
