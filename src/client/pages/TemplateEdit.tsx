@@ -60,12 +60,15 @@ export default function TemplateEdit() {
       }
     },
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt'],
+      'text/html': ['.html'],
+      'text/xml': ['.xml']
     },
     maxFiles: 1,
     disabled: isUploading,
     onDropRejected: () => {
-      toast.error("Будь ласка, перетягніть файл .docx");
+      toast.error("Будь ласка, перетягніть файл .docx, .txt, .html або .xml");
     }
   });
 
@@ -138,7 +141,7 @@ export default function TemplateEdit() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     <span className="text-amber-50">
-                      {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
+                      {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл шаблону (.docx, .txt, .html або .xml) або натисніть для вибору"}
                     </span>
                     {selectedFile && (
                       <div className="text-sm text-amber-50 opacity-80 mt-2">

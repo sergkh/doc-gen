@@ -5,6 +5,7 @@ import path from "path";
 import expressionParser from "docxtemplater/expressions.js";
 import type { QuizQuestion } from "@/stores/models";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
+import Handlebars from "handlebars";
 
 const helpers = {
   pageBreak: `<w:p><w:br w:type="page" /></w:p>`
@@ -244,4 +245,18 @@ export async function renderDoc(
   //resetListNumbering(doc.getZip());
 
   return doc.toArrayBuffer()
+}
+
+/** Render any Handlebars template to text */
+export async function renderHandlebarsText(templatePath: string, data: any): Promise<ArrayBuffer> {
+  const template = await readFile(templatePath, "utf8");
+
+  // Helper: strict equality (coerces numbers if needed)
+  Handlebars.registerHelper('ifEquals', function(this: any, a: any, b: any, opts: any) {
+    return (String(a) === String(b)) ? opts.fn(this) : opts.inverse(this);
+  });
+
+  const hb = Handlebars.compile(template);
+  const result = hb(data);
+  return new TextEncoder().encode(result).buffer;
 }

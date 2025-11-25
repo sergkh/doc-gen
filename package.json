@@ -16,6 +16,7 @@
     "bun-plugin-tailwind": "^0.1.2",
     "docx4js": "^3.3.0",
     "docxtemplater": "^3.67.1",
+    "handlebars": "^4.7.8",
     "joyride": "^0.1.4",
     "mammoth": "^1.11.0",
     "motion": "^12.23.24",
@@ -31,8 +32,8 @@
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/bun": "latest"
+    "@types/react-dom": "^19"
   }
 }

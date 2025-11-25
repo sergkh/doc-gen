@@ -1,4 +1,4 @@
-import { renderDoc } from "@/docx/render";
+import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, courseTopics, templates } from "@/stores/db";
 import type { Course, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
@@ -47,9 +47,12 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
     job.status = "rendering";
     job.progress = 95;
 
-    const doc = await renderDoc(template.file, renderData);
-    
-    job.result = doc;
+    if (template.file.endsWith(".docx")) {
+      job.result = await renderDoc(template.file, renderData);
+    } else {
+      job.result = await renderHandlebarsText(template.file, renderData);
+    }
+
     job.status = "completed";
     job.progress = 100;
   } catch (error) {
@@ -62,7 +65,7 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
 const generationApi = {
   "/api/courses/:courseId/generate/:templateId": {
     async POST(req: BunRequest) {
-      const { courseId, templateId } = req.params as { courseId: number; templateId: number };
+      const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };
       const body = await req.json().catch(() => ({})) as { apiKey?: string; parameters?: Record<string, any> };
       
       const course = await courses.get(courseId);
@@ -81,11 +84,14 @@ const generationApi = {
       }
 
       const jobId = generateJobId();
+
+      const ext = template.file.split(".").pop();
+      
       const job: Job = { 
         id: jobId, 
         status: "pending", 
         progress: 0,
-        filename: `${template.name}.docx`,
+        filename: `${template.name}.${ext}`,
       };
       jobs.set(jobId, job);
 
