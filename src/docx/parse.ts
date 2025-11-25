@@ -381,7 +381,10 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
 
     const results = await parseSylabusOrProgramResults(text);
 
-    const programPart = text.substring(text.indexOf("5. Програма"), text.indexOf("6. Структура навчальної дисципліни"));
+    const programPart = text.substring(
+      Math.max(text.indexOf("Програма навчальної дисципліни"), text.indexOf("5. Програма")), 
+      text.indexOf("Структура навчальної дисципліни")
+    );
     
     // Parse attestations and topics from the program section
     const attestations: { name: string; semester: number }[] = [];

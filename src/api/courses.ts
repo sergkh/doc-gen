@@ -95,18 +95,18 @@ const coursesApi = {
         console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);
         
         // TODO: properly merge course and topics from update
-        if(dbCourse) {
-          await courses.update(updated) }
-        else {
-          const id = (await courses.add(updated))[0].id;
-          course.id = id;
+        // if(dbCourse) {
+        //   await courses.update(updated) }
+        // else {
+        //   const id = (await courses.add(updated))[0].id;
+        //   course.id = id;
 
-          await Promise.all(
-            course.topics
-              .map(c => Object.assign(c, { course_id: course.id }))
-              .map(c => courseTopics.add(c))
-          )
-        }
+        //   await Promise.all(
+        //     course.topics
+        //       .map(c => Object.assign(c, { course_id: course.id }))
+        //       .map(c => courseTopics.add(c))
+        //   )
+        // }
 
         return Response.json(course);
       } catch (error) {
