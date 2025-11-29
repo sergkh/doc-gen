@@ -1,4 +1,4 @@
-import { parseOPP } from "@/docx/parse";
+import { parseOPP } from "@/docx/opp-results";
 import { courseResults } from "@/stores/db";
 import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";

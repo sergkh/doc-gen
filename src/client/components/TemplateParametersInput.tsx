@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { TemplateParameter } from "@/stores/models";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCheckDouble, faTrash } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import { formatPrompt } from "../util/util";
 
@@ -310,10 +310,10 @@ export default function TemplateParametersInput({
               <button
                 onClick={handleSelectAll}
                 disabled={disabled || (resolvedUrl && loadingOptions[resolvedUrl]) || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-3 py-1 rounded-lg font-bold text-sm whitespace-nowrap"
+                className="text-amber-50 hover:text-amber-200 cursor-pointer disabled:bg-gray-500 disabled:cursor-not-allowed px-3 py-1 rounded-lg font-bold text-sm whitespace-nowrap"
                 type="button"
               >
-                Вибрати всі
+                <FontAwesomeIcon icon={faCheckDouble} />
               </button>
             )}
           </div>

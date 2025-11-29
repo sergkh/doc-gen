@@ -1,38 +1,11 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
-import type { Course, CourseResult, CourseTopic, GeneratedTopicData, ParsedData, Specialty, Teacher } from '@/stores/models';
-// @ts-ignore
-import docx4js from "docx4js";
+import type { Course, CourseTopic, ParsedData, Teacher } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
 import path from 'path';
-import { courseResults, specialties, teachers } from '@/stores/db';
+import { courseResults, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
-import { extractInformationAI } from '@/ai/extractor';
-
-export type OPPCourse = {
-  name: string;
-  ok: number;
-}
-
-export type OPP ={
-  specialResults: CourseResult[];
-  generalResults: CourseResult[];
-  programResults: CourseResult[];
-}
-
-const specialtyPrompt = `
-  З переданого тексту вибери спеціальність, її код, галузь знань та її код та кваліфікацію.
-  Якщо щось не вказане, поверни null. Результат поверни у вигляді JSON: { specialty: string, code: string, area_code: string, area: string, qualification: string }.
-  Текст:"{{text}}"
-`;
-
-type SpecialtyExtraction = {
-  specialty: string | null;
-  code: string | null;
-  area_code: string | null;
-  area: string | null;
-  qualification: string | null;
-}
+import { extractDocTables, findFirstTable, findNextTable, findTableRow } from './structured-parser';
 
 function normalizeLiterature(text: string): string[] {
   return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
@@ -46,56 +19,13 @@ function dropDot(text: string): string {
   return trimmed;
 }
 
-export async function parseOPP(filepath: string): Promise<OPP | null> {
-  try {    
-    const text = await file2text(filepath);
-    
-    const header = text.substring(0, 1000);
-    const extractedSpecialty = await extractInformationAI<SpecialtyExtraction>(header, specialtyPrompt);
-    
-    console.log("Extracted specialty:", extractedSpecialty);
-
-    let specialty = extractedSpecialty.code ? await specialties.findByCode(extractedSpecialty.code) : extractedSpecialty.specialty ? await specialties.findByName(extractedSpecialty.specialty) : null;
-
-    if (!specialty) {
-      console.error("Adding new specialty:", extractedSpecialty);
-
-      specialty = {
-        id: 0,
-        name: extractedSpecialty.specialty || "",
-        code: extractedSpecialty.code || "",
-        area_code: extractedSpecialty.area_code || "",
-        area: extractedSpecialty.area || "",
-        qualification: extractedSpecialty.qualification || "",
-      } as Specialty
-
-      const addResult = await specialties.add(specialty);
-      
-      specialty.id = addResult[0].id;
-    }
-
-    const generalResults = parseOPPResults(text, 'ЗК');
-    const specialResults = parseOPPResults(text, 'СК');
-    const programResults = parseOPPResults(text, 'РН');
-
-    [...generalResults, ...specialResults, ...programResults].forEach(result => {
-      result.specialty_id = specialty.id;
-    });
-
-    return { generalResults, specialResults, programResults } as OPP;
-  } catch (error) {
-    console.error("Error parsing OPP:", error);
-    return null;
-  }
-}
-
 export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     const text = (await docx2text(filepath)).trim();
     if (/СИЛАБУС/g.test(text.substring(0, 200))) {
-      return await parseSylabus(text, dryRun);
+      return await parseSylabus(filepath, text, dryRun);
     } else if (/РОБОЧА ПРОГРАМА/g.test(text.substring(0, 400))) {
-      return await parseProgram(text, dryRun);
+      return await parseProgram(filepath, text, dryRun);
     }
 
     return null;
@@ -105,34 +35,35 @@ export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = 
   }
 }
 
-export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
-  const results: CourseResult[] = [];
-
-  // They all ends with a dot or a newline.
-  const pattern = new RegExp(`${type}(\\d+)\\*?\\.?\\s{0,2}([ʼ\\s\\S]*?)(\\.|\\n)`, 'gs');
-  
-  let match;
-  while ((match = pattern.exec(text)) !== null) {
-    if (!match[1] || !match[2]) continue;
-    
-    const no = parseInt(match[1], 10);
-    let name = match[2].trim();
-    
-    name = name.replace(/\s*(ЗК|СК|РН)\s*\d+\.?\s*$/, '').trim();    
-    name = name.replace(/\s+/g, ' ').trim();
-    
-    if (name) {
-      results.push({ id: -1, no, type, name, specialty_id: 0 });
+export function fillTopicHours(topic: CourseTopic, table: string[][] | null): CourseTopic {
+  if (!table) return topic;
+  // can contain spaces, be empty or have a '-' instead of a number
+  const parseColumn = (s: string | undefined) => {
+    const cleaned = s?.trim();
+    if (cleaned && cleaned.length > 0) {
+      return parseInt(cleaned) || 0;
     }
+    return 0;
   }
-  
-  results.sort((a, b) => a.no - b.no);
-  
-  return results;
+
+  const topicRow = findTableRow(table, `Тема ${topic.index}`, `Тема${topic.index}`);
+
+  if (topicRow) {
+    // Example of the row:
+    // [ "Тема 1. Організація мережі World Wide Web. Мова розміткигіпертекстів HTML", "10", "2", "2", "", "", "6", "15", "1", "", "", "", "14"], 
+    topic.data.fulltime.hours = parseColumn(topicRow[2]);
+    topic.data.fulltime.practical_hours = parseColumn(topicRow[3]);
+    topic.data.fulltime.srs_hours = parseColumn(topicRow[6]);
+    
+    topic.data.inabscentia.hours = parseColumn(topicRow[8]);
+    topic.data.inabscentia.practical_hours = parseColumn(topicRow[9]);
+    topic.data.inabscentia.srs_hours = parseColumn(topicRow[12]);
+  }
+  return topic;
 }
 
 // Best effort parsing of syllabus
-async function parseSylabus(text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
+async function parseSylabus(filepath: string, text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     // save for debugging
     const hash = createHash("sha256").update(text).digest("hex");
@@ -190,10 +121,8 @@ async function parseSylabus(text: string, dryRun: boolean = false): Promise<Cour
     
     if (!teacher) {
       // Create new teacher
-      teacher = { id: 0, name: lecturerName, email, position: null, academic_title: null } as Teacher
+      teacher = { id: -1, name: lecturerName, email, position: null, academic_title: null } as Teacher
       console.log("Creating new teacher:", teacher);
-      const id = (await teachers.add(teacher))[0].id;
-      teacher.id = id;
     }
 
     // TODO: match prerequisites and postrequisites by name
@@ -285,11 +214,9 @@ async function parseSylabus(text: string, dryRun: boolean = false): Promise<Cour
       },
       generated: null,
       type: 'syllabus',
-      topics: []
+      topics: [],
+      parsed_teacher: teacher
     };
-
-
-    console.log("Parsed syllabus:", course);
 
     return course;
   } catch (error) {
@@ -298,7 +225,7 @@ async function parseSylabus(text: string, dryRun: boolean = false): Promise<Cour
   }
 }
 
-async function parseProgram(text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
+async function parseProgram(filepath: string, text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
   try {
     console.log("Parsing program:");
     // save for debugging
@@ -360,18 +287,15 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
     const email = emailMatch?.[1]?.trim() || null;
 
     // Find or create teacher
-    let teacher = teacherName ? await teachers.findByName(teacherName) : null;
+    let teacher: Teacher | null = teacherName ? await teachers.findByName(teacherName) : null;
     
     if (!teacher && teacherName) {
       // Create new teacher
-      teacher = { id: 0, name: teacherName, email: email, position: null, academic_title: null } as Teacher;
-      console.log("Creating new teacher:", teacher);
-      const result = await teachers.add(teacher);
-      teacher.id = result[0].id;
+      teacher = { id: -1, name: teacherName, email: email, position: null, academic_title: null } as Teacher;
     }
 
     if (!teacher) {
-      console.error("Could not find or create teacher");
+      console.error("Could not find a teacher");
       return null;
     }
 
@@ -386,6 +310,11 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
       text.indexOf("Структура навчальної дисципліни")
     );
     
+    const docTables = await extractDocTables(filepath);
+    // We can't use order here as sometimes signatures are set as tables
+    const descrTable = findFirstTable(docTables, "Характеристика навчальної дисципліни", "Галузь знань");
+    const structureTable = findNextTable(docTables, descrTable, "Теми");
+
     // Parse attestations and topics from the program section
     const attestations: { name: string; semester: number }[] = [];
     const topics: CourseTopic[] = [];
@@ -401,13 +330,13 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
       if (!line) continue;
       
       // Check for attestation: "Атестація 1. Основні підходи до аналізу даних"
-      const attestationMatch = line.match(/Атестація\s+(\d+)\.?\s+(.+)/i);
+      const attestationMatch = line.match(/Атестація\s+(\d+)\.?\s*(.+)/i);
       const topicMatch = line.match(/Тема\s+(\d+)\.\s+(.+)/i);
       
       if (attestationMatch?.[1] && attestationMatch[2]) {
         // Save previous topic if exists
         if (currentTopic) {
-          topics.push({
+          const topic = {
             id: -1,
             course_id: -1,
             index: currentTopic.index,
@@ -416,13 +345,13 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
             data: {
               attestation: currentAttestation?.number || 1,
               fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
-              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 },
-              
+              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 },              
             },
             generated: {
               subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)
             }            
-          });
+          };
+          topics.push(fillTopicHours(topic, structureTable));
           currentTopic = null;
         }
         
@@ -439,9 +368,10 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
       
       // Check for topic: "Тема 1. Вступ до аналізу даних..."
       if (topicMatch?.[1] && topicMatch[2] && line) {
+
         // Save previous topic if exists
         if (currentTopic) {
-          topics.push({
+          const topic = {
             id: -1,
             course_id: -1,
             index: currentTopic.index,
@@ -455,7 +385,9 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
             generated: { 
               subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s) 
             }
-          });
+          };
+
+          topics.push(fillTopicHours(topic, structureTable));
         }
         
         const topicNumber = parseInt(topicMatch[1], 10);
@@ -475,7 +407,7 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
     
     // Save the last topic if exists
     if (currentTopic) {
-      topics.push({
+      topics.push(fillTopicHours({
         id: -1,
         course_id: -1,
         index: currentTopic.index,
@@ -489,7 +421,7 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
         generated: {
           subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)
         }
-      });
+      }, structureTable));
     }
 
     // search джерела or література from the end of the text
@@ -535,7 +467,8 @@ async function parseProgram(text: string, dryRun: boolean = false): Promise<Cour
       },
       generated: null,
       type: 'program',
-      topics: topics
+      topics: topics,
+      parsed_teacher: teacher
     };
 
     return course;
@@ -563,7 +496,7 @@ async function pdf2text(filepath: string): Promise<string> {
   }
 }
 
-async function file2text(filepath: string): Promise<string> {
+export async function file2text(filepath: string): Promise<string> {
   if (filepath.endsWith(".pdf")) {
     return await pdf2text(filepath);
   } else {

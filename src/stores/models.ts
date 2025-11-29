@@ -217,7 +217,8 @@ export type Prompt = {
 
 export type ParsedData = {
   type: 'syllabus' | 'program';
-  topics: CourseTopic[]
+  topics: CourseTopic[],
+  parsed_teacher: Teacher
 }
 
 export type Specialty = {

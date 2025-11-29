@@ -1,5 +1,5 @@
 import { parseSylabusOrProgram } from "@/docx/parse";
-import { courses, courseTopics } from "@/stores/db";
+import { courses, courseTopics, teachers } from "@/stores/db";
 import type { Course, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
@@ -89,24 +89,29 @@ const coursesApi = {
         }
 
         const dbCourse = await courses.findByName(course.name);
-        
+
+        if (course.parsed_teacher && course.parsed_teacher.id === -1) {
+          const id = (await teachers.add(course.parsed_teacher))[0].id;
+          course.teacher_id = id;
+        }
+
         const updated = dbCourse ? { ...dbCourse, ...course, id: dbCourse.id } : course;
       
-        console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);
-        
-        // TODO: properly merge course and topics from update
-        // if(dbCourse) {
-        //   await courses.update(updated) }
-        // else {
-        //   const id = (await courses.add(updated))[0].id;
-        //   course.id = id;
+        console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
 
-        //   await Promise.all(
-        //     course.topics
-        //       .map(c => Object.assign(c, { course_id: course.id }))
-        //       .map(c => courseTopics.add(c))
-        //   )
-        // }
+        // TODO: properly merge course and topics from update
+        if(dbCourse) {
+          await courses.update(updated) }
+        else {
+          const id = (await courses.add(updated))[0].id;
+          course.id = id;
+
+          await Promise.all(
+            course.topics
+              .map(c => Object.assign(c, { course_id: course.id }))
+              .map(c => courseTopics.add(c))
+          )
+        }
 
         return Response.json(course);
       } catch (error) {

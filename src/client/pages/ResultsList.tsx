@@ -159,7 +159,7 @@ export default function ResultsList() {
             </select>
             <button
               onClick={() => navigate("/results/new")}
-              className="text-amber-50 hover:text-amber-200 px-2 py-2 rounded-lg font-bold flex items-center gap-2"
+              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"
             >
               <FontAwesomeIcon icon={faPlus} />
             </button>

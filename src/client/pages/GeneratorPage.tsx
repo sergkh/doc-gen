@@ -368,11 +368,11 @@ export default function GeneratorPage() {
           </div>
         )}
 
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-col md:flex-row gap-4 md:items-center">
           <button
             onClick={() => handleGenerate(false)}
             disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono justify-center"
           >
             <FontAwesomeIcon icon={faDownload} />
             {isGenerating && !navigateToEdit ? "Генерую..." : "Згенерувати"}
@@ -380,13 +380,13 @@ export default function GeneratorPage() {
           <button
             onClick={handleGenerateAndEdit}
             disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono justify-center"
           >
             <FontAwesomeIcon icon={faEdit} />
             {isGenerating && navigateToEdit ? "Генерую..." : "Згенерувати і редагувати"}
           </button>
           {isGenerating && (
-            <span className="text-amber-50 font-mono">
+            <span className="text-amber-50 font-mono text-center md:text-left">
               Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
             </span>
           )}
