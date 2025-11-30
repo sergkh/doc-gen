@@ -17,6 +17,11 @@ export type ShortCourseInfo = {
   teacher: string
 }
 
+export type CourseSemesters = {
+  semesters: number[],
+  study_year: number
+}
+
 export type CourseData = {
   optional: boolean,
   control_type: "exam" | "credit" | "both",
@@ -32,14 +37,8 @@ export type CourseData = {
     name: string,
     semester: number
   }[],
-  fulltime: {
-    semesters: number[],
-    study_year: number
-  },
-  inabscentia: {
-    semesters: number[],
-    study_year: number
-  },
+  fulltime: CourseSemesters,
+  inabscentia: CourseSemesters,
   literature: {
     main: string[],
     additional: string[],

@@ -28,7 +28,7 @@ function extractText(node: any): string {
   return "";
 }
 
-function extractTableData(table: any): string[][] {
+function extractTableData(table: any): DocTable {
   if (table.children) {
     return table.children.map((row: any) => row.children.map((cell: any) => extractText(cell)));
   }
@@ -45,11 +45,21 @@ export function findTableRow(table: DocTable, ...texts: string[]): string[] | nu
   return null;
 }
 
-export function findFirstTable(tables: DocTable[], ...texts: string[]): string[][] | null {
+export function findTableRowIndex(table: DocTable, ...texts: string[]): number {
+  for (let i = 0; i < table.length; i++) {
+    const row = table[i];
+    if (row?.some(cell => texts.some(text => cell.toLowerCase().includes(text.toLowerCase())))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+export function findFirstTable(tables: DocTable[], ...texts: string[]): DocTable | null {
   return findNextTable(tables, null, ...texts);
 }
 
-export function findNextTable(tables: DocTable[], previousTable: DocTable | null, ...texts: string[]): string[][] | null {
+export function findNextTable(tables: DocTable[], previousTable: DocTable | null, ...texts: string[]): DocTable | null {
   const index = previousTable ? tables.indexOf(previousTable) : -1;
   
   for (let i = index + 1; i < tables.length; i++) {

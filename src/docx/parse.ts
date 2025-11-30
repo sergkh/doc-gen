@@ -1,11 +1,11 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
-import type { Course, CourseTopic, ParsedData, Teacher } from '@/stores/models';
+import type { Course, CourseSemesters, CourseTopic, ParsedData, Teacher } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
 import path from 'path';
 import { courseResults, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
-import { extractDocTables, findFirstTable, findNextTable, findTableRow } from './structured-parser';
+import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowIndex, type DocTable } from './structured-parser';
 
 function normalizeLiterature(text: string): string[] {
   return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
@@ -35,7 +35,7 @@ export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = 
   }
 }
 
-export function fillTopicHours(topic: CourseTopic, table: string[][] | null): CourseTopic {
+export function fillTopicHours(topic: CourseTopic, table: DocTable | null): CourseTopic {
   if (!table) return topic;
   // can contain spaces, be empty or have a '-' instead of a number
   const parseColumn = (s: string | undefined) => {
@@ -60,6 +60,34 @@ export function fillTopicHours(topic: CourseTopic, table: string[][] | null): Co
     topic.data.inabscentia.srs_hours = parseColumn(topicRow[12]);
   }
   return topic;
+}
+
+function parseDescriptionTable(table: DocTable | null): {fulltime: CourseSemesters, inabscentia: CourseSemesters} {
+  const result = {
+    fulltime: { semesters: [], study_year: 0 },
+    inabscentia: { semesters: [], study_year: 0 }
+  } as {fulltime: CourseSemesters, inabscentia: CourseSemesters};
+
+  if (!table) return result;
+
+  const yearsRowIdx = findTableRowIndex(table, "Рік");
+  
+  const years = yearsRowIdx != -1 ? table[yearsRowIdx + 1] : null;
+  
+  if (years) {
+    result.fulltime.study_year = parseInt(years[2]?.trim() || "0");
+    result.inabscentia.study_year = parseInt(years[3]?.trim() || "0");
+  }
+
+  const semestersRowIdx = findTableRowIndex(table, "Семестр");
+  const semesters = semestersRowIdx != -1 ? table[semestersRowIdx + 1] : null;
+  
+  if (semesters) {    
+    result.fulltime.semesters = (semesters[2]?.split('').map(d => parseInt(d)).filter(n => isFinite(n)) ?? []) as number[];
+    result.inabscentia.semesters = (semesters[3]?.split('').map(d => parseInt(d)).filter(n => isFinite(n)) ?? []) as number[];    
+  }
+
+  return result;
 }
 
 // Best effort parsing of syllabus
@@ -256,17 +284,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     // Extract hours
     const hoursMatch = tableArea.match(/Загальна кількість годин\s*[–-]\s*(\d+)/i);
     const hours = hoursMatch?.[1] ? parseInt(hoursMatch[1], 10) : 0;
-
-    // Extract year and semesters (different for fulltime and inabscentia)
-    const yearMatch = tableArea.match(/Рік підготовки:\s*(\d+)-й\s*(\d+)-й/i);
-    const studyYear = yearMatch?.[1] ? parseInt(yearMatch[1], 10) : 1;
-
-    // TODO: fix me:
-    const semesterMatch = tableArea.match(/Семестр\s*(\d+)-й?\s*(\d+)-й/i);
     
-    const fulltimeSemester = semesterMatch?.[1] ? parseInt(semesterMatch[1], 10) : 1;
-    const inabscentiaSemester = semesterMatch?.[2] ? parseInt(semesterMatch[2], 10) : 1;
-
     // Extract control type
     let controlType: "exam" | "credit" | "both" = "credit";
     if (/екзамен/i.test(tableArea)) {
@@ -313,6 +331,9 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     const docTables = await extractDocTables(filepath);
     // We can't use order here as sometimes signatures are set as tables
     const descrTable = findFirstTable(docTables, "Характеристика навчальної дисципліни", "Галузь знань");
+    
+    const semesters = parseDescriptionTable(descrTable);
+
     const structureTable = findNextTable(docTables, descrTable, "Теми");
 
     // Parse attestations and topics from the program section
@@ -455,14 +476,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
         postrequisites,
         results,
         attestations,
-        fulltime: {
-          semesters: [fulltimeSemester],
-          study_year: studyYear
-        },
-        inabscentia: {
-          semesters: [inabscentiaSemester],
-          study_year: studyYear
-        },
+        fulltime: semesters.fulltime,
+        inabscentia: semesters.inabscentia,
         literature
       },
       generated: null,

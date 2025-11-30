@@ -44,13 +44,41 @@ async function verifyCourse(course: Course & ParsedData) {
     successes.push(`${colors.green}✓${colors.reset} Course has ${colors.cyan}${course.data.attestations.length}${colors.reset} attestation(s)`);
   }
   
-  // Check 4: Course has topics
+  // Check 4: Course has semesters and years set for fulltime
+  if (!course.data?.fulltime?.semesters || !Array.isArray(course.data.fulltime.semesters) || course.data.fulltime.semesters.length === 0) {
+    issues.push(`${colors.red}✗${colors.reset} Course missing fulltime semesters or semesters list is empty`);
+  } else {
+    successes.push(`${colors.green}✓${colors.reset} Course has fulltime semesters: ${colors.cyan}${course.data.fulltime.semesters.join(', ')}${colors.reset}`);
+  }
+  
+  if (!course.data?.fulltime?.study_year || typeof course.data.fulltime.study_year !== 'number') {
+    issues.push(`${colors.red}✗${colors.reset} Course missing fulltime study_year or study_year is not a number`);
+  } else {
+    successes.push(`${colors.green}✓${colors.reset} Course has fulltime study year: ${colors.cyan}${course.data.fulltime.study_year}${colors.reset}`);
+  }
+  
+  // Check 5: Course has semesters and years set for inabscentia (if applicable)
+  if (course.data?.inabscentia) {
+    if (!course.data.inabscentia.semesters || !Array.isArray(course.data.inabscentia.semesters) || course.data.inabscentia.semesters.length === 0) {
+      issues.push(`${colors.red}✗${colors.reset} Course missing inabscentia semesters or semesters list is empty`);
+    } else {
+      successes.push(`${colors.green}✓${colors.reset} Course has inabscentia semesters: ${colors.cyan}${course.data.inabscentia.semesters.join(', ')}${colors.reset}`);
+    }
+    
+    if (!course.data.inabscentia.study_year || typeof course.data.inabscentia.study_year !== 'number') {
+      issues.push(`${colors.red}✗${colors.reset} Course missing inabscentia study_year or study_year is not a number`);
+    } else {
+      successes.push(`${colors.green}✓${colors.reset} Course has inabscentia study year: ${colors.cyan}${course.data.inabscentia.study_year}${colors.reset}`);
+    }
+  }
+  
+  // Check 6: Course has topics
   if (!course.topics || !Array.isArray(course.topics) || course.topics.length === 0) {
     issues.push(`${colors.red}✗${colors.reset} Course missing topics list or topics list is empty`);
   } else {
     successes.push(`${colors.green}✓${colors.reset} Course has ${colors.cyan}${course.topics.length}${colors.reset} topic(s)`);
     
-    // Check 5: Topics have some hours set
+    // Check 7: Topics have some hours set
     const topicsWithoutHours = course.topics.filter(topic => {
       const fulltimeHours = topic.data?.fulltime?.hours || 0;
       const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
