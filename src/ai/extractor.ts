@@ -1,21 +1,32 @@
-import { formatPrompt } from "@/client/util/util";
 import { createOpenAIClient } from "./common";
+import { z } from 'zod';
+import { zodTextFormat } from "openai/helpers/zod";
 
 // Extracts information with prompt from text
-export async function extractInformationAI<T>(text: string, prompt: string, model: string | null = null, apiKey: string | null = null): Promise<T> {
+export async function extractInformationAI<ZodInput extends z.ZodType>(
+  prompt: string, 
+  text: string, 
+  format: ZodInput, 
+  model: string | null = null, 
+  apiKey: string | null = null
+): Promise<z.infer<ZodInput> | null> {
   const client = createOpenAIClient(apiKey);
+
+  console.log("Extracting information with AI...", text.slice(0, 100), "...");
   
-  const response = await client.chat.completions.create({
-    model: model ?? "gpt-4o",
-    response_format: { type: "json_object" },
-    messages: [{
+  const response = await client.responses.parse({
+    model: model ?? "gpt-4o-mini",
+    input: [{
       role: "system",
-      content: "You are a helpful assistant that thouroughly extracts required information from text."
+      content: prompt
     }, {
       role: "user", 
-      content: formatPrompt(prompt, { text })
-    }],
+      content: text
+    }],    
+    text: {
+      format: zodTextFormat(format, "data"),
+    }
   });  
 
-  return JSON.parse(response.choices[0]?.message.content as string) as T;
+  return response.output_parsed;
 }

@@ -118,7 +118,6 @@ export type CourseTopic = {
 
 export type QuizQuestion = {
   question: string,
-  index: number,
   options: string[]
 }
 
@@ -220,6 +219,16 @@ export type ParsedData = {
   parsed_teacher: Teacher
 }
 
+export type SpecialtyDisciplineConfig = {
+  no: number,
+  name: string,
+  credits: number,
+  control_type: "exam" | "credit" | "both"
+}
+export type SpecialtyData = {
+  disciplines: SpecialtyDisciplineConfig[]
+}
+
 export type Specialty = {
   id: number,
   code: string,
@@ -227,4 +236,11 @@ export type Specialty = {
   area_code: string,
   area: string,
   qualification: string;
+  data: SpecialtyData
 }
+
+export type PromptResult = {
+  system_prompt: string;
+  prompt: string;
+  items: Record<string, any>[];
+};

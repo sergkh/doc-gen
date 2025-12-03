@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { describe, it, expect } from "bun:test";
-import { parseOPPResults, parseOPP, parseSpecialtyAndArea } from "./parse";
+import { parseSpecialtyAndArea } from "./parse";
+import { parseOPPResults, parseOPP } from "./opp-results";
 
 describe("parseOPPResults", () => {
   describe("ЗК (General Competencies)", () => {
@@ -14,6 +15,7 @@ describe("parseOPPResults", () => {
         no: 1,
         type: "ЗК",
         name: "Здатність до абстрактного мислення, аналізу та синтезу",
+        specialty_id: 0
       });
     });
 

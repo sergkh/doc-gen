@@ -1,5 +1,5 @@
 import { parseOPP } from "@/docx/opp-results";
-import { courseResults } from "@/stores/db";
+import { courseResults, specialties } from "@/stores/db";
 import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
@@ -77,22 +77,27 @@ const resultsApi = {
         const opp = await parseOPP(uploadPath);
         if (!opp) throw new Error("Невалідний файл ОПП");
 
-        const parsedResults = [...opp.specialResults, ...opp.generalResults, ...opp.programResults];        
+        console.log("Parsed results:", opp.generalResults, opp.specialResults, opp.programResults, opp.integralResults);
+        console.log("Parsed disciplines:", opp.disciplines);
+        return null;
+
+        // const specialtyId = opp.specialty.id === -1 ? (await specialties.add(opp.specialty))[0].id : opp.specialty.id;
+
+        // const parsedResults = [...opp.integralResults, ...opp.specialResults, ...opp.generalResults, ...opp.programResults];
               
-        const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
-          try {
-            const id = await courseResults.add(result)
-            return Object.assign(result, { id });
-          } catch (error) {
-            // ignore duplicate key errors (PostgreSQL unique constraint violation)
-            if (error && typeof error === 'object' && 'errno' in error && error.errno === '23505') return null;            
-            console.error("Error adding result:", error);
-            return null;
-          }
-        }));
+        // const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
+        //   try {
+        //     const id = await courseResults.add({...result, specialty_id: specialtyId});
+        //     return Object.assign(result, { id });
+        //   } catch (error) {
+        //     // ignore duplicate key errors (PostgreSQL unique constraint violation)
+        //     if (error && typeof error === 'object' && 'errno' in error && error.errno === '23505') return null;            
+        //     console.error("Error adding result:", error);
+        //     return null;
+        //   }
+        // }));
         
-        return Response.json(savedResults.filter(result => result !== null));
-        return Response.json(opp);
+        // return Response.json(savedResults.filter(result => result !== null));
       } catch (error) {
         console.error("Error processing docx file:", error);
         return new Response(`Error processing docx file: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });

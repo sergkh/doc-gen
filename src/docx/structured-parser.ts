@@ -45,6 +45,18 @@ export function findTableRow(table: DocTable, ...texts: string[]): string[] | nu
   return null;
 }
 
+export function findNextTableRow(table: DocTable, previousRow: string[] | null, ...texts: string[]): string[] | null {
+  const startIndex = previousRow ? table.indexOf(previousRow) + 1 : 0;
+  
+  for (let i = startIndex; i < table.length; i++) {
+    const row = table[i];
+    if (row?.some(cell => texts.some(text => cell.toLowerCase().includes(text.toLowerCase())))) {
+      return row;
+    }
+  }
+  return null;
+}
+
 export function findTableRowIndex(table: DocTable, ...texts: string[]): number {
   for (let i = 0; i < table.length; i++) {
     const row = table[i];

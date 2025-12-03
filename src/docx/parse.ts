@@ -11,7 +11,7 @@ function normalizeLiterature(text: string): string[] {
   return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
 }
 
-function dropDot(text: string): string {
+export function dropDot(text: string): string {
   const trimmed = text.trim();
   if (trimmed.endsWith('.')) {
     return trimmed.substring(0, trimmed.length - 1);

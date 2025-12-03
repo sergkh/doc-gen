@@ -244,8 +244,8 @@ const specialties = {
   },
   
   add: async (specialty: Specialty) => {
-    return await sql`INSERT INTO specialties (code, name, area_code, area, qualification) 
-      VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}) 
+    return await sql`INSERT INTO specialties (code, name, area_code, area, qualification, data) 
+      VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}, ${specialty.data}) 
       RETURNING *`;
   },
 
@@ -256,6 +256,7 @@ const specialties = {
           area_code = ${specialty.area_code},
           area = ${specialty.area}, 
           qualification = ${specialty.qualification},
+          data = ${specialty.data},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${specialty.id}
       RETURNING *`;

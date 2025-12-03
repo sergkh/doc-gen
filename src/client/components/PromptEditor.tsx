@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { Prompt } from "@/stores/models";
+import PromptTester from "./PromptTester";
 
 const AVAILABLE_MODELS = [
   "gpt-4o",
-  "gpt-5-2025-08-07",  
+  "gpt-5-2025-08-07",
   "gpt-5-mini-2025-08-07",
   "gpt-4.1-2025-04-14"
 ];
@@ -18,12 +19,16 @@ interface PromptEditorProps {
   onCancel: () => void;
 }
 
+type PromptType = "course" | "topic";
+
 export default function PromptEditor({
   prompt,
   selectedType,
   onSave,
   onCancel,
 }: PromptEditorProps) {
+  const promptType: PromptType = selectedType ?? prompt.type;
+
   const [field, setField] = useState(prompt.field);
   const [model, setModel] = useState(prompt.model || "gpt-4o");
   const [systemPrompt, setSystemPrompt] = useState(prompt.system_prompt);
@@ -47,6 +52,7 @@ export default function PromptEditor({
     try {
       const updatedPrompt: Prompt = {
         ...prompt,
+        type: promptType,
         field: field.trim(),
         model: model || "gpt-4o",
         system_prompt: systemPrompt.trim(),
@@ -130,7 +136,15 @@ export default function PromptEditor({
           placeholder="Промпт користувача"
         />
       </div>
+
+      <PromptTester
+        prompt={prompt}
+        promptType={promptType}
+        field={field}
+        model={model}
+        systemPrompt={systemPrompt}
+        userPrompt={userPrompt}
+      />
     </div>
   );
 }
-

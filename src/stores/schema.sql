@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS specialties(
   area_code VARCHAR(64),
   area VARCHAR(512) NOT NULL,
   qualification VARCHAR(512) NOT NULL,
+  data JSONB not null default '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

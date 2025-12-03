@@ -1,8 +1,9 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, courseTopics, templates } from "@/stores/db";
-import type { Course, Template } from "@/stores/models";
+import type { Course, Prompt, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
+import { runCoursePrompts, runTopicPrompts } from "@/ai/generator";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -102,6 +103,54 @@ const generationApi = {
       });
 
       return Response.json({ jobId });
+    }
+  },
+  "/api/courses/:courseId/run-prompt": {
+    async POST(req: BunRequest) {
+      const { courseId } = req.params as { courseId: number };
+      const rawBody = await req.json().catch(() => ({})) as { prompt: Prompt; apiKey?: string };
+
+      const { prompt, apiKey } = rawBody;
+
+      if (!prompt.field?.trim() || !prompt.system_prompt?.trim() || !prompt.prompt?.trim()) {
+        return new Response("Prompt is missing required fields", { status: 400 });
+      }
+
+      const course = await courses.get(courseId);
+      if (!course) {
+        return new Response("Course not found", { status: 404 });
+      }
+
+      const topics = await courseTopics.all(courseId);
+      if (topics.length === 0) {
+        return new Response("No topics found", { status: 404 });
+      }
+
+      const results = await runCoursePrompts([prompt], course, topics, apiKey ?? null, true);
+
+      return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
+    }
+  },
+  "/api/courses/:courseId/topics/:topicId/run-prompt": {
+    async POST(req: BunRequest) {
+      const { courseId, topicId } = req.params as { courseId: number, topicId: number };
+      const rawBody = await req.json().catch(() => ({})) as { prompt: Prompt; apiKey?: string };
+
+      const { prompt, apiKey } = rawBody;
+
+      if (!prompt.field?.trim() || !prompt.system_prompt?.trim() || !prompt.prompt?.trim()) {
+        return new Response("Prompt is missing required fields", { status: 400 });
+      }
+
+      const course = await courses.get(courseId);
+      if (!course) return new Response("Course not found", { status: 404 });
+
+      const topic = await courseTopics.get(topicId);
+      if (!topic) return new Response("Topic not found", { status: 404 });
+
+      const results = await runTopicPrompts([prompt], course, topic, apiKey ?? null, true);
+
+      return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
     }
   },
   "/api/jobs/:jobId": {

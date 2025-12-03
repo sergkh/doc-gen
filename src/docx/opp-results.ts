@@ -1,7 +1,9 @@
-import type { CourseResult, Specialty } from "@/stores/models";
-import { file2text } from "./parse";
+import type { CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
+import { z } from "zod";
+import { file2text, dropDot } from "./parse";
 import { extractInformationAI } from "@/ai/extractor";
 import { specialties } from "@/stores/db";
+import { extractDocTables, findFirstTable, findNextTable, findNextTableRow, findTableRow, type DocTable } from "./structured-parser";
 
 export type OPPCourse = {
   name: string;
@@ -9,23 +11,53 @@ export type OPPCourse = {
 }
 
 export type OPP ={
+  integralResults: CourseResult[];
   specialResults: CourseResult[];
   generalResults: CourseResult[];
   programResults: CourseResult[];
+  disciplines: SpecialtyDisciplineConfig[];
+  specialty: Specialty;
 }
 
 const specialtyPrompt = `
-  З переданого тексту вибери спеціальність, її код, галузь знань та її код та кваліфікацію.
+  З переданого тексту вибери спеціальність (specialty), її код (code), галузь знань (area) та її код (area_code) та кваліфікацію (qualification).
   Якщо щось не вказане, поверни null. Результат поверни у вигляді JSON: { specialty: string, code: string, area_code: string, area: string, qualification: string }.
-  Текст:"{{text}}"
 `;
 
-type SpecialtyExtraction = {
-  specialty: string | null;
-  code: string | null;
-  area_code: string | null;
-  area: string | null;
-  qualification: string | null;
+const SpecialtyExtraction = z.object({
+  specialty: z.string().nullable(),
+  code: z.string().nullable(),
+  area_code: z.string().nullable(),
+  area: z.string().nullable(),
+  qualification: z.string().nullable()
+});
+
+function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfig[] {
+  if (!table) return [];
+
+  let disciplineRow = findTableRow(table, "ОК");
+  let disciplines: SpecialtyDisciplineConfig[] = [];
+
+  while (disciplineRow) {
+    const numRow = disciplineRow[0]?.replace(/\D+\.?/, '').trim();
+    const nameRow = disciplineRow[1]?.trim();
+    const creditsRow = disciplineRow[2]?.trim().replace(/^\d+\./, '').trim();
+    const controlTypeRow = disciplineRow[3]?.trim().toLowerCase() ?? "";
+
+    const controlType = controlTypeRow.includes("екз") ? 
+      (controlTypeRow.includes("зал") ? "both" : "exam") : "credit";
+
+    disciplines.push({
+      no: parseInt(numRow ?? '0'),
+      name: nameRow ?? "",
+      credits: parseInt(creditsRow ?? '0'),
+      control_type: controlType
+    });
+
+    disciplineRow = findNextTableRow(table, disciplineRow, "ОК");
+  }
+
+  return disciplines;
 }
 
 export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
@@ -45,7 +77,39 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
     name = name.replace(/\s+/g, ' ').trim();
     
     if (name) {
-      results.push({ id: -1, no, type, name, specialty_id: 0 });
+      results.push({ id: -1, no, type, name: dropDot(name), specialty_id: 0 });
+    }
+  }
+  
+  results.sort((a, b) => a.no - b.no);
+  
+  return results;
+}
+
+export function parseOPPIntegralResult(table: DocTable | null): CourseResult[] {
+  if (!table) return [];
+  
+  const ikRow = findTableRow(table, "ІК.");
+
+  if (!ikRow) return [];
+
+  const results: CourseResult[] = [];
+
+  // They all ends with a dot or a newline.
+  const pattern = /ІК(\d+)\*?\.?\s{0,2}([ʼ\s\S]*?)(\.|\n)/g;
+    
+  let match;
+  while ((match = pattern.exec(ikRow[1] ?? "")) !== null) {
+    if (!match[1]) continue;
+    
+    const no = 0;
+    let name = match[1].trim();
+    
+    name = name.replace(/\s*(ІК)\s*\d+\.?\s*$/, '').trim();    
+    name = name.replace(/\s+/g, ' ').trim();
+    
+    if (name) {
+      results.push({ id: -1, no, type: "ІК", name: dropDot(name), specialty_id: 0 });
     }
   }
   
@@ -59,38 +123,47 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
     const text = await file2text(filepath);
     
     const header = text.substring(0, 1000);
-    const extractedSpecialty = await extractInformationAI<SpecialtyExtraction>(header, specialtyPrompt);
+    const extractedSpecialty = await extractInformationAI(header, specialtyPrompt, SpecialtyExtraction);
+
+    if (!extractedSpecialty) {
+      throw Error("Failed to extract specialty from header");
+    }
     
     console.log("Extracted specialty:", extractedSpecialty);
 
-    let specialty = extractedSpecialty.code ? await specialties.findByCode(extractedSpecialty.code) : extractedSpecialty.specialty ? await specialties.findByName(extractedSpecialty.specialty) : null;
+    const docTables = await extractDocTables(filepath);
+
+    const disciplinesTable = findFirstTable(docTables, "Компоненти освітньої програми", "Обов’язкові компоненти");
+    const disciplinesTablePt2 = findNextTable(docTables, disciplinesTable, "Компоненти освітньої програми", "Обов’язкові компоненти");
+
+    const disciplines = parseDisciplinesTable(disciplinesTable).concat(parseDisciplinesTable(disciplinesTablePt2));
+
+    let specialty = extractedSpecialty.code ? 
+      await specialties.findByCode(extractedSpecialty.code) : 
+      extractedSpecialty.specialty ? await specialties.findByName(extractedSpecialty.specialty) : null;
 
     if (!specialty) {
       console.error("Adding new specialty:", extractedSpecialty);
 
       specialty = {
-        id: 0,
+        id: -1,
         name: extractedSpecialty.specialty || "",
         code: extractedSpecialty.code || "",
         area_code: extractedSpecialty.area_code || "",
         area: extractedSpecialty.area || "",
         qualification: extractedSpecialty.qualification || "",
+        data: { disciplines }
       } as Specialty
-
-      const addResult = await specialties.add(specialty);
-      
-      specialty.id = addResult[0].id;
     }
 
-    const generalResults = parseOPPResults(text, 'ЗК');
-    const specialResults = parseOPPResults(text, 'СК');
-    const programResults = parseOPPResults(text, 'РН');
+    const resultsTable = findFirstTable(docTables, "Програмні компетентності");
 
-    [...generalResults, ...specialResults, ...programResults].forEach(result => {
-      result.specialty_id = specialty.id;
-    });
+    const integralResults = parseOPPIntegralResult(resultsTable);
+    const generalResults  = parseOPPResults(text, 'ЗК');
+    const specialResults  = parseOPPResults(text, 'СК');
+    const programResults  = parseOPPResults(text, 'РН');
 
-    return { generalResults, specialResults, programResults } as OPP;
+    return { generalResults, specialResults, programResults, integralResults, disciplines } as OPP;
   } catch (error) {
     console.error("Error parsing OPP:", error);
     return null;
