@@ -1,91 +1,181 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faRotateRight } from "@fortawesome/free-solid-svg-icons";
-import type { CourseTopic, GeneratedTopicData, QuizQuestion } from "@/stores/models";
+import type { CourseTopic, GeneratedTopicData, Prompt, QuizQuestion } from "@/stores/models";
 import toast from "react-hot-toast";
-import QuizEditor from "../components/QuizEditor";
 import { dropEmpty } from "../util/util";
+import GeneratedFieldEditor from "../components/GeneratedFieldEditor";
+import { loadAllTemplates } from "../templates";
+
+interface FieldDescriptor {
+  field: string;
+  prompt?: Prompt;
+  format: Prompt["format"];
+  value: unknown;
+}
+
+const inferFormat = (value: unknown): Prompt["format"] => {
+  if (Array.isArray(value)) {
+    if (value.some((item) => typeof item === "object" && item !== null)) {
+      return "quiz";
+    }
+    return "list";
+  }
+
+  return "text";
+};
 
 export default function TopicGeneratedDataEdit() {
   const { courseId, topicId } = useParams<{ courseId: string; topicId: string }>();
   const navigate = useNavigate();
-  const [topic, setTopic] = useState<CourseTopic | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Form state
-  const [subtopics, setSubtopics] = useState("");
-  const [keywords, setKeywords] = useState("");
-  const [selfQuestions, setSelfQuestions] = useState<string[]>([]);
-  const [newSelfQuestion, setNewSelfQuestion] = useState("");
-  const [selfQuestionsShort, setSelfQuestionsShort] = useState<string[]>([]);
-  const [newSelfQuestionShort, setNewSelfQuestionShort] = useState("");
-  const [referats, setReferats] = useState<string[]>([]);
-  const [newReferat, setNewReferat] = useState("");
-  const [keyQuestions, setKeyQuestions] = useState<string[]>([]);
-  const [newKeyQuestion, setNewKeyQuestion] = useState("");
-  const [quiz, setQuiz] = useState<QuizQuestion[]>([]);
+  const [topic, setTopic] = useState<CourseTopic | null>(null);
+  const [generatedValues, setGeneratedValues] = useState<GeneratedTopicData>({} as GeneratedTopicData);
+  const [topicPrompts, setTopicPrompts] = useState<Prompt[]>([]);
+  const [isLoadingTopic, setIsLoadingTopic] = useState(true);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (courseId && topicId) {
-      fetchTopic();
-    }
+    if (!courseId || !topicId) return;
+    let cancelled = false;
+
+    const fetchTopic = async () => {
+      setIsLoadingTopic(true);
+      try {
+        const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`);
+        if (!response.ok) {
+          throw new Error("Failed to load topic");
+        }
+        const data = await response.json() as CourseTopic;
+        if (cancelled) return;
+        setTopic(data);
+        setGeneratedValues((data.generated || {}) as GeneratedTopicData);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Error fetching topic:", error);
+        toast.error("Помилка завантаження теми");
+        setTopic(null);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingTopic(false);
+        }
+      }
+    };
+
+    void fetchTopic();
+
+    return () => {
+      cancelled = true;
+    };
   }, [courseId, topicId]);
 
-  const fetchTopic = async () => {
-    try {
-      const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`);
-      if (!response.ok) {
-        throw new Error("Failed to load topic");
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchTemplates = async () => {
+      setIsLoadingPrompts(true);
+      try {
+        const templates = await loadAllTemplates();
+        if (cancelled) return;
+
+        const map = new Map<string, Prompt>();
+        templates.forEach((template) => {
+          (template.prompts || []).forEach((prompt) => {
+            if (prompt.type !== "topic") return;
+            if (!prompt.field) return;
+            if (!map.has(prompt.field)) {
+              map.set(prompt.field, prompt);
+            }
+          });
+        });
+
+        const promptList = Array.from(map.values()).sort((a, b) =>
+          (a.name || a.field).localeCompare(b.name || b.field, "uk")
+        );
+
+        setTopicPrompts(promptList);
+        setTemplatesError(null);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Error loading templates:", error);
+        setTemplatesError("Не вдалося завантажити шаблони");
+        toast.error("Не вдалося завантажити шаблони");
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPrompts(false);
+        }
       }
-      const data = await response.json() as CourseTopic;
-      setTopic(data);
+    };
 
-      // Initialize form state from generated data
-      const generated = data.generated || {
-        subtopics: [],
-        keywords: [],
-        topics: [],
-        referats: [],
-        keyQuestions: [],
-        quiz: []
+    void fetchTemplates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const fieldDescriptors = useMemo<FieldDescriptor[]>(() => {
+    const descriptors: FieldDescriptor[] = [];
+    const seen = new Set<string>();
+
+    topicPrompts.forEach((prompt) => {
+      if (!prompt.field) return;
+      descriptors.push({
+        field: prompt.field,
+        prompt,
+        format: prompt.format || "text",
+        value: generatedValues?.[prompt.field]
+      });
+      seen.add(prompt.field);
+    });
+
+    Object.keys(generatedValues || {}).forEach((field) => {
+      if (seen.has(field)) return;
+      descriptors.push({
+        field,
+        format: inferFormat(generatedValues[field]),
+        value: generatedValues[field]
+      });
+      seen.add(field);
+    });
+
+    return descriptors;
+  }, [topicPrompts, generatedValues]);
+
+  const isLoading = isLoadingTopic || isLoadingPrompts;
+
+  const handleFieldChange = (field: string, value: string | string[] | QuizQuestion[] | null) => {
+    setGeneratedValues((prev) => {
+      if (value === null || value === undefined) {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      }
+      return {
+        ...prev,
+        [field]: value,
       };
+    });
+  };
 
-      setSubtopics(generated.subtopics?.join("\n") || "");
-      setKeywords(generated.keywords?.join(", ") || "");
-      setSelfQuestions(generated.selfQuestions || []);
-      setSelfQuestionsShort(generated.selfQuestionsShort || []);
-      setReferats(generated.referats || []);
-      setKeyQuestions(generated.keyQuestions || []);
-      setQuiz(generated.quiz || []);
-    } catch (error) {
-      console.error("Error fetching topic:", error);
-      toast.error("Помилка завантаження теми");
-    } finally {
-      setIsLoading(false);
-    }
+  const buildGeneratedPayload = (): GeneratedTopicData => {
+    const cleanedEntries = {} as GeneratedTopicData;
+    Object.entries(generatedValues || {}).forEach(([key, val]) => {
+      if (val === undefined || val === null) {
+        return;
+      }
+      (cleanedEntries as Record<string, unknown>)[key] = val;
+    });
+
+    return dropEmpty({ ...cleanedEntries }) as GeneratedTopicData;
   };
 
   const saveTopicData = async (): Promise<boolean> => {
-    if (!topic) return false;
+    if (!topic || !courseId || !topicId) return false;
 
-    // Parse form data
-    const subtopicsArray = subtopics.split("\n").filter(s => s.trim() !== "");
-    const keywordsArray = keywords.split(",").map(k => k.trim()).filter(k => k !== "");
-
-    const generated = dropEmpty({
-      ...topic.generated,
-      subtopics: subtopicsArray,
-      keywords: keywordsArray,
-      selfQuestions,
-      selfQuestionsShort,
-      referats,
-      keyQuestions,
-      quiz
-    }) as GeneratedTopicData;
-
-    const updatedTopic: CourseTopic = {...topic, generated };
+    const generated = buildGeneratedPayload();
+    const updatedTopic: CourseTopic = { ...topic, generated };
 
     const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`, {
       method: "PUT",
@@ -99,12 +189,13 @@ export default function TopicGeneratedDataEdit() {
       throw new Error("Failed to save");
     }
 
+    setTopic(updatedTopic);
+    setGeneratedValues((updatedTopic.generated || {}) as GeneratedTopicData);
     return true;
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-
     try {
       await saveTopicData();
       toast.success("Дані успішно збережено");
@@ -123,18 +214,14 @@ export default function TopicGeneratedDataEdit() {
     setIsSaving(true);
 
     try {
-      // Save current topic
       await saveTopicData();
 
-      // Fetch all topics for the course
       const topicsResponse = await fetch(`/api/courses/${courseId}/topics`);
       if (!topicsResponse.ok) {
         throw new Error("Failed to fetch topics");
       }
       const allTopics = await topicsResponse.json() as CourseTopic[];
-
-      // Find the next topic by index
-      const nextTopic = allTopics.find(t => t.index === topic.index + 1);
+      const nextTopic = allTopics.find((t) => t.index === topic.index + 1);
 
       if (nextTopic) {
         toast.success("Дані збережено, перехід до наступної теми");
@@ -149,50 +236,6 @@ export default function TopicGeneratedDataEdit() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleAddTopic = () => {
-    if (newSelfQuestion.trim()) {
-      setSelfQuestions(old => [...old, newSelfQuestion.trim()]);
-      setNewSelfQuestion("");
-    }
-  };
-
-  const handleRemoveTopic = (index: number) => {
-    setSelfQuestions(old => old.filter((_, i) => i !== index));
-  };
-
-  const handleAddSelfQuestionShort = () => {
-    if (newSelfQuestionShort.trim()) {
-      setSelfQuestionsShort(old => [...old, newSelfQuestionShort.trim()]);
-      setNewSelfQuestionShort("");
-    }
-  };
-
-  const handleRemoveSelfQuestionShort = (index: number) => {
-    setSelfQuestionsShort(old => old.filter((_, i) => i !== index));
-  };
-
-  const handleAddReferat = () => {
-    if (newReferat.trim()) {
-      setReferats([...referats, newReferat.trim()]);
-      setNewReferat("");
-    }
-  };
-
-  const handleRemoveReferat = (index: number) => {
-    setReferats(referats.filter((_, i) => i !== index));
-  };
-
-  const handleAddKeyQuestion = () => {
-    if (newKeyQuestion.trim()) {
-      setKeyQuestions([...keyQuestions, newKeyQuestion.trim()]);
-      setNewKeyQuestion("");
-    }
-  };
-
-  const handleRemoveKeyQuestion = (index: number) => {
-    setKeyQuestions(keyQuestions.filter((_, i) => i !== index));
   };
 
   if (isLoading) {
@@ -221,252 +264,30 @@ export default function TopicGeneratedDataEdit() {
         <h1 className="font-mono">Редагувати згенеровані дані: {topic.name}</h1>
 
         <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-4">
-          {/* Subtopics */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Підтеми з програми (по одній на рядок):</label>
-              <button
-                onClick={() => setSubtopics("") }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути підтеми (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <textarea
-              rows={5}
-              value={subtopics}
-              onChange={(e) => setSubtopics(e.target.value)}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
-              placeholder="Введіть підтеми, по одній на рядок"
-            />
-          </div>
+          {templatesError && (
+            <div className="text-red-400 text-sm">{templatesError}</div>
+          )}
 
-          {/* Keywords */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Перелік термінів для методички з самостійної роботи (через кому):</label>
-              <button
-                onClick={() => setKeywords("") }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути ключові слова (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
+          {fieldDescriptors.length === 0 ? (
+            <div className="text-amber-50/70 text-sm">
+              Немає доступних згенерованих полів для редагування. Додайте промпти для тем у шаблонах, щоб з'явилися поля.
             </div>
-            <textarea
-              rows={3}
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
-              placeholder="Введіть ключові слова через кому"
-            />
-          </div>
-
-          {/* Topics */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Теми для самостійної роботи ({selfQuestions.length}):</label>
-              <button
-                onClick={() => setSelfQuestions([]) }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути теми (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {selfQuestions.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {selfQuestions.map((t, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
-                      <span className="flex-1 text-amber-50">{t}</span>
-                      <button
-                        onClick={() => handleRemoveTopic(index)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSelfQuestion}
-                  onChange={(e) => setNewSelfQuestion(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddTopic()}
-                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  placeholder="Додати тему"
+          ) : (
+            <div className="flex flex-col gap-4">
+              {fieldDescriptors.map(({ field, prompt, format, value }) => (
+                <GeneratedFieldEditor
+                  key={field}
+                  field={field}
+                  promptName={prompt?.name}
+                  format={format}
+                  value={value as string | string[] | QuizQuestion[] | undefined}
+                  onChange={(val) => handleFieldChange(field, val)}
                 />
-                <button
-                  onClick={handleAddTopic}
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-              </div>
+              ))}
             </div>
-          </div>
+          )}
 
-          {/* Self Questions Short */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Короткі питання для самостійної роботи ({selfQuestionsShort.length}):</label>
-              <button
-                onClick={() => setSelfQuestionsShort([]) }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути короткі питання (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {selfQuestionsShort.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {selfQuestionsShort.map((q, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
-                      <span className="flex-1 text-amber-50">{q}</span>
-                      <button
-                        onClick={() => handleRemoveSelfQuestionShort(index)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSelfQuestionShort}
-                  onChange={(e) => setNewSelfQuestionShort(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddSelfQuestionShort()}
-                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  placeholder="Додати коротке питання"
-                />
-                <button
-                  onClick={handleAddSelfQuestionShort}
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Referats */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Теми рефератів ({referats.length}):</label>
-              <button
-                onClick={() => setReferats([])}
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути реферати (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {referats.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {referats.map((r, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
-                      <span className="flex-1 text-amber-50">{r}</span>
-                      <button
-                        onClick={() => handleRemoveReferat(index)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newReferat}
-                  onChange={(e) => setNewReferat(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddReferat()}
-                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  placeholder="Додати реферат"
-                />
-                <button
-                  onClick={handleAddReferat}
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Key Questions */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Ключові питання ({keyQuestions.length}):</label>
-              <button
-                onClick={() => setKeyQuestions([]) }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути ключові питання (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-2">
-              {keyQuestions.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {keyQuestions.map((q, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-zinc-800 border border-amber-50 rounded-lg px-3 py-2">
-                      <span className="flex-1 text-amber-50">{q}</span>
-                      <button
-                        onClick={() => handleRemoveKeyQuestion(index)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newKeyQuestion}
-                  onChange={(e) => setNewKeyQuestion(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddKeyQuestion()}
-                  className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  placeholder="Додати питання"
-                />
-                <button
-                  onClick={handleAddKeyQuestion}
-                  className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quiz */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-amber-50 font-bold">Тестові завдання ({quiz.length}):</label>
-              <button
-                onClick={() => setQuiz([]) }
-                className="text-yellow-400 hover:text-yellow-300 opacity-60 hover:opacity-100 transition-opacity"
-                title="Скинути тестові завдання (буде згенеровано автоматично)"
-              >
-                <FontAwesomeIcon icon={faRotateRight} />
-              </button>
-            </div>
-            <QuizEditor quiz={quiz} onQuizChange={setQuiz} />
-          </div>
-
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 flex-wrap">
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -493,4 +314,3 @@ export default function TopicGeneratedDataEdit() {
     </div>
   );
 }
-

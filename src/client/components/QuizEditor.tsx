@@ -77,7 +77,7 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
         ))}
         <button
           onClick={handleAddQuestion}
-          className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-2 rounded-lg font-bold flex items-center gap-2 justify-center"
+          className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 justify-center"
         >
           <FontAwesomeIcon icon={faPlus} /> Додати питання
         </button>

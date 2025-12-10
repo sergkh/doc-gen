@@ -138,7 +138,17 @@ export default function CourseGeneratedDataEdit() {
   const isLoading = isLoadingCourse || isLoadingPrompts;
 
   const handleFieldChange = (field: string, value: string | string[] | QuizQuestion[] | null) => {
-    setGeneratedValues((prev) => ({ ...prev, [field]: value }));
+    setGeneratedValues((prev) => {
+      if (value === null || value === undefined) {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      }
+      return {
+        ...prev,
+        [field]: value,
+      };
+    });
   };
 
   const handleSave = async () => {

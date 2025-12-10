@@ -10,7 +10,6 @@ const FORMAT_LABELS: Record<Prompt["format"], string> = {
   quiz: "Тестові питання"
 };
 
-
 interface GeneratedFieldEditorProps {
   field: string;
   promptName?: string;
@@ -33,7 +32,7 @@ export default function GeneratedFieldEditor({
   const quizValue = format === "quiz" && Array.isArray(value) ? (value as QuizQuestion[]) : [];
 
   const handleReset = () => {
-    onChange(null);    
+    onChange(null);
     setNewListItem("");
   };
 
@@ -96,7 +95,11 @@ export default function GeneratedFieldEditor({
                 className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
                 placeholder="Додати значення"
               />
-              <button type="button" onClick={handleAddListItem} className="text-amber-50 hover:text-amber-200">
+              <button
+                type="button"
+                onClick={handleAddListItem}
+                className="text-amber-50 hover:text-amber-200"
+              >
                 <FontAwesomeIcon icon={faPlus} />
               </button>
             </div>
