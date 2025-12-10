@@ -60,14 +60,14 @@ export default function AttestationsEditor({
                 <select
                   value={attestation.semester || 1}
                   onChange={(e) => onUpdateSemester(index, Number(e.target.value))}
-                  className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
+                  className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white cursor-pointer"
                 >
                   <option value={1}>1 семестр</option>
                   <option value={2}>2 семестр</option>
                 </select>
                 <button
                   onClick={() => onRemove(index)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                  className=" text-amber-50 hover:text-red-400 rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
                   aria-label="Видалити атестацію"
                 >
                   <FontAwesomeIcon icon={faTimes} size="xs" />

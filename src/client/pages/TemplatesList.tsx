@@ -106,26 +106,33 @@ export default function TemplatesList() {
 
         <details className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-5 text-amber-50 font-mono">
           <summary className="cursor-pointer font-bold flex items-center justify-between">
-            <span>Пам'ятка по Docxtemplator та даним генерації</span>
+            <span>Пам'ятка по шаблонам генерації</span>
             <span className="text-xs uppercase tracking-widest">Розгорнути</span>
           </summary>
 
           <div className="mt-4 flex flex-col gap-4 text-sm leading-relaxed">
             <section>
-              <h2 className="text-amber-200 uppercase text-xs tracking-widest mb-2">Базовий синтаксис Docxtemplator</h2>
+              <h2 className="text-amber-200 uppercase text-xs tracking-widest mb-2">Базовий синтаксис шаблонів документів (word)</h2>
               <ul className="list-disc pl-5 space-y-1">
                 <li><code>{"{{course.name}}"}</code> — вставка одиночного значення.</li>
                 <li><code>{"{{#topics}} … {{/topics}}"}</code> — цикл по темах (всередині доступні поля теми, наприклад <code>{"{{title}}"}</code>).</li>
-                <li><code>{"{{#attestations}} … {{/attestations}}"}</code> — повторення блоків по атестаціях.</li>
-                <li><code>{"{{#if oneSemesterOnly}} … {{/if}}"}</code> — умовний блок, який показується лише якщо умова правдива.</li>
                 <li><code>{"{{hours.fulltime.lectures}}"}</code> — доступ до вкладених властивостей через крапку.</li>
-                <li><code>{"{{customParameter}}"}</code> — додаткові параметри, які користувач вводить у шаблоні.</li>
+                <li><code>{"{{course.name | uppercase}}"}</code> — використання <a className="text-amber-600" href="https://github.com/sergkh/doc-gen/blob/main/src/docx/render.ts#L37">фільтрів</a> для форматування (наприклад, перетворення в верхній регістр).</li>
               </ul>
             </section>
-
+            <section>
+              <h2 className="text-amber-200 uppercase text-xs tracking-widest mb-2">Для текстових/xml документів використовується <a className="text-amber-600" href="https://handlebarsjs.com">Handlebars</a></h2>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                <li><code>{'{{variable}}' }</code> — вставка значення змінної.</li>
+                <li><code>{'{{#each array}}…{{/each}}' }</code> — цикл по масиву.</li>
+                <li><code>{'{{#if condition}}…{{/if}}' }</code> — умовний блок.</li>
+                <li><code>{'{{#unless condition}}…{{/unless}}' }</code> — блок, який виконується, якщо умова хибна.</li>
+                <li><code>{'{{#with object}}…{{/with}}' }</code> — контекст для вкладених властивостей об'єкта.</li>
+              </ul>
+            </section>
             <section>
               <h2 className="text-amber-200 uppercase text-xs tracking-widest mb-2">Об'єкт CourseGenerationData</h2>
-              <p>Усередині Docxtemplator шаблону доступний об'єкт <code>data</code>, що відповідає структурі <code>CourseGenerationData</code>. Основні поля:</p>
+              <p>Усередині Docxtemplator шаблону доступний кореневий об'єкт, що відповідає структурі <a className="text-amber-600" href="https://github.com/sergkh/doc-gen/blob/main/src/stores/models.ts#L160">CourseGenerationData</a>. Основні поля:</p>
               <ul className="list-disc pl-5 space-y-1 mt-2">
                 <li><code>course</code> — повна інформація про курс (назва, опис, викладачі).</li>
                 <li><code>topics</code> — масив тем з назвами, змістом та годинами.</li>

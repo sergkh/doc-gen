@@ -9,20 +9,21 @@ interface PromptTesterProps {
   promptType: "course" | "topic";
   field: string;
   model: string;
+  format: Prompt["format"];
   systemPrompt: string;
   userPrompt: string;
 }
 
-function formatResult({ items }: PromptResult): string {
-  if (typeof items === "string") {
-    return items;
+function formatResult({ item }: PromptResult): string {
+  if (typeof item === "string") {
+    return item;
   }
 
-  if (Array.isArray(items)) {
-    return items.map((item) => JSON.stringify(item, null, 2)).join("\n\n");
+  if (Array.isArray(item)) {
+    return item.map((i) => JSON.stringify(i, null, 2)).join("\n\n");
   }
 
-  return JSON.stringify(items, null, 2);
+  return JSON.stringify(item, null, 2);
 }
 
 export default function PromptTester({
@@ -30,9 +31,11 @@ export default function PromptTester({
   promptType,
   field,
   model,
+  format,
   systemPrompt,
   userPrompt,
 }: PromptTesterProps) {
+
   const [isTesterOpen, setIsTesterOpen] = useState(false);
   const [courses, setCourses] = useState<KeyValue[]>([]);
   const [coursesError, setCoursesError] = useState<string | null>(null);
@@ -202,6 +205,7 @@ export default function PromptTester({
       type: promptType,
       field: normalizedField,
       model: model || "gpt-4o",
+      format: format || "text",
       system_prompt: normalizedSystemPrompt,
       prompt: normalizedUserPrompt,
     };
