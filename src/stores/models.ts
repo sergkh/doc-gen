@@ -204,8 +204,7 @@ export type Template = {
 }
 
 export type Prompt = {
-  id?: number,
-  index?: number,
+  name: string,
   type: "course" | "topic",
   field: string,
   model: string,

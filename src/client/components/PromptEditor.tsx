@@ -35,6 +35,7 @@ export default function PromptEditor({
 }: PromptEditorProps) {
   const promptType: PromptType = selectedType ?? prompt.type;
 
+  const [name, setName] = useState(prompt.name || "");
   const [field, setField] = useState(prompt.field);
   const [model, setModel] = useState(prompt.model || "gpt-4o");
   const [format, setFormat] = useState<Prompt["format"]>(prompt.format || "text");
@@ -43,6 +44,7 @@ export default function PromptEditor({
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    setName(prompt.name || "");
     setField(prompt.field);
     setModel(prompt.model || "gpt-4o");
     setFormat(prompt.format || "text");
@@ -51,7 +53,7 @@ export default function PromptEditor({
   }, [prompt]);
 
   const handleSave = async () => {
-    if (!field.trim() || !systemPrompt.trim() || !userPrompt.trim()) {
+    if (!name.trim() || !field.trim() || !systemPrompt.trim() || !userPrompt.trim()) {
       toast.error("Всі поля обов'язкові");
       return;
     }
@@ -60,6 +62,7 @@ export default function PromptEditor({
     try {
       const updatedPrompt: Prompt = {
         ...prompt,
+        name: name.trim(),
         type: promptType,
         field: field.trim(),
         model: model || "gpt-4o",
@@ -76,11 +79,13 @@ export default function PromptEditor({
     }
   };
 
+  const isExistingPrompt = Boolean((prompt.name || "").trim() || (prompt.field || "").trim());
+
   return (
     <div className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h3 className="text-amber-50 font-bold">
-          {prompt.id === 0 ? "Додати промпт" : "Редагувати промпт"}
+          {isExistingPrompt ? "Редагувати промпт" : "Додати промпт"}
         </h3>
         <div className="flex gap-2">
           <button
@@ -101,6 +106,15 @@ export default function PromptEditor({
             <FontAwesomeIcon icon={faTimes} />
           </button>
         </div>
+      </div>
+      <div>
+        <label className="block text-amber-50 font-bold mb-2">Назва промпта:</label>
+        <input
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Наприклад: Self Method Goal"
+        />
       </div>
       <div>
         <label className="block text-amber-50 font-bold mb-2">Поле:</label>
