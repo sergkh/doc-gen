@@ -2,6 +2,8 @@ import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prom
 import { courses, courseTopics } from "@/stores/db.ts";
 import { createOpenAIClient, retryWithBackoff } from "./common";
 import { formatPrompt } from "@/client/util/util";
+import { z } from 'zod';
+import { zodTextFormat } from "openai/helpers/zod";
 
 function deepEqual(a: any, b: any): boolean {
   try {
@@ -13,9 +15,26 @@ function deepEqual(a: any, b: any): boolean {
 
 function packIntoObject(items: PromptResult[]): Record<string, any> {
   return items.reduce((acc, item) => {
-    acc[item.prompt] = item.items;
+    acc[item.field] = item.item;
     return acc;
   }, {} as Record<string, any>);
+}
+
+function zodPromptFormat(format: "text" | "list" | "quiz"): z.ZodType {
+  switch (format) {
+    case "list":
+      return z.array(z.string());
+    case "quiz":
+      return z.array(z.object({
+        question: z.string(),
+        options: z.array(z.string()),
+        answerIndex: z.number(),
+      }));
+    case "text":
+      return z.string();
+    default:
+      throw new Error(`Unknown format: ${format}`);
+  }
 }
 
 // Gets all configured prompts for given type and runs them if they weren't run before
@@ -37,17 +56,20 @@ export async function runPrompts(
     const systemPrompt = formatPrompt(prompt.system_prompt, contextProvider(results));
     const formattedPrompt = formatPrompt(prompt.prompt, contextProvider(results));
 
-    let items: Record<string, any>[] = forceRecreate ? [] : state[prompt.field] || [];
+    let item: any | null = forceRecreate ? null : state[prompt.field] ?? null;
 
-    if (items.length == 0) {
+    if (item === null || (Array.isArray(item) && item.length === 0)) {
 
       console.log(`Running ${type} prompt ${prompt.field}`);
 
+      const objFormat = z.object({
+        data: zodPromptFormat(prompt.format),
+      });      
+
       const response = await retryWithBackoff(async () => {
-        return await client.chat.completions.create({
+        return await client.responses.parse({
           model: prompt.model,
-          response_format: { type: "json_object" },
-          messages: [
+          input: [
             {
               role: "system",
               content: systemPrompt
@@ -56,20 +78,23 @@ export async function runPrompts(
               role: "user",
               content: formattedPrompt
             }
-          ]
+          ],
+          text: {
+            format: zodTextFormat(objFormat, "data"),
+          }
         });
       });
 
-      const jsonResponse = JSON.parse(response.choices[0]?.message.content as string);
-      items = jsonResponse.items || [];
+      item = (response.output_parsed as { data: any }).data;
 
-      console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(items)}`);
+      console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(item)}`);
     }
     
     results.push({
+      field: prompt.field,
       system_prompt: systemPrompt,
       prompt: formattedPrompt,
-      items: items
+      item
     } as PromptResult); 
   }
 
@@ -99,8 +124,8 @@ export function runCoursePrompts(
   courseTopics: CourseTopic[],
   apiKey: string | null,
   forceRecreate: boolean = false
-): Promise<PromptResult[]> {
-  return runPrompts(prompts, course.generated || {}, "course",  forceRecreate, apiKey, (state) => ({
+): Promise<PromptResult[]> {  
+  return runPrompts(prompts, course.generated || {}, "course", forceRecreate, apiKey, (state) => ({
     ...state,
     courseName: course.name,
     courseDescription: course.data.description ?? "",
@@ -149,8 +174,6 @@ export async function generateCourseInfo(
       ...prompts
     } as GeneratedCourseData
   } as Course;
-
-  console.log("Done generating AI course info");
 
   if (!deepEqual(updatedCourse, course)) {
     await courses.update(updatedCourse);

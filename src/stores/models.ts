@@ -210,7 +210,8 @@ export type Prompt = {
   field: string,
   model: string,
   system_prompt: string,
-  prompt: string
+  prompt: string,
+  format: "text" | "list" | "quiz",
 }
 
 export type ParsedData = {
@@ -240,7 +241,8 @@ export type Specialty = {
 }
 
 export type PromptResult = {
+  field: string;
   system_prompt: string;
   prompt: string;
-  items: Record<string, any>[];
+  item: any;
 };

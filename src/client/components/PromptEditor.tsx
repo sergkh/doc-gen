@@ -12,6 +12,12 @@ const AVAILABLE_MODELS = [
   "gpt-4.1-2025-04-14"
 ];
 
+const AVAILABLE_FORMATS: Array<{ value: Prompt["format"]; label: string }> = [
+  { value: "text", label: "Текст" },
+  { value: "list", label: "Список" },
+  { value: "quiz", label: "Тестові питання" },
+];
+
 interface PromptEditorProps {
   prompt: Prompt;
   selectedType: "course" | "topic";
@@ -31,6 +37,7 @@ export default function PromptEditor({
 
   const [field, setField] = useState(prompt.field);
   const [model, setModel] = useState(prompt.model || "gpt-4o");
+  const [format, setFormat] = useState<Prompt["format"]>(prompt.format || "text");
   const [systemPrompt, setSystemPrompt] = useState(prompt.system_prompt);
   const [userPrompt, setUserPrompt] = useState(prompt.prompt);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,6 +45,7 @@ export default function PromptEditor({
   useEffect(() => {
     setField(prompt.field);
     setModel(prompt.model || "gpt-4o");
+    setFormat(prompt.format || "text");
     setSystemPrompt(prompt.system_prompt);
     setUserPrompt(prompt.prompt);
   }, [prompt]);
@@ -55,6 +63,7 @@ export default function PromptEditor({
         type: promptType,
         field: field.trim(),
         model: model || "gpt-4o",
+        format: format || "text",
         system_prompt: systemPrompt.trim(),
         prompt: userPrompt.trim(),
       };
@@ -77,7 +86,7 @@ export default function PromptEditor({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="text-amber-50 hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30"
+            className="text-amber-50 hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
             aria-label="Зберегти"
             title="Зберегти"
           >
@@ -85,7 +94,7 @@ export default function PromptEditor({
           </button>
           <button
             onClick={onCancel}
-            className="text-amber-50 hover:text-white"
+            className="text-amber-50 hover:text-white hover:bg-gray-700 cursor-pointer"
             aria-label="Скасувати"
             title="Скасувати"
           >
@@ -117,9 +126,23 @@ export default function PromptEditor({
         </select>
       </div>
       <div>
+        <label className="block text-amber-50 font-bold mb-2">Формат відповіді:</label>
+        <select
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          value={format}
+          onChange={(e) => setFormat(e.target.value as Prompt["format"])}
+        >
+          {AVAILABLE_FORMATS.map(({ value, label }) => (
+            <option key={value} value={value} className="bg-zinc-800 text-amber-50">
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
         <label className="block text-amber-50 font-bold mb-2">Системний промпт:</label>
         <textarea
-          rows={1}
+          rows={2}
           className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
@@ -142,6 +165,7 @@ export default function PromptEditor({
         promptType={promptType}
         field={field}
         model={model}
+        format={format}
         systemPrompt={systemPrompt}
         userPrompt={userPrompt}
       />

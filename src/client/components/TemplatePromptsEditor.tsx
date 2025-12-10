@@ -23,7 +23,8 @@ export default function TemplatePromptsEditor({
       type: selectedPromptType,
       field: "",
       model: "gpt-4o",
-      system_prompt: "Ти асистент викладача з дисципліни \"{{courseName}}\". Опис: {{courseDescription}}, який видає відповіді тільки в форматі JSON об'єктів",
+      format: "text",
+      system_prompt: "Ти асистент викладача з дисципліни \"{{courseName}}\". Опис: {{courseDescription}}",
       prompt: ""
     };
     onChange([...prompts, newPrompt]);

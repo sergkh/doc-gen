@@ -20,8 +20,7 @@ export type OPP ={
 }
 
 const specialtyPrompt = `
-  З переданого тексту вибери спеціальність (specialty), її код (code), галузь знань (area) та її код (area_code) та кваліфікацію (qualification).
-  Якщо щось не вказане, поверни null. Результат поверни у вигляді JSON: { specialty: string, code: string, area_code: string, area: string, qualification: string }.
+  З переданого тексту вибери спеціальність (specialty), її код (code), галузь знань (area) та її код (area_code) та кваліфікацію (qualification). Якщо щось не вказане, поверни null.
 `;
 
 const SpecialtyExtraction = z.object({
@@ -123,7 +122,7 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
     const text = await file2text(filepath);
     
     const header = text.substring(0, 1000);
-    const extractedSpecialty = await extractInformationAI(header, specialtyPrompt, SpecialtyExtraction);
+    const extractedSpecialty = await extractInformationAI(specialtyPrompt, header, SpecialtyExtraction);
 
     if (!extractedSpecialty) {
       throw Error("Failed to extract specialty from header");

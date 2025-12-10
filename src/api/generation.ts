@@ -148,7 +148,11 @@ const generationApi = {
       const topic = await courseTopics.get(topicId);
       if (!topic) return new Response("Topic not found", { status: 404 });
 
+      console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
+
       const results = await runTopicPrompts([prompt], course, topic, apiKey ?? null, true);
+
+      console.log(`Prompt results for topic ${topic.name}:`, results);
 
       return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
     }

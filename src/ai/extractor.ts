@@ -1,4 +1,4 @@
-import { createOpenAIClient } from "./common";
+import { createOpenAIClient, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
 
@@ -14,19 +14,21 @@ export async function extractInformationAI<ZodInput extends z.ZodType>(
 
   console.log("Extracting information with AI...", text.slice(0, 100), "...");
   
-  const response = await client.responses.parse({
-    model: model ?? "gpt-4o-mini",
-    input: [{
-      role: "system",
-      content: prompt
-    }, {
-      role: "user", 
-      content: text
-    }],    
-    text: {
-      format: zodTextFormat(format, "data"),
-    }
-  });  
+  const response = await retryWithBackoff(async () => {
+    return await client.responses.parse({
+      model: model ?? "gpt-4o-mini",
+      input: [{
+        role: "system",
+        content: prompt
+      }, {
+        role: "user",
+        content: text
+      }],    
+      text: {
+        format: zodTextFormat(format, "data"),
+      }
+    });
+  });
 
   return response.output_parsed;
 }
