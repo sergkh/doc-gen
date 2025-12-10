@@ -1,6 +1,6 @@
 import type { Course, Teacher, ShortCourseInfo, CourseResult } from "@/stores/models";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
@@ -260,13 +260,16 @@ export default function CourseEdit() {
                 value={item.name} onChange={(e) => update({name: e.target.value})} />
             </div>
             <div className="flex items-start justify-end gap-2">
-              { item?.generated && item.id && (
-                <button
-                  onClick={() => navigate(`/courses/${item.id}/generated`)}
-                  className="col-span-2"
+              {item?.id && (
+                <Link
+                  to={`/courses/${item.id}/generated`}
+                  className="inline-flex items-center gap-2 text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                  aria-label="Редагувати згенеровані дані курсу"
+                  title="Редагувати згенеровані дані курсу"
                 >
                   <FontAwesomeIcon icon={faEdit} />
-                </button>
+                  <span className="text-sm">Згенеровані дані</span>
+                </Link>
               )}
             </div>
             <div>
