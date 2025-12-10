@@ -18,8 +18,7 @@ export default function TemplatePromptsEditor({
 
   const handleAddPrompt = () => {
     const newPrompt: Prompt = {
-      id: Date.now(), // Use timestamp as temporary ID
-      index: prompts.length + 1,
+      name: "",
       type: selectedPromptType,
       field: "",
       model: "gpt-4o",
@@ -51,10 +50,6 @@ export default function TemplatePromptsEditor({
   const handleDeletePrompt = (index: number) => {
     const updatedPrompts = [...prompts];
     updatedPrompts.splice(index, 1);
-    // Update indices
-    updatedPrompts.forEach((p, i) => {
-      p.index = i + 1;
-    });
     onChange(updatedPrompts);
     if (editingPromptIndex === index) {
       setEditingPromptIndex(null);

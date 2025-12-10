@@ -11,17 +11,13 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
   const handleAddQuestion = () => {
     const newQuestion: QuizQuestion = {
       question: "",
-      index: quiz.length + 1,
       options: ["", "", "", ""]
     };
     onQuizChange([...quiz, newQuestion]);
   };
 
   const handleRemoveQuestion = (index: number) => {
-    const updated = quiz.filter((_, i) => i !== index).map((q, i) => ({
-      ...q,
-      index: i + 1
-    }));
+    const updated = quiz.filter((_, i) => i !== index);
     onQuizChange(updated);
   };
 
@@ -50,7 +46,7 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
         {quiz.map((question, qIndex) => (
           <div key={qIndex} className="bg-zinc-800 border border-amber-50 rounded-lg p-3 flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-amber-50 font-bold">Питання {question.index}:</span>
+              <span className="text-amber-50 font-bold">Питання {qIndex + 1}:</span>
               <button
                 onClick={() => handleRemoveQuestion(qIndex)}
                 className="text-red-400 hover:text-red-300"

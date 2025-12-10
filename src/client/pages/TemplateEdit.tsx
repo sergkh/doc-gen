@@ -118,7 +118,7 @@ export default function TemplateEdit() {
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <div className="flex items-center justify-between">
-        <h1 className="font-mono">{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</h1>
+          <h1 className="font-mono">{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</h1>
 
           <div className="flex gap-2">
             <button
