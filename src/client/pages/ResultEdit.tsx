@@ -76,7 +76,7 @@ export default function ResultEdit() {
               <label className="block text-amber-50 font-bold mb-2">Назва:</label>
               <textarea
                 rows={4}
-                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white resize-y"
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white resize-y placeholder:text-zinc-600"
                 value={item.name}
                 onChange={(e) => update({ name: e.target.value })}
                 placeholder="Введіть назву результату"

@@ -201,7 +201,7 @@ export default function TemplateParametersInput({
               updateParameterValue(param.name, e.target.value ? Number(e.target.value) : undefined)
             }
             disabled={disabled}
-            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
+            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50 placeholder:text-zinc-600"
             placeholder="Введіть число"
           />
         </div>
@@ -385,7 +385,7 @@ export default function TemplateParametersInput({
           value={paramValue || ""}
           onChange={(e) => updateParameterValue(param.name, e.target.value || undefined)}
           disabled={disabled}
-          className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
+          className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50 placeholder:text-zinc-600"
           placeholder="Введіть текст"
         />
       </div>

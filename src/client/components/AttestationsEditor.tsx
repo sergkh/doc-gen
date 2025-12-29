@@ -80,7 +80,7 @@ export default function AttestationsEditor({
           <input
             ref={attestationInputRef}
             type="text"
-            className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+            className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
             placeholder="Назва атестації"
             onKeyDown={handleKeyDown}
           />

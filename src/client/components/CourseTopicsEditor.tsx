@@ -720,7 +720,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                   <div>
                     <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
                     <input
-                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
                       value={topicName}
                       onChange={(e) => setTopicName(e.target.value)}
                       placeholder="Введіть назву теми"
@@ -730,7 +730,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
                     <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
                     <textarea
                       rows={3}
-                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
                       value={topicSubtopics}
                       onChange={(e) => setTopicSubtopics(e.target.value)}
                       placeholder="Введіть підтеми, по одній на рядок"
@@ -929,7 +929,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
           <div>
             <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
             <input
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
               value={topicName}
               onChange={(e) => setTopicName(e.target.value)}
               placeholder="Введіть назву теми"
@@ -939,7 +939,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
             <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
             <textarea
               rows={3}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
               value={topicSubtopics}
               onChange={(e) => setTopicSubtopics(e.target.value)}
               placeholder="Введіть підтеми, по одній на рядок"

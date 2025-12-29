@@ -66,7 +66,7 @@ export default function GeneratedFieldEditor({
                       type="text"
                       value={item}
                       onChange={(e) => handleUpdateListItem(index, e.target.value)}
-                      className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                      className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
                       placeholder={`Елемент ${index + 1}`}
                     />
                     <button
@@ -92,7 +92,7 @@ export default function GeneratedFieldEditor({
                     handleAddListItem();
                   }
                 }}
-                className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+                className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
                 placeholder="Додати значення"
               />
               <button
@@ -119,7 +119,7 @@ export default function GeneratedFieldEditor({
             rows={format === "text" ? 6 : 10}
             value={textValue}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
             placeholder="Введіть значення"
           />
         );

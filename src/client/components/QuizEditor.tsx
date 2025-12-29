@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import type { QuizQuestion } from "@/stores/models";
 
 interface QuizEditorProps {
@@ -11,7 +11,8 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
   const handleAddQuestion = () => {
     const newQuestion: QuizQuestion = {
       question: "",
-      options: ["", "", "", ""]
+      options: ["", "", "", ""],
+      answerIndex: 0
     };
     onQuizChange([...quiz, newQuestion]);
   };
@@ -40,6 +41,13 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
     onQuizChange(updated);
   };
 
+  const handleSetCorrectAnswer = (questionIndex: number, optionIndex: number) => {
+    const updated = quiz.map((q, i) => 
+      i === questionIndex ? { ...q, answerIndex: optionIndex } : q
+    );
+    onQuizChange(updated);
+  };
+
   return (
     <div>
       <div className="flex flex-col gap-4">
@@ -58,21 +66,28 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
               rows={3}
               value={question.question}
               onChange={(e) => handleUpdateQuestion(qIndex, "question", e.target.value)}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
               placeholder="Текст питання"
             />
-            <div className="flex flex-col gap-2">
-              {question.options.map((option, oIndex) => (
-                <input
-                  key={oIndex}
-                  type="text"
-                  value={option}
-                  onChange={(e) => handleUpdateOption(qIndex, oIndex, e.target.value)}
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:text-white"
-                  placeholder={`Варіант ${oIndex + 1}`}
-                />
-              ))}
-            </div>
+             <div className="flex flex-col gap-2">
+               {question.options.map((option, oIndex) => (
+                 <div key={oIndex} className="flex items-center gap-2">                   
+                   <button 
+                    onClick={() => handleSetCorrectAnswer(qIndex, oIndex)} 
+                    className={ question.answerIndex === oIndex ? "text-green-400 hover:text-green-300" :  "text-red-400 hover:text-red-300"}
+                  >
+                     {question.answerIndex === oIndex ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faXmark} />}
+                   </button>
+                   <input
+                     type="text"
+                     value={option}
+                     onChange={(e) => handleUpdateOption(qIndex, oIndex, e.target.value)}
+                     className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
+                     placeholder={`Варіант ${oIndex + 1}`}
+                   />
+                 </div>
+               ))}
+             </div>
           </div>
         ))}
         <button

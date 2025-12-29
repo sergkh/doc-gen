@@ -23,12 +23,17 @@ const shortenName = (input: string | {name?: string}) => {
   return input;
 }
 
-const randomizeQuestion = (question: QuizQuestion, index: number) => {
-  return {
-    ...question,
-    index: index,
-    options: question.options.sort(() => Math.random() - 0.5)
-  } as QuizQuestion;
+// shorten name from FirstName LASTNAME
+const shortenNameAsSignature = (input: string | {name?: string}) => {
+  // if we get the full Teacher object, get the name
+  if (typeof input === "object" && input.name) return shortenNameAsSignature(input.name);
+  
+  if (typeof input === "string") {
+    const parts = input.split(" ");
+    return `${parts[1]} ${parts[0]?.toUpperCase()}`;
+  }
+
+  return input;
 }
 
 // Helper functions that can be used in templates like:
@@ -84,18 +89,10 @@ const parser = expressionParser.configure({
         if (Array.isArray(input)) return input.map(n => shortenName(n))
         return shortenName(input);
       },
-      // accepts list of topics and returns list of questions
-      randomTopicsQuestions(input, count = "1") {        
-        if (!input || !Array.isArray(input)) return input;
-        const num = Number(count);
-        if (isNaN(num)) return input;
-        
-        const questionsPool = input.flatMap(t => t.generated?.quiz || []);
-
-        return questionsPool
-          .sort(() => Math.random() - 0.5)
-          .slice(0, num)
-          .map((q, idx) => randomizeQuestion(q, idx+1));
+      signName(input) {
+        if (!input) return input;
+        if (Array.isArray(input)) return input.map(n => shortenName(n))
+        return shortenNameAsSignature(input);
       }
   }
 });

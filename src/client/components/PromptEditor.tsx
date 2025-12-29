@@ -110,7 +110,7 @@ export default function PromptEditor({
       <div>
         <label className="block text-amber-50 font-bold mb-2">Назва промпта:</label>
         <input
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Наприклад: Self Method Goal"
@@ -119,7 +119,7 @@ export default function PromptEditor({
       <div>
         <label className="block text-amber-50 font-bold mb-2">Поле:</label>
         <input
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
           value={field}
           onChange={(e) => setField(e.target.value)}
           placeholder="Назва поля (наприклад: subtopics, keywords)"
@@ -157,7 +157,7 @@ export default function PromptEditor({
         <label className="block text-amber-50 font-bold mb-2">Системний промпт:</label>
         <textarea
           rows={2}
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
           placeholder="Системний промпт"
@@ -167,7 +167,7 @@ export default function PromptEditor({
         <label className="block text-amber-50 font-bold mb-2">Промпт:</label>
         <textarea
           rows={15}
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
           value={userPrompt}
           onChange={(e) => setUserPrompt(e.target.value)}
           placeholder="Промпт користувача"

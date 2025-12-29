@@ -85,7 +85,7 @@ export default function TemplateParametersEditor({
                   Назва параметра:
                 </label>
                 <input
-                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200"
+                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 placeholder:text-zinc-600"
                   value={param.name}
                   onChange={(e) => updateParameter(index, { name: e.target.value })}
                   placeholder="Назва параметра"
@@ -94,7 +94,7 @@ export default function TemplateParametersEditor({
               <div>
                 <label className="block text-amber-50 font-bold mb-1 text-sm">Тип:</label>
                 <select
-                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200"
+                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 placeholder:text-zinc-600"
                   value={param.type}
                   onChange={(e) => handleParamChange(e.target.value as TemplateParameter["type"], index, param)}
                 >
@@ -108,7 +108,7 @@ export default function TemplateParametersEditor({
               <div className="col-span-2">
                 <label className="block text-amber-50 font-bold mb-1 text-sm">Опис:</label>
                 <input
-                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200"
+                  className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 placeholder:text-zinc-600"
                   value={param.description || ""}
                   onChange={(e) =>
                     updateParameter(index, { description: e.target.value || undefined })

@@ -554,7 +554,7 @@ export default function CourseEdit() {
           <label className="block text-amber-50 font-bold mb-2 text-sm">Основна література (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
             value={(item.data.literature?.main || []).join("\n")}
             onChange={(e) => {
               const main = e.target.value
@@ -575,7 +575,7 @@ export default function CourseEdit() {
           <label className="block text-amber-50 font-bold mb-2 text-sm">Додаткова (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
             value={(item.data.literature?.additional || []).join("\n")}
             onChange={(e) => {
               const additional = e.target.value
@@ -596,7 +596,7 @@ export default function CourseEdit() {
           <label className="block text-amber-50 font-bold mb-2 text-sm">Інтернет-ресурси (одна на рядок):</label>
           <textarea
             rows={8}
-            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y"
+            className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
             value={(item.data.literature?.internet || []).join("\n")}
             onChange={(e) => {
               const internet = e.target.value

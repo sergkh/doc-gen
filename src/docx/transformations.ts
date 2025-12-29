@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, Template } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, QuizQuestion, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -11,6 +11,16 @@ declare global {
 Array.prototype.sum = function (this: number[]): number {
   return this.reduce((acc, val) => acc + val, 0);
 };
+
+function randomizeQuestion(question: QuizQuestion, index: number): QuizQuestion {  
+  const options = [...question.options].sort(() => Math.random() - 0.5);
+  return {
+    index: index,
+    question: question.question,
+    options,
+    answerIndex: options.indexOf(question.options[question.answerIndex]!)
+  } as QuizQuestion;
+}
 
 function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAttestation[] {
   // group topics by attestation
@@ -141,6 +151,25 @@ export async function loadFullCourseInfo(
     oneSemesterOnly,
     semesters,
     hours,
-    ...params // parameters input by the user for the template
+    ...params, // parameters input by the user for the template
+
+    // -- helper functions
+
+    // generates N random quizzes from the course topics quiz pool, note: topics might be redefined in params
+    randomQuizes(count: number, questionsPerPaper: number) {
+      return Array.from({ length: count }, (_, paperIdx) => {
+        const questionsPool = this.topics.flatMap(t => t.generated?.quiz || []);
+        
+        const selectedQuestions = questionsPool
+          .sort(() => Math.random() - 0.5)
+          .slice(0, questionsPerPaper)
+          .map((q, idx) => randomizeQuestion(q, idx+1));
+        
+        return {
+          index: paperIdx + 1,
+          questions: selectedQuestions
+        };
+      });
+    }
   } as CourseGenerationData
 }

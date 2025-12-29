@@ -74,16 +74,17 @@ const teachers = {
     return result[0] || null;
   },
   
-  add: async (teacher: Teacher) => {
-    return await sql`INSERT INTO teachers (name, email, position, academic_title) VALUES (${teacher.name}, ${teacher.email}, ${teacher.position}, ${teacher.academic_title}) RETURNING *`;
+   add: async (teacher: Teacher) => {
+    return await sql`INSERT INTO teachers (name, email, position, academic_title, alt_names) VALUES (${teacher.name}, ${teacher.email}, ${teacher.position}, ${teacher.academic_title}, ${teacher.alt_names}) RETURNING *`;
   },
 
-  update: async (teacher: Teacher) => {
+   update: async (teacher: Teacher) => {
     return await sql`UPDATE teachers 
       SET name = ${teacher.name}, 
           email = ${teacher.email}, 
           position = ${teacher.position},
           academic_title = ${teacher.academic_title},
+          alt_names = ${teacher.alt_names},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${teacher.id}
       RETURNING *`;

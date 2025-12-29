@@ -72,14 +72,15 @@ export type Course = {
 };
 
 export type TeacherPosition = "аспірант" | "асистент" | "старший викладач" | "доцент" | "професор";
-export type AcademicTitle = "кандидат технічних наук" | "кандидат економічних наук" | "PhD економічних наук";
+export type AcademicTitle = "кандидат технічних наук" | "кандидат економічних наук" | "PhD економічних наук" | "доктор економічних наук" | "доктор технічних наук";
 
 export type Teacher = {
   id: number,
   name: string,
   email: string | null,
   position: TeacherPosition | null,
-  academic_title: AcademicTitle | null
+  academic_title: AcademicTitle | null,
+  alt_names: string[]
 }
 
 export type GeneratedTopicData = {
@@ -118,7 +119,8 @@ export type CourseTopic = {
 
 export type QuizQuestion = {
   question: string,
-  options: string[]
+  options: string[],
+  answerIndex: number
 }
 
 export type CourseAttestation = {

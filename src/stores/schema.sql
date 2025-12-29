@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS teachers(
   email VARCHAR(256) UNIQUE,
   position VARCHAR(512),
   academic_title VARCHAR(512),
+  alt_names JSONB not null default '[]'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

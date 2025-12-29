@@ -6,20 +6,31 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 
 const POSITIONS: TeacherPosition[] = ["аспірант", "асистент", "старший викладач", "доцент", "професор"];
-const ACADEMIC_TITLES: (AcademicTitle)[] = ["кандидат технічних наук", "кандидат економічних наук", "PhD економічних наук"];
+const ACADEMIC_TITLES: (AcademicTitle)[] = ["кандидат технічних наук", "кандидат економічних наук", "PhD економічних наук", "доктор економічних наук", "доктор технічних наук"];
 
 export default function TeacherEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState<Teacher | null>(null);
+  const [altNamesInput, setAltNamesInput] = useState<string>("");
 
   useEffect(() => {
-    loadTeacher(id || "new").then(setItem).catch(console.error);
+    loadTeacher(id || "new").then(teacher => {
+      setItem(teacher);
+      setAltNamesInput(teacher.alt_names?.join(", ") || "");
+    }).catch(console.error);
   }, [id]);
 
   const update = (json: Partial<Teacher>) => {
     if (!item) return;
     setItem({ ...item, ...json } as Teacher);
+  };
+
+  const handleAltNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAltNamesInput(value);
+    // Update the item state with parsed alt_names
+    update({ alt_names: value.split(",").map(name => name.trim()).filter(name => name.length > 0) });
   };
 
   const handleSave = async () => {
@@ -103,20 +114,29 @@ export default function TeacherEdit() {
                 ))}
               </select>
             </div>
-            <div className="col-span-2">
-              <label className="block text-amber-50 font-bold mb-2">Вчене звання:</label>
-              <select
-                className="w-full bg-zinc-900 border-2 border-amber-50 rounded-lg px-3 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200"
-                value={item.academic_title ?? ""}
-                onChange={(e) => update({ academic_title: e.target.value === "" ? null : e.target.value as AcademicTitle })}
-              >
-                <option value="">Не вказано</option>
-                {ACADEMIC_TITLES.filter(title => title !== null).map(title => (
-                  <option key={title} value={title}>{title}</option>
-                ))}
-              </select>
-            </div>
-          </div>          
+             <div className="col-span-2">
+               <label className="block text-amber-50 font-bold mb-2">Вчене звання:</label>
+               <select
+                 className="w-full bg-zinc-900 border-2 border-amber-50 rounded-lg px-3 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200"
+                 value={item.academic_title ?? ""}
+                 onChange={(e) => update({ academic_title: e.target.value === "" ? null : e.target.value as AcademicTitle })}
+               >
+                 <option value="">Не вказано</option>
+                 {ACADEMIC_TITLES.filter(title => title !== null).map(title => (
+                   <option key={title} value={title}>{title}</option>
+                 ))}
+               </select>
+             </div>
+              <div className="col-span-2">
+                <label className="block text-amber-50 font-bold mb-2">Варіанти імені для пошуку літератури (через кому):</label>
+                <input
+                  className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white placeholder:text-zinc-600"
+                  value={altNamesInput}
+                  onChange={handleAltNamesChange}
+                  placeholder="Прізвище І.Б., Прізвище І. Б., Прізвище Ініціали"
+                />
+              </div>
+          </div>
         </div>
       </div>
     </div>
