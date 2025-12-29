@@ -13,6 +13,13 @@ interface TemplateParametersInputProps {
   onChange: (values: Record<string, any>) => void;
 }
 
+function ParamLabel({ param }: { param: TemplateParameter }) {
+  return <label className="block text-amber-50 font-bold mb-1 text-sm">
+            {param.description ?? param.name}
+            <span className="text-xs font-normal opacity-70 ml-2">({param.name})</span>
+          </label>;
+}
+
 export default function TemplateParametersInput({
   parameters,
   values,
@@ -106,12 +113,7 @@ export default function TemplateParametersInput({
     if (param.type === "boolean") {
       return (
         <div key={param.name}>
-          <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.name}
-            {param.description && (
-              <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-            )}
-          </label>
+          <ParamLabel param={param} />
           <select
             value={paramValue ? "true" : "false"}
             onChange={(e) => updateParameterValue(param.name, e.target.value === "true")}
@@ -128,12 +130,7 @@ export default function TemplateParametersInput({
     if (param.type === "object") {
       return (
         <div key={param.name}>
-          <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.name}
-            {param.description && (
-              <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-            )}
-          </label>
+          <ParamLabel param={param} />
           <select
             value={paramValue?.id ? String(paramValue.id) : ""}
             onChange={(e) => {
@@ -162,12 +159,7 @@ export default function TemplateParametersInput({
       if (options.length > 0) {
         return (
           <div key={param.name}>
-            <label className="block text-amber-50 font-bold mb-1 text-sm">
-              {param.name}
-              {param.description && (
-                <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-              )}
-            </label>
+            <ParamLabel param={param} />
             <select
               value={paramValue || ""}
               onChange={(e) =>
@@ -188,12 +180,7 @@ export default function TemplateParametersInput({
       }
       return (
         <div key={param.name}>
-          <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.name}
-            {param.description && (
-              <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-            )}
-          </label>
+          <ParamLabel param={param} />
           <input
             type="number"
             value={paramValue || ""}
@@ -232,7 +219,7 @@ export default function TemplateParametersInput({
           let convertedVal: any = val;
           if (param.subtype === "number") convertedVal = Number(val);
           else if (param.subtype === "boolean") convertedVal = val === "true";
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
           // Check if already added
           if (selectedIds.includes(String(val))) return;
 
