@@ -103,11 +103,11 @@ export default function CoursesList() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {items.length === 0 ? (
             <div className="text-amber-50 font-mono">Немає дисциплін</div>
           ) : (
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2">
               {items.map(d => (
                 <li key={d.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                   <div className="flex-1">
@@ -117,7 +117,7 @@ export default function CoursesList() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => navigate(`/courses/${d.id}`)} 
-                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity"
                       aria-label="Редагувати дисципліну"
                       title="Редагувати дисципліну"
                     >
@@ -125,7 +125,7 @@ export default function CoursesList() {
                     </button>
                     <button 
                       onClick={() => handleDelete(d)} 
-                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity"
                       aria-label="Видалити дисципліну"
                       title="Видалити дисципліну"
                     >

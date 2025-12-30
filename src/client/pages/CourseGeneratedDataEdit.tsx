@@ -236,16 +236,18 @@ export default function CourseGeneratedDataEdit() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {fieldDescriptors.map(({ field, prompt, format, value }) => (
-                <GeneratedFieldEditor
-                  key={field}
-                  field={field}
-                  promptName={prompt?.name}
-                  format={format}
-                  value={value as string | string[] | QuizQuestion[] | undefined}
-                  onChange={(val) => handleFieldChange(field, val)}
-                />
-              ))}
+               {fieldDescriptors.map(({ field, prompt, format, value }) => (
+                 <GeneratedFieldEditor
+                   key={field}
+                   field={field}
+                   promptName={prompt?.name}
+                   format={format}
+                   value={value as string | string[] | QuizQuestion[] | undefined}
+                   onChange={(val) => handleFieldChange(field, val)}
+                   courseId={courseId ? parseInt(courseId) : undefined}
+                   prompt={prompt}
+                 />
+               ))}
             </div>
           )}         
         </div>
