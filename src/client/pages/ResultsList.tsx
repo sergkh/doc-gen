@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faUpload, faTableList } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { CourseResult, Specialty } from "@/stores/models";
@@ -157,6 +157,14 @@ export default function ResultsList() {
                 </option>
               ))}
             </select>
+            <button
+              onClick={() => navigate("/results/matrix")}
+              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"
+              aria-label="Переглянути матрицю результатів"
+              title="Матриця результатів"
+            >
+              <FontAwesomeIcon icon={faTableList} />
+            </button>
             <button
               onClick={() => navigate("/results/new")}
               className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"

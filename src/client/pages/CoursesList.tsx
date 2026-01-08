@@ -7,6 +7,12 @@ import toast from "react-hot-toast";
 import type { Course, ParsedData } from "@/stores/models";
 import { loadAllCourses, deleteCourse } from "../courses";
 
+function formatOK(okNo: string | null): string {
+  if (!okNo) return "??";
+  if(/^\d{1,2}/.test(okNo)) return `ОК${okNo}`;
+  return `ВК${okNo}`;
+}
+
 export default function CoursesList() {
   const navigate = useNavigate();
 
@@ -111,7 +117,7 @@ export default function CoursesList() {
               {items.map(d => (
                 <li key={d.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="font-bold">{d.name}</div>
+                    <div className="font-bold">{formatOK(d.data.ok_no)}. {d.name}</div>
                     <div className="text-sm opacity-80">Автор: {d.teacher ?? d.teacher_id}</div>
                   </div>
                   <div className="flex gap-2">

@@ -34,7 +34,7 @@ const SpecialtyExtraction = z.object({
 function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfig[] {
   if (!table) return [];
 
-  let disciplineRow = findTableRow(table, "ОК");
+  let disciplineRow = findTableRow(table, "ОК 1");  
   let disciplines: SpecialtyDisciplineConfig[] = [];
 
   while (disciplineRow) {
@@ -137,23 +137,15 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
 
     const disciplines = parseDisciplinesTable(disciplinesTable).concat(parseDisciplinesTable(disciplinesTablePt2));
 
-    let specialty = extractedSpecialty.code ? 
-      await specialties.findByCode(extractedSpecialty.code) : 
-      extractedSpecialty.specialty ? await specialties.findByName(extractedSpecialty.specialty) : null;
-
-    if (!specialty) {
-      console.error("Adding new specialty:", extractedSpecialty);
-
-      specialty = {
-        id: -1,
-        name: extractedSpecialty.specialty || "",
-        code: extractedSpecialty.code || "",
-        area_code: extractedSpecialty.area_code || "",
-        area: extractedSpecialty.area || "",
-        qualification: extractedSpecialty.qualification || "",
-        data: { disciplines }
-      } as Specialty
-    }
+    const specialty = {
+      id: -1,
+      name: extractedSpecialty.specialty || "",
+      code: extractedSpecialty.code || "",
+      area_code: extractedSpecialty.area_code || "",
+      area: extractedSpecialty.area || "",
+      qualification: extractedSpecialty.qualification || "",
+      data: { disciplines }
+    } as Specialty
 
     const resultsTable = findFirstTable(docTables, "Програмні компетентності");
 
@@ -162,7 +154,7 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
     const specialResults  = parseOPPResults(text, 'СК');
     const programResults  = parseOPPResults(text, 'РН');
 
-    return { generalResults, specialResults, programResults, integralResults, disciplines } as OPP;
+    return { generalResults, specialResults, programResults, integralResults, disciplines, specialty } as OPP;
   } catch (error) {
     console.error("Error parsing OPP:", error);
     return null;

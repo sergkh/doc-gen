@@ -11,6 +11,7 @@ import TeacherEdit from "./client/pages/TeacherEdit";
 import CourseEdit from "./client/pages/CourseEdit";
 import ResultsList from "./client/pages/ResultsList";
 import ResultEdit from "./client/pages/ResultEdit";
+import ResultsMatrix from "./client/pages/ResultsMatrix";
 import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
@@ -177,6 +178,7 @@ export function App() {
         <Route path="/teachers" element={<TeachersList />} />
         <Route path="/teachers/:id" element={<TeacherEdit />} />
         <Route path="/results" element={<ResultsList />} />
+        <Route path="/results/matrix" element={<ResultsMatrix />} />
         <Route path="/results/:id" element={<ResultEdit />} />
         <Route path="/templates" element={<TemplatesList />} />
         <Route path="/templates/:id" element={<TemplateEdit />} />

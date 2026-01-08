@@ -211,18 +211,27 @@ export default function CourseEdit() {
               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={String(item.data.credits || "")} onChange={(e) => updateData({credits: Number(e.target.value) || 0})} />
             </div>
-            <div>
-              <label className="block text-amber-50 font-bold mb-2">Години:</label>
-              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                value={String(item.data.hours || "")} onChange={(e) => updateData({hours: Number(e.target.value) || 0})} />
-            </div>
+             <div>
+               <label className="block text-amber-50 font-bold mb-2">Години:</label>
+               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                 value={String(item.data.hours || "")} onChange={(e) => updateData({hours: Number(e.target.value) || 0})} />
+             </div>
              <div>
                <label className="block text-amber-50 font-bold mb-2">Номер ОК:</label>
-               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                 value={String(item.ok_no || "")} onChange={(e) => update({ok_no: e.target.value ? Number(e.target.value) : undefined})} />
+               <input
+                 className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                 value={item.data.ok_no ?? ""}
+                 onChange={(e) => {
+                   const raw = e.target.value.replace(/,/g, ".");
+                   const trimmed = raw.trim();
+                   updateData({ ok_no: trimmed === "" ? null : trimmed });
+                 }}
+                 placeholder="Наприклад 1 або 1.3"
+               />
              </div>
              <div>
                <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
+
                <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                  value={item.data.specialty} onChange={(e) => updateData({specialty: e.target.value})} />
              </div>

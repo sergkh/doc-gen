@@ -28,6 +28,7 @@ export async function loadCourse(id: string): Promise<Course> {
       teacher_id: 0,
       generated: null,
       data: {
+        ok_no: null,
         hours: 0,
         control_type: "exam",
         optional: false,

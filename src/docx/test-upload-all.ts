@@ -13,7 +13,7 @@ const COLORS = {
   bold: "\x1b[1m",
 };
 
-const DOCSETS_ROOT = '/Users/sergeykhruschak/workspace/Univer/doc-gen/uploads/plan'
+const DOCSETS_ROOT = process.env.DOCS_UPLOAD_ROOT ?? '/Users/sergeykhruschak/workspace/Univer/doc-gen/uploads/plan'
 
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
 
@@ -25,11 +25,12 @@ const OK_NO_PATTERN = /^(ОК|ВК)(\d{1,2}(\.\d{1,2})?).*/i;
 
 function extractOkNo(folderName: string): string | null {
   const match = folderName.match(OK_NO_PATTERN);
-  return match?.[1] ?? null;
+  return match?.[2] ?? null;
 }
 
 interface FolderSummary {
   name: string;
+  ok: string | null;
   path: string;
   files: string[];
   successes: string[];
@@ -46,7 +47,7 @@ function formatFolderList(label: string, folders: FolderSummary[]) {
   console.log(`${COLORS.bold}${label}:${COLORS.reset}`);
   for (const folder of folders) {
     const files = folder.files.length ? folder.files.join(", ") : "no files";
-    console.log(`  • ${folder.name} (${files})`);
+    console.log(`  • ${folder.name} (${files}) | OK No: ${folder.ok ?? "N/A"}`);
     if (folder.warnings.length > 0) {
       for (const warning of folder.warnings) {
         console.log(`      ${COLORS.yellow}!${COLORS.reset} Warning: ${warning}`);
@@ -103,9 +104,16 @@ async function uploadDocx(filePath: string, okNo: string | null = null) {
 
 async function processFolder(folderName: string, folderPath: string): Promise<FolderSummary> {
   const docxFiles = await loadDocxFiles(folderPath);
+  
+  const okNo = extractOkNo(folderName);
+  if (!okNo) {
+    console.log(`${COLORS.red}\nНе вдалося визначити номер ОК з назви папки; параметр ok_no не буде надіслано.\n${COLORS.reset}`);
+  }
+
   const summary: FolderSummary = {
     name: folderName,
     path: folderPath,
+    ok: okNo,
     files: docxFiles.map((file) => path.basename(file)),
     successes: [],
     failures: [],
@@ -114,11 +122,6 @@ async function processFolder(folderName: string, folderPath: string): Promise<Fo
 
   if (docxFiles.length === 0) {
     return summary;
-  }
-
-  const okNo = extractOkNo(folderName);
-  if (!okNo) {
-    summary.warnings.push("Не вдалося визначити номер ОК з назви папки; параметр ok_no не буде надіслано.");
   }
 
   for (const filePath of docxFiles) {

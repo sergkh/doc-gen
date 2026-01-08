@@ -48,6 +48,8 @@ export function dropDot(text: string): string {
 
 export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
+    validateInitialInfo(initialInfo);
+
     const text = (await docx2text(filepath)).trim();
     if (/СИЛАБУС/g.test(text.substring(0, 200))) {
       return await parseSylabus(filepath, text, dryRun, initialInfo);
@@ -140,7 +142,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     const nameMatch = header.match(/«([^»]+)»/);
     const parsedName = (nameMatch?.[1]?.trim() || "");
-    const name = parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase();
+    // some syllabuses have all caps names, or names that span multiple lines
+    const name = (parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase()).replace(/\s+/g, ' ');
 
     if (!name) {
       console.error("Could not find course name");
@@ -172,9 +175,14 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const optional = /вибірков/i.test(text) || /факультатив/i.test(header);
 
     // Extract lecturer name and email
-    const lecturerMatch = text.match(/Лектор курсу\s+([^\n]+)/i);
+    let lecturerMatch = text.match(/Лектор курсу\s+([^\n]+)/i);
+    if (!lecturerMatch?.[1]) {
+      lecturerMatch = text.match(/Розробник курсу\s+([^\n]+)/i);
+    }
     const lecturer = lecturerMatch?.[1]?.trim() || "";
     
+    console.log("Extracted lecturer string:", lecturer);
+
     // stupid, but works: take last 3 words
     const lecturerName = lecturer.split(' ').slice(-3).join(' ');
     

@@ -3,6 +3,7 @@ import { courseResults, specialties } from "@/stores/db";
 import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
+import { id } from "zod/v4/locales";
 
 
 const resultsApi = {
@@ -80,8 +81,26 @@ const resultsApi = {
         console.log("Parsed results:", opp.generalResults, opp.specialResults, opp.programResults, opp.integralResults);
         console.log("Parsed disciplines:", opp.disciplines);
 
-        const specialtyId = opp.specialty.id === -1 ? (await specialties.add(opp.specialty))[0].id : opp.specialty.id;
+        const dbSpecialty = opp.specialty.code ?  await specialties.findByCode(opp.specialty.code) : null;
 
+        const updatedSpecialty = dbSpecialty ? {
+          dbSpecialty,
+          ...opp.specialty,
+          id: dbSpecialty.id
+        }: opp.specialty;
+
+        let specialtyId = -1;
+
+        if (dbSpecialty) {
+          console.log("Updating specialty:", updatedSpecialty.name);
+          specialties.update(updatedSpecialty);
+          specialtyId = dbSpecialty.id;
+        } else {
+          console.log("Adding new specialty:", updatedSpecialty.name);
+          specialtyId = (await specialties.add(opp.specialty))[0].id;
+        }
+
+        
         const parsedResults = [...opp.integralResults, ...opp.specialResults, ...opp.generalResults, ...opp.programResults];
 
         const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
