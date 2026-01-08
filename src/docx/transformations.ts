@@ -109,10 +109,11 @@ export async function loadFullCourseInfo(
   // For now, we'll report 70% after generation completes
   onProgress?.(70);
 
-  const prerequisites = await courses.getShortInfos(course.data.prerequisites);
-  onProgress?.(80);
-  const postrequisites = await courses.getShortInfos(course.data.postrequisites);
-  onProgress?.(85);
+  // TODO: add back prerequisites/postrequisites fetching if needed
+  // const prerequisites = await courses.getShortInfos(course.data.prerequisites);
+  // onProgress?.(80);
+  // const postrequisites = await courses.getShortInfos(course.data.postrequisites);
+  // onProgress?.(85);
 
   const results = await courseResults.list(course.data.results);
   onProgress?.(90);
@@ -142,8 +143,6 @@ export async function loadFullCourseInfo(
   return {
     course: updatedCourse,
     topics: updatedTopics,
-    prerequisites,
-    postrequisites,
     generalResults: results.filter(r => r.type === "ЗК").sort((a, b) => a.no - b.no),
     specialResults: results.filter(r => r.type === "СК").sort((a, b) => a.no - b.no),
     programResults: results.filter(r => r.type === "РН").sort((a, b) => a.no - b.no),

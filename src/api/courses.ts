@@ -1,9 +1,30 @@
 import { parseSylabusOrProgram } from "@/docx/parse";
 import { courses, courseTopics, teachers } from "@/stores/db";
-import type { Course, CourseTopic } from "@/stores/models";
+import type { Course, CourseData, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
+import { dropEmpty } from "@/client/util/util";
+import { verifyCourse } from "@/docx/verification";
+
+function mergeCourseData(original: Course, parsed: Course & ParsedData): Course {
+  const generated = original.generated ?? parsed.generated ?? {} as GeneratedCourseData;
+  // IF course is lacking subtopics but we just parsed them – add them to the generated data
+  if (parsed.generated?.subtopics && (generated.subtopics?.length ?? 0) === 0) {
+    generated.subtopics = parsed.generated.subtopics;
+  };
+
+  const data = {
+    ...original.data,
+    ...dropEmpty(parsed.data)
+  }
+
+  return {
+    ...original,
+    generated,
+    data
+  } as Course;
+}
 
 const coursesApi = {
   "/api/courses": {
@@ -82,7 +103,8 @@ const coursesApi = {
         await Bun.write(uploadPath, file);
         console.log("Saving uploaded file to:", uploadPath);
 
-        const course = await parseSylabusOrProgram(uploadPath, true);        
+         const okNo = formData.get("ok_no") as string | null;
+         const course = await parseSylabusOrProgram(uploadPath, true, { okNo });
         
         if (!course) {
           return new Response("Не вдалось розібрати файл", { status: 400 });
@@ -90,19 +112,40 @@ const coursesApi = {
 
         const dbCourse = await courses.findByName(course.name);
 
-        if (course.parsed_teacher && course.parsed_teacher.id === -1) {
-          const id = (await teachers.add(course.parsed_teacher))[0].id;
-          course.teacher_id = id;
+        if (course.parsed_teacher) {
+          // new teacher 
+          if (course.parsed_teacher.id === -1) {
+            const id = (await teachers.add(course.parsed_teacher))[0].id;
+            course.teacher_id = id;
+          } else if (course.type === "syllabus") {
+            
+            const dbTeacher = await teachers.get(course.parsed_teacher.id);
+
+            if (dbTeacher) {
+              console.log("Updating existing teacher with parsed syllabus data:", dbTeacher, course.parsed_teacher);
+              
+              const updatedTeacher = { 
+                ...dbTeacher, 
+                // Syllabus has full teacher name, while program has only short one, so update it
+                name: dbTeacher.name.length < course.parsed_teacher.name.length ? course.parsed_teacher.name : dbTeacher.name,
+                position: course.parsed_teacher.position || dbTeacher.position,
+                email: course.parsed_teacher.email || dbTeacher.email,
+                academic_title: course.parsed_teacher.academic_title || dbTeacher.academic_title
+              };
+              await teachers.update(updatedTeacher);
+            }
+            await teachers.update(course.parsed_teacher);
+          }
         }
 
-        const updated = dbCourse ? { ...dbCourse, ...course, id: dbCourse.id } : course;
+        let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
       
         console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
-
-        // TODO: properly merge course and topics from update
-        if(dbCourse) {
-          await courses.update(updated) }
-        else {
+        
+        if (dbCourse) {
+          console.log("Existing course found in DB, updating:", dbCourse);
+          await courses.update(updated) 
+        } else {
           const id = (await courses.add(updated))[0].id;
           course.id = id;
 
@@ -113,7 +156,10 @@ const coursesApi = {
           )
         }
 
-        return Response.json(course);
+        const { issues } = verifyCourse(course);
+        const warnings = issues.length > 0 ? issues : null;
+
+        return Response.json({ ...course, warnings });
       } catch (error) {
         console.error("Error processing syllabus:", error);
         return new Response(`Error processing syllabus: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });

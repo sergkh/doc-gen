@@ -64,3 +64,16 @@ CREATE TABLE IF NOT EXISTS specialties(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS teacher_publications(
+  id SERIAL PRIMARY KEY,
+  repo_id VARCHAR(64),
+  teacher_id INTEGER NOT NULL,
+  title VARCHAR(1024) NOT NULL,
+  journal VARCHAR(1024),
+  year INTEGER,
+  publication_type VARCHAR(256),
+  data JSONB not null default '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

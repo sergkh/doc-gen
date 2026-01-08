@@ -1,4 +1,4 @@
-export function dropEmpty(obj: any) {
+export function dropEmpty(obj: any): any {
   Object.keys(obj).forEach(key => {
     if (obj[key] === null || obj[key] === "" || (Array.isArray(obj[key]) && obj[key].length === 0)) {
       delete obj[key];

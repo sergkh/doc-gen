@@ -21,43 +21,26 @@ export default function CourseEdit() {
   const navigate = useNavigate();
   const [item, setItem] = useState<Course | null>(null);
   const [teachers, setTeachers] = useState([] as Teacher[]);
-  const [allCourses, setAllCourses] = useState<Course[]>([]);
-  const [prerequisiteInfos, setPrerequisiteInfos] = useState<ShortCourseInfo[]>([]);
-  const [postrequisiteInfos, setPostrequisiteInfos] = useState<ShortCourseInfo[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
   useEffect(() => { 
     loadAllTeachers().then(setTeachers).catch(console.error); 
-    loadAllCourses().then(setAllCourses).catch(console.error);
     loadAllResults().then(setAllResults).catch(console.error);
   }, []);
   
   // Load prerequisite and postrequisite info when item or prerequisites/postrequisites change
   useEffect(() => {
     if (!item || !item.id || item.id < 0) {
-      setPrerequisiteInfos([]);
-      setPostrequisiteInfos([]);
       setSelectedResults([]);
       return;
     }
 
-    // Since we have allCourses, we can filter them
-    const prereqInfos = allCourses
-      .filter(c => item.data.prerequisites.includes(c.id))
-      .map(c => ({ id: c.id, name: c.name, teacher: c.teacher || "" }));
-    setPrerequisiteInfos(prereqInfos);
-
-    const postreqInfos = allCourses
-      .filter(c => item.data.postrequisites.includes(c.id))
-      .map(c => ({ id: c.id, name: c.name, teacher: c.teacher || "" }));
-    setPostrequisiteInfos(postreqInfos);
-
     // Load selected results
     const selected = allResults.filter(r => item.data.results.includes(r.id));
     setSelectedResults(selected);
-  }, [item?.data.prerequisites, item?.data.postrequisites, item?.data.results, allCourses, allResults, item?.id]);
+  }, [item?.data.results, allResults, item?.id]);
 
   const update = (json: any) => {
     if (!item) return;
@@ -74,55 +57,6 @@ export default function CourseEdit() {
     if (!item || !isValid) return;
     await upsertCourse(item);
     navigate("/courses");
-  };
-
-  const handleAddPrerequisite = (courseId: string) => {
-    if (!item || !courseId) return;
-    const id = Number(courseId);
-    if (item.data.prerequisites.includes(id)) return;
-    
-    const newPrerequisites = [...item.data.prerequisites, id];
-    updateData({ prerequisites: newPrerequisites });
-  };
-
-  const handleRemovePrerequisite = (courseId: number) => {
-    if (!item) return;
-    const newPrerequisites = item.data.prerequisites.filter(id => id !== courseId);
-    updateData({ prerequisites: newPrerequisites });
-  };
-
-  const handleAddPostrequisite = (courseId: string) => {
-    if (!item || !courseId) return;
-    const id = Number(courseId);
-    if (item.data.postrequisites.includes(id)) return;
-    
-    const newPostrequisites = [...item.data.postrequisites, id];
-    updateData({ postrequisites: newPostrequisites });
-  };
-
-  const handleRemovePostrequisite = (courseId: number) => {
-    if (!item) return;
-    const newPostrequisites = item.data.postrequisites.filter(id => id !== courseId);
-    updateData({ postrequisites: newPostrequisites });
-  };
-
-  // Get available courses for selection (exclude current course and already selected ones)
-  const getAvailableCoursesForPrerequisites = () => {
-    if (!item) return [];
-    return allCourses.filter(c => 
-      c.id !== item.id && 
-      c.id >= 0 && 
-      !item.data.prerequisites.includes(c.id)
-    );
-  };
-
-  const getAvailableCoursesForPostrequisites = () => {
-    if (!item) return [];
-    return allCourses.filter(c => 
-      c.id !== item.id && 
-      c.id >= 0 && 
-      !item.data.postrequisites.includes(c.id)
-    );
   };
 
   const handleAddResult = (resultId: string) => {
@@ -282,16 +216,21 @@ export default function CourseEdit() {
               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={String(item.data.hours || "")} onChange={(e) => updateData({hours: Number(e.target.value) || 0})} />
             </div>
-            <div>
-              <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
-              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                value={item.data.specialty} onChange={(e) => updateData({specialty: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-amber-50 font-bold mb-2">Напрям:</label>
-              <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
-            </div>
+             <div>
+               <label className="block text-amber-50 font-bold mb-2">Номер ОК:</label>
+               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                 value={String(item.ok_no || "")} onChange={(e) => update({ok_no: e.target.value ? Number(e.target.value) : undefined})} />
+             </div>
+             <div>
+               <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
+               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                 value={item.data.specialty} onChange={(e) => updateData({specialty: e.target.value})} />
+             </div>
+             <div>
+               <label className="block text-amber-50 font-bold mb-2">Напрям:</label>
+               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                 value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
+             </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -354,89 +293,7 @@ export default function CourseEdit() {
                 <option value="">-- Виберіть викладача --</option>
                 { teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>) }
               </select>              
-            </div>
-            <div className="col-span-2">
-              <label className="block text-amber-50 font-bold mb-2">Передумови:</label>
-              <div className="flex flex-col gap-2">
-                {item.data.prerequisites.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {prerequisiteInfos.map((prereq) => (
-                      <div
-                        key={prereq.id}
-                        className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
-                      >
-                        <span className="text-amber-50 font-mono text-sm">{prereq.name}</span>
-                        <button
-                          onClick={() => handleRemovePrerequisite(prereq.id)}
-                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
-                          aria-label="Видалити передумову"
-                        >
-                          <FontAwesomeIcon icon={faTimes} size="xs" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddPrerequisite(e.target.value);
-                      e.target.value = "";
-                    }
-                  }}
-                >
-                  <option value="">-- Додати передумову --</option>
-                  {getAvailableCoursesForPrerequisites().map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-amber-50 font-bold mb-2">Залежні дисципліни:</label>
-              <div className="flex flex-col gap-2">
-                {item.data.postrequisites.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {postrequisiteInfos.map((postreq) => (
-                      <div
-                        key={postreq.id}
-                        className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
-                      >
-                        <span className="text-amber-50 font-mono text-sm">{postreq.name}</span>
-                        <button
-                          onClick={() => handleRemovePostrequisite(postreq.id)}
-                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
-                          aria-label="Видалити наступний курс"
-                        >
-                          <FontAwesomeIcon icon={faTimes} size="xs" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddPostrequisite(e.target.value);
-                      e.target.value = "";
-                    }
-                  }}
-                >
-                  <option value="">-- Додати наступний курс --</option>
-                  {getAvailableCoursesForPostrequisites().map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            </div>            
             <div className="col-span-2">
               <label className="block text-amber-50 font-bold mb-2">Додатковий опис:</label>
               <textarea rows={5} className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"

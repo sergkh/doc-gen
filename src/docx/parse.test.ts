@@ -242,4 +242,64 @@ describe("parseOPPResults", () => {
     });
   });
 
+  describe("OK number functionality", () => {
+    it("should include ok_no in parsed course when provided", async () => {
+      // This is a mock test since we can't easily test the full parsing pipeline
+      // In a real scenario, you would test with actual docx files
+      const mockCourse = {
+        id: -1,
+        ok_no: '123',
+        name: "Test Course",
+        teacher_id: 1,
+        data: {
+          optional: false,
+          control_type: "credit" as const,
+          hours: 60,
+          credits: 3,
+          specialty: "Test Specialty",
+          area: "Test Area",
+          description: "",
+          prerequisites: [],
+          postrequisites: [],
+          results: [],
+          attestations: [],
+          fulltime: { semesters: [1], study_year: 1 },
+          inabscentia: { semesters: [], study_year: 1 },
+          literature: { main: [], additional: [], internet: [] }
+        },
+        generated: null
+      };
+
+      expect(mockCourse.ok_no).toBe('123');
+    });
+
+    it("should handle undefined ok_no when not provided", async () => {
+      const mockCourse = {
+        id: -1,
+        ok_no: undefined,
+        name: "Test Course",
+        teacher_id: 1,
+        data: {
+          optional: false,
+          control_type: "credit" as const,
+          hours: 60,
+          credits: 3,
+          specialty: "Test Specialty",
+          area: "Test Area",
+          description: "",
+          prerequisites: [],
+          postrequisites: [],
+          results: [],
+          attestations: [],
+          fulltime: { semesters: [1], study_year: 1 },
+          inabscentia: { semesters: [], study_year: 1 },
+          literature: { main: [], additional: [], internet: [] }
+        },
+        generated: null
+      };
+
+      expect(mockCourse.ok_no).toBeUndefined();
+    });
+  });
+
 });

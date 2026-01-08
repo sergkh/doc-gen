@@ -1,9 +1,10 @@
-import type { Teacher, TeacherPosition, AcademicTitle } from "@/stores/models";
+import type { Teacher, TeacherPosition, AcademicTitle, TeacherPublication } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { loadTeacher, upsertTeacher } from "../teachers";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faTimes, faSyncAlt, faBook, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import toast from "react-hot-toast";
 
 const POSITIONS: TeacherPosition[] = ["аспірант", "асистент", "старший викладач", "доцент", "професор"];
 const ACADEMIC_TITLES: (AcademicTitle)[] = ["кандидат технічних наук", "кандидат економічних наук", "PhD економічних наук", "доктор економічних наук", "доктор технічних наук"];
@@ -13,6 +14,8 @@ export default function TeacherEdit() {
   const navigate = useNavigate();
   const [item, setItem] = useState<Teacher | null>(null);
   const [altNamesInput, setAltNamesInput] = useState<string>("");
+  const [publications, setPublications] = useState<TeacherPublication[]>([]);
+  const [isLoadingPublications, setIsLoadingPublications] = useState(false);
 
   useEffect(() => {
     loadTeacher(id || "new").then(teacher => {
@@ -20,6 +23,27 @@ export default function TeacherEdit() {
       setAltNamesInput(teacher.alt_names?.join(", ") || "");
     }).catch(console.error);
   }, [id]);
+
+  useEffect(() => {
+    if (!item?.id) return;
+    
+    const fetchPublications = async () => {
+      setIsLoadingPublications(true);
+      try {
+        const response = await fetch(`/api/teachers/${item.id}/publications`);
+        if (response.ok) {
+          const data = await response.json();
+          setPublications(data);
+        }
+      } catch (error) {
+        console.error("Error fetching publications:", error);
+      } finally {
+        setIsLoadingPublications(false);
+      }
+    };
+    
+    fetchPublications();
+  }, [item?.id]);
 
   const update = (json: Partial<Teacher>) => {
     if (!item) return;
@@ -33,7 +57,7 @@ export default function TeacherEdit() {
     update({ alt_names: value.split(",").map(name => name.trim()).filter(name => name.length > 0) });
   };
 
-  const handleSave = async () => {
+   const handleSave = async () => {
     if (!item || !isValid) return;
     try {
       await upsertTeacher(item);
@@ -41,6 +65,30 @@ export default function TeacherEdit() {
     } catch (error) {
       console.error("Error saving teacher:", error);
       alert("Не вдалося зберегти викладача");
+    }
+  };
+
+  const handleRefreshPublications = async () => {
+    if (!item || !item.id) return;
+    
+    try {
+      const response = await fetch(`/api/teachers/${item.id}/refresh-publications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Не вдалося оновити публікації");
+      }
+      
+      const data = await response.json();
+      toast.success(`Успішно оновлено ${data.count} публікацій`);
+    } catch (error) {
+      console.error("Error refreshing publications:", error);
+      toast.error(error instanceof Error ? error.message : "Сталася помилка при оновленні публікацій");
     }
   };
 
@@ -65,21 +113,30 @@ export default function TeacherEdit() {
         <div className="flex items-center justify-between">
           <h1 className="font-mono">{item.id >= 0 ? "Редагувати викладача" : "Додати викладача"}</h1>
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={!isValid}
-              className="text-amber-50 hover:text-green-400 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faCheck} />
-            </button>
-            <button
-              onClick={() => navigate("/teachers")}
-              className="text-amber-50 hover:text-red-400 cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-          </div>
+           <div className="flex gap-2">
+             <button
+               onClick={handleSave}
+               disabled={!isValid}
+               className="text-amber-50 hover:text-green-400 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
+             >
+               <FontAwesomeIcon icon={faCheck} />
+             </button>
+             <button
+               onClick={() => navigate("/teachers")}
+               className="text-amber-50 hover:text-red-400 cursor-pointer"
+             >
+               <FontAwesomeIcon icon={faTimes} />
+             </button>
+             {item.id && (
+               <button
+                 onClick={handleRefreshPublications}
+                 className="text-amber-50 hover:text-blue-400 cursor-pointer p-1.5 rounded"
+                 title="Оновити публікації з репозиторію"
+               >
+                 <FontAwesomeIcon icon={faSyncAlt} />
+               </button>
+             )}
+           </div>
         </div>
 
         <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
@@ -135,11 +192,61 @@ export default function TeacherEdit() {
                   onChange={handleAltNamesChange}
                   placeholder="Прізвище І.Б., Прізвище І. Б., Прізвище Ініціали"
                 />
-              </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+               </div>
+           </div>
+         </div>
+         
+         {item.id && (
+           <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3 mt-4">
+             <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
+               <FontAwesomeIcon icon={faBook} />
+               Публікації
+             </h2>
+             
+             {isLoadingPublications ? (
+               <div className="text-amber-50/70 text-sm">Завантаження публікацій...</div>
+             ) : publications.length === 0 ? (
+               <div className="text-amber-50/70 text-sm">
+                 Немає публікацій. Натисніть кнопку оновлення, щоб завантажити публікації з репозиторію.
+               </div>
+             ) : (
+               <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
+                 {publications.map((pub) => (
+                   <div key={pub.id} className="bg-zinc-800 border border-amber-50/20 rounded-lg p-3 flex flex-col gap-2">
+                     <div className="flex justify-between items-start gap-2">
+                       <div className="flex-1">
+                         <div className="text-amber-50 font-bold text-sm">{pub.title}</div>
+                         <div className="text-amber-50/70 text-xs mt-1">
+                           {pub.year && <span>{pub.year} • </span>}
+                           {pub.publication_type && <span>{pub.publication_type}</span>}
+                           {pub.journal && <span> • {pub.journal}</span>}
+                         </div>
+                         {pub.data?.authors && (
+                           <div className="text-amber-50/60 text-xs mt-1">
+                             Автори: {pub.data.authors.join(", ")}
+                           </div>
+                         )}
+                       </div>
+                       {pub.link && (
+                         <a
+                           href={pub.link}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="text-amber-50 hover:text-amber-300 text-lg"
+                           title="Відкрити публікацію"
+                         >
+                           <FontAwesomeIcon icon={faExternalLinkAlt} />
+                         </a>
+                       )}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+           </div>
+         )}
+       </div>
+     </div>
+   );
 }
 

@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Specialty, Teacher, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -90,8 +90,52 @@ const teachers = {
       RETURNING *`;
   },
 
+   delete: async (id: number) => {
+     return await sql`DELETE FROM teachers WHERE id = ${id}`;
+   },
+};
+
+const teacherPublications = {
+  all: async (): Promise<TeacherPublication[]> => {
+    return await sql`SELECT * FROM teacher_publications ORDER BY year DESC, title` as TeacherPublication[];
+  },
+
+  byTeacher: async (teacherId: number): Promise<TeacherPublication[]> => {
+    return await sql`SELECT * FROM teacher_publications WHERE teacher_id = ${teacherId} ORDER BY year DESC, title` as TeacherPublication[];
+  },
+
+  get: async (id: number): Promise<TeacherPublication | null> => {
+    const result = await sql`SELECT * FROM teacher_publications WHERE id = ${id}`;
+    return result[0] || null;
+  },
+
+  add: async (publication: Omit<TeacherPublication, "id">) => {
+    return await sql`INSERT INTO teacher_publications 
+      (teacher_id, title, year, journal, publication_type, link, data) 
+      VALUES (${publication.teacher_id}, ${publication.title}, ${publication.year}, ${publication.journal}, ${publication.publication_type}, ${publication.link}, ${publication.data}) 
+      RETURNING *`;
+  },
+
+  update: async (publication: TeacherPublication) => {
+    return await sql`UPDATE teacher_publications 
+      SET teacher_id = ${publication.teacher_id},
+          title = ${publication.title},
+          year = ${publication.year},
+          journal = ${publication.journal},
+          publication_type = ${publication.publication_type},
+          link = ${publication.link},
+          data = ${publication.data},
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${publication.id}
+      RETURNING *`;
+  },
+
   delete: async (id: number) => {
-    return await sql`DELETE FROM teachers WHERE id = ${id}`;
+    return await sql`DELETE FROM teacher_publications WHERE id = ${id}`;
+  },
+
+  deleteByTeacher: async (teacherId: number) => {
+    return await sql`DELETE FROM teacher_publications WHERE teacher_id = ${teacherId}`;
   },
 };
 
@@ -268,4 +312,4 @@ const specialties = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults, templates, specialties };
+export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications };

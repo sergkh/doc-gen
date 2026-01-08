@@ -23,6 +23,7 @@ export type CourseSemesters = {
 }
 
 export type CourseData = {
+  ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting 
   optional: boolean,
   control_type: "exam" | "credit" | "both",
   hours: number,
@@ -30,8 +31,8 @@ export type CourseData = {
   specialty: string,
   area: string,
   description: string,
-  prerequisites: number[],
-  postrequisites: number[],
+  prerequisites: string[],
+  postrequisites: string[],
   results: number[],
   attestations: {
     name: string,
@@ -162,8 +163,6 @@ export type CourseSemester = {
 export type CourseGenerationData = {
   course: Course,
   topics: CourseTopic[],
-  prerequisites: ShortCourseInfo[],
-  postrequisites: ShortCourseInfo[],
   generalResults:CourseResult[],
   specialResults:CourseResult[],
   programResults:CourseResult[],
@@ -246,4 +245,17 @@ export type PromptResult = {
   system_prompt: string;
   prompt: string;
   item: any;
+};
+
+export type TeacherPublicationType = "Scopus" | "Article" | "Methodical work" | "Unknown";
+
+export type TeacherPublication = {
+  id: number;
+  repo_id?: string | null;
+  teacher_id: number;
+  title: string;
+  year: number | null;
+  journal: string | null;
+  publication_type: TeacherPublicationType;
+  data?: Record<string, any>;
 };

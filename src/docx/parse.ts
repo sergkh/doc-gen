@@ -1,15 +1,42 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
+import { z } from "zod";
 import type { Course, CourseSemesters, CourseTopic, ParsedData, Teacher } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
 import path from 'path';
 import { courseResults, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowIndex, type DocTable } from './structured-parser';
+import { extractInformationAI } from "@/ai/extractor";
+
+type CourseInitialInfo = {
+  okNo?: string | null;
+}
+
+function validateInitialInfo(initialInfo: CourseInitialInfo | null) {
+  if(!initialInfo) return;
+  // verify that okNo is a number or 1.1 format
+  if(initialInfo.okNo && !/^\d+(\.\d+)?$/.test(initialInfo.okNo.toString())) {
+    throw new Error("Invalid okNo format: " + initialInfo.okNo + " Expected number or decimal format like 1.1");
+  }
+}
 
 function normalizeLiterature(text: string): string[] {
   return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
 }
+
+function filterAbsent(...arr: number[]): number[] {
+  return arr.filter(n => isFinite(n) && n > 0);
+}
+
+const prepostRequisitesPrompt = `
+  З переданого тексту вибери дисципліни знання з яких використовуються в даній (prerequisites), та дисципліни знання які використовують дану (postrequisites). Якщо щось не вказане, поверни пустий масив.
+`;
+
+const PrepostRequisitesExtraction = z.object({
+  prerequisites: z.array(z.string()),
+  postrequisites: z.array(z.string())
+});
 
 export function dropDot(text: string): string {
   const trimmed = text.trim();
@@ -19,13 +46,13 @@ export function dropDot(text: string): string {
   return trimmed;
 }
 
-export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
+export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
     const text = (await docx2text(filepath)).trim();
     if (/СИЛАБУС/g.test(text.substring(0, 200))) {
-      return await parseSylabus(filepath, text, dryRun);
+      return await parseSylabus(filepath, text, dryRun, initialInfo);
     } else if (/РОБОЧА ПРОГРАМА/g.test(text.substring(0, 400))) {
-      return await parseProgram(filepath, text, dryRun);
+      return await parseProgram(filepath, text, dryRun, initialInfo);
     }
 
     return null;
@@ -90,8 +117,18 @@ function parseDescriptionTable(table: DocTable | null): {fulltime: CourseSemeste
   return result;
 }
 
+async function parsePreAndPostRequisites(text: string): Promise<{prerequisites: string[], postrequisites: string[]}> {
+  const parseResult = await extractInformationAI(prepostRequisitesPrompt, text, PrepostRequisitesExtraction);
+  
+  if (!parseResult) {
+    throw Error("Failed to extract prerequisites and postrequisites");
+  }
+
+  return parseResult;
+}
+
 // Best effort parsing of syllabus
-async function parseSylabus(filepath: string, text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
+async function parseSylabus(filepath: string, text: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
     // save for debugging
     const hash = createHash("sha256").update(text).digest("hex");
@@ -99,7 +136,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     console.log("Parsing syllabus:");
     // approx first 500 characters of the text
-    const header = text.substring(0, 500);
+    const header = text.substring(0, 800);
 
     const nameMatch = header.match(/«([^»]+)»/);
     const parsedName = (nameMatch?.[1]?.trim() || "");
@@ -132,7 +169,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     }
 
     // Extract optional flag (check if it's mentioned as optional)
-    const optional = /вибірков/i.test(text) || /факультатив/i.test(text);
+    const optional = /вибірков/i.test(text) || /факультатив/i.test(header);
 
     // Extract lecturer name and email
     const lecturerMatch = text.match(/Лектор курсу\s+([^\n]+)/i);
@@ -149,13 +186,15 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     
     if (!teacher) {
       // Create new teacher
-      teacher = { id: -1, name: lecturerName, email, position: null, academic_title: null } as Teacher
-      console.log("Creating new teacher:", teacher);
+      teacher = { id: -1, name: lecturerName, email, position: null, academic_title: null, alt_names: [] } as Teacher;
     }
 
-    // TODO: match prerequisites and postrequisites by name
-    const prerequisites: number[] = [];
-    const postrequisites: number[] = [];
+    const descrStart = Math.max(0, text.search(/ОПИС (НАВЧАЛЬНОЇ )?ДИСЦИПЛІНИ/i));
+    const descrEnd   = Math.min(descrStart + 3000, ...filterAbsent(text.search(/Призначення (навчальної )?дисципліни/i), text.search(/Мета вивчення/i)));
+    
+    const description = text.substring(descrStart, descrEnd);
+
+    const {prerequisites, postrequisites} = await parsePreAndPostRequisites(description);
 
     const results = 
       await parseSylabusOrProgramResults(text.substring(text.indexOf("КОМПЕТЕНТН"), text.indexOf("ПЛАН")));
@@ -214,37 +253,38 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     }
 
     // Create Course object
-    const course: Course & ParsedData = {
-      id: -1,
-      name,
-      teacher_id: teacher.id,
-      data: {
-        optional,
-        control_type: controlType,
-        hours,
-        credits,
-        specialty: specialty || "",
-        area: area || "",
-        description: "",
-        prerequisites,
-        postrequisites,
-        results,
-        attestations,
-        fulltime: {
-          semesters: [semester],
-          study_year: studyYear
+      const course: Course & ParsedData = {
+        id: -1,        
+        name,
+        teacher_id: teacher.id,
+        data: {
+          ok_no: initialInfo?.okNo ?? null,
+          optional,
+          control_type: controlType,
+          hours,
+          credits,
+          specialty: specialty || "",
+          area: area || "",
+          description: "",
+          prerequisites,
+          postrequisites,
+          results,
+          attestations,
+          fulltime: {
+            semesters: [semester],
+            study_year: studyYear
+          },
+          inabscentia: {
+            semesters: [],
+            study_year: 1
+          },
+          literature
         },
-        inabscentia: {
-          semesters: [],
-          study_year: 1
-        },
-        literature
-      },
-      generated: null,
-      type: 'syllabus',
-      topics: [],
-      parsed_teacher: teacher
-    };
+        generated: null,
+        type: 'syllabus',
+        topics: [],
+        parsed_teacher: teacher
+      };
 
     return course;
   } catch (error) {
@@ -253,7 +293,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
   }
 }
 
-async function parseProgram(filepath: string, text: string, dryRun: boolean = false): Promise<Course & ParsedData | null> {
+async function parseProgram(filepath: string, text: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
     console.log("Parsing program:");
     // save for debugging
@@ -309,7 +349,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     
     if (!teacher && teacherName) {
       // Create new teacher
-      teacher = { id: -1, name: teacherName, email: email, position: null, academic_title: null } as Teacher;
+      teacher = { id: -1, name: teacherName, email: email, position: null, academic_title: null, alt_names: [] } as Teacher;
     }
 
     if (!teacher) {
@@ -318,8 +358,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     }
 
     // TODO: match prerequisites and postrequisites by name
-    const prerequisites: number[] = [];
-    const postrequisites: number[] = [];
+    const prerequisites: string[] = [];
+    const postrequisites: string[] = [];
 
     const results = await parseSylabusOrProgramResults(text);
 
@@ -461,10 +501,11 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
 
     // Create Course object
     const course: Course & ParsedData = {
-      id: -1,
+      id: -1,      
       name,
       teacher_id: teacher.id,
       data: {
+        ok_no: initialInfo?.okNo ?? null,
         optional,
         control_type: controlType,
         hours,

@@ -4,8 +4,8 @@ export function splitTeacherName(name: string): { lastName: string, firstName?: 
   
   if (parts.length < 2) return {lastName: name };
 
-  const firstName = parts[0]!.trim();
-  const lastName = parts[1]!.trim();
+  const lastName = parts[0]!.trim();
+  const firstName = parts[1]!.trim();
   const middleName = parts.length > 2 ? parts[2] : undefined;
 
   return { firstName, lastName, middleName };
