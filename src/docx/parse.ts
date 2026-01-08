@@ -568,7 +568,6 @@ export async function file2text(filepath: string): Promise<string> {
 
 
 async function parseSylabusOrProgramResults(text: string): Promise<number[]> {
-  console.log("Parsing syllabus or program results", text);
   const allResults = await courseResults.all();
     
   return Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\.?\s/g)).map(m => {
