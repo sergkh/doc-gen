@@ -180,8 +180,6 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
       lecturerMatch = text.match(/Розробник курсу\s+([^\n]+)/i);
     }
     const lecturer = lecturerMatch?.[1]?.trim() || "";
-    
-    console.log("Extracted lecturer string:", lecturer);
 
     // stupid, but works: take last 3 words
     const lecturerName = lecturer.split(' ').slice(-3).join(' ');
@@ -205,7 +203,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const {prerequisites, postrequisites} = await parsePreAndPostRequisites(description);
 
     const results = 
-      await parseSylabusOrProgramResults(text.substring(text.indexOf("КОМПЕТЕНТН"), text.indexOf("ПЛАН")));
+      await parseSylabusOrProgramResults(text);
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
     const topics: { name: string; index: number }[] = [];
@@ -570,6 +568,7 @@ export async function file2text(filepath: string): Promise<string> {
 
 
 async function parseSylabusOrProgramResults(text: string): Promise<number[]> {
+  console.log("Parsing syllabus or program results", text);
   const allResults = await courseResults.all();
     
   return Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\.?\s/g)).map(m => {
