@@ -51,10 +51,280 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes: layoutedNodes, edges };
 };
 
+function buildCoursesGraph(courses: Course[]) {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  const courseMap = new Map<string, Course>();
+  const missingCourseSet = new Set<string>();
+  const processedMissingNodes = new Set<string>();
+
+  // Build a map of course names to courses (case-insensitive)
+  courses.forEach(course => {
+    const normalizedName = course.name.toLowerCase().trim();
+    courseMap.set(normalizedName, course);
+  });
+
+  // Create nodes for all existing courses
+  courses.forEach(course => {
+    const nodeId = `course-${course.id}`;
+    const node: Node = {
+      id: nodeId,
+      type: 'default',
+      data: {
+        label: (
+          <div className="text-center p-2">
+            <div className="font-bold text-sm text-amber-200">
+              { formatDisciplineCode(course.data.ok_no) }
+            </div>
+            <div className="text-xs mt-1">{course.name}</div>              
+          </div>
+        ),
+        courseId: course.id,
+        courseName: course.name,
+        isMissing: false
+      },
+      position: { x: 0, y: 0 },
+      style: {
+        background: '#18181b',
+        color: '#fffbeb',
+        border: '2px solid #fffbeb',
+        borderRadius: '12px',
+        padding: '8px',
+        width: '180px',
+        minHeight: '100px'
+      }
+    };
+    
+    nodes.push(node);
+  });
+
+  // Process prerequisites and postrequisites to create edges
+  courses.forEach(course => {
+    const currentCourseNode = nodes.find(n => n.data.courseId === course.id);
+    if (!currentCourseNode) return;
+
+    // Process prerequisites
+    processPrerequisites(
+      course, 
+      currentCourseNode, 
+      courseMap, 
+      nodes, 
+      edges, 
+      missingCourseSet, 
+      processedMissingNodes
+    );
+
+    // Process postrequisites
+    processPostrequisites(
+      course, 
+      currentCourseNode, 
+      courseMap, 
+      nodes, 
+      edges, 
+      missingCourseSet, 
+      processedMissingNodes
+    );
+  });
+
+  return { 
+    nodes, 
+    edges, 
+    missingCourses: Array.from(missingCourseSet) 
+  };
+}
+
+function processPrerequisites(
+  course: Course,
+  currentCourseNode: Node,
+  courseMap: Map<string, Course>,
+  nodes: Node[],
+  edges: Edge[],
+  missingCourseSet: Set<string>,
+  processedMissingNodes: Set<string>
+) {
+  course.data.prerequisites?.forEach(prereqName => {
+    if (!prereqName || prereqName.trim() === '') return;
+    
+    const normalizedPrereqName = prereqName.toLowerCase().trim();
+    const prereqCourse = courseMap.get(normalizedPrereqName);
+    
+    if (prereqCourse) {
+      // Found matching course - create edge from prerequisite to current course
+      const prereqNode = nodes.find(n => n.data.courseId === prereqCourse.id);
+      
+      if (prereqNode) {
+        const edgeId = `edge-prereq-${prereqNode.id}-to-${currentCourseNode.id}`;
+        edges.push(createPrerequisiteEdge(prereqNode.id, currentCourseNode.id, edgeId));
+      }
+    } else {
+      // Missing prerequisite - track it and create a red node
+      missingCourseSet.add(prereqName);
+      
+      const missingNodeId = `missing-${normalizedPrereqName.replace(/\s+/g, '-')}`;
+      
+      // Only create the node if we haven't processed it yet
+      if (!processedMissingNodes.has(missingNodeId)) {
+        nodes.push(createMissingCourseNode(prereqName, missingNodeId));
+        processedMissingNodes.add(missingNodeId);
+      }
+      
+      // Create edge from missing prerequisite to current course
+      const edgeId = `edge-prereq-missing-${missingNodeId}-to-${currentCourseNode.id}`;
+      edges.push(createMissingPrerequisiteEdge(missingNodeId, currentCourseNode.id, edgeId));
+    }
+  });
+}
+
+function processPostrequisites(
+  course: Course,
+  currentCourseNode: Node,
+  courseMap: Map<string, Course>,
+  nodes: Node[],
+  edges: Edge[],
+  missingCourseSet: Set<string>,
+  processedMissingNodes: Set<string>
+) {
+  course.data.postrequisites?.forEach(postreqName => {
+    if (!postreqName || postreqName.trim() === '') return;
+    
+    const normalizedPostreqName = postreqName.toLowerCase().trim();
+    const postreqCourse = courseMap.get(normalizedPostreqName);
+    
+    if (postreqCourse) {
+      // Found matching course - create edge from current course to postrequisite
+      const postreqNode = nodes.find(n => n.data.courseId === postreqCourse.id);
+      if (postreqNode) {
+        const edgeId = `edge-postreq-${currentCourseNode.id}-to-${postreqNode.id}`;
+        edges.push(createPostrequisiteEdge(currentCourseNode.id, postreqNode.id, edgeId));
+      }
+    } else {
+      // Missing postrequisite - track it and create a red node
+      missingCourseSet.add(postreqName);
+      
+      const missingNodeId = `missing-${normalizedPostreqName.replace(/\s+/g, '-')}`;
+      
+      // Only create the node if we haven't processed it yet
+      if (!processedMissingNodes.has(missingNodeId)) {
+        nodes.push(createMissingCourseNode(postreqName, missingNodeId));
+        processedMissingNodes.add(missingNodeId);
+      }
+      
+      // Create edge from current course to missing postrequisite
+      const edgeId = `edge-postreq-${currentCourseNode.id}-to-missing-${missingNodeId}`;
+      edges.push(createMissingPostrequisiteEdge(currentCourseNode.id, missingNodeId, edgeId));
+    }
+  });
+}
+
+function createPrerequisiteEdge(sourceId: string, targetId: string, edgeId: string): Edge {
+  return {
+    id: edgeId,
+    source: sourceId,
+    target: targetId,
+    type: 'smoothstep',
+    animated: false,
+    style: { stroke: '#f59e0b', strokeWidth: 2 },
+    markerEnd: { 
+      type: MarkerType.ArrowClosed, 
+      width: 20, 
+      height: 20, 
+      color: '#f59e0b' 
+    },
+    label: 'prerequisite',
+    labelStyle: { fill: '#f59e0b', fontSize: 10 },
+    labelBgStyle: { fill: '#18181b' }
+  };
+}
+
+function createPostrequisiteEdge(sourceId: string, targetId: string, edgeId: string): Edge {
+  return {
+    id: edgeId,
+    source: sourceId,
+    target: targetId,
+    type: 'smoothstep',
+    animated: false,
+    style: { stroke: '#10b981', strokeWidth: 2 },
+    markerEnd: { 
+      type: MarkerType.ArrowClosed, 
+      width: 20, 
+      height: 20, 
+      color: '#10b981' 
+    },
+    label: 'postrequisite',
+    labelStyle: { fill: '#10b981', fontSize: 10 },
+    labelBgStyle: { fill: '#18181b' }
+  };
+}
+
+function createMissingPrerequisiteEdge(sourceId: string, targetId: string, edgeId: string): Edge {
+  return {
+    id: edgeId,
+    source: sourceId,
+    target: targetId,
+    type: 'smoothstep',
+    animated: true,
+    style: { stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '5,5' },
+    markerEnd: { 
+      type: MarkerType.ArrowClosed, 
+      width: 20, 
+      height: 20, 
+      color: '#ef4444' 
+    }
+  };
+}
+
+function createMissingPostrequisiteEdge(sourceId: string, targetId: string, edgeId: string): Edge {
+  return {
+    id: edgeId,
+    source: sourceId,
+    target: targetId,
+    type: 'smoothstep',
+    animated: true,
+    style: { stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '5,5' },
+    markerEnd: { 
+      type: MarkerType.ArrowClosed, 
+      width: 20, 
+      height: 20, 
+      color: '#ef4444' 
+    }
+  };
+}
+
+function createMissingCourseNode(courseName: string, nodeId: string): Node {
+  return {
+    id: nodeId,
+    type: 'default',
+    data: {
+      label: (
+        <div className="text-center p-2">
+          <div className="font-bold text-sm text-red-400 flex items-center justify-center gap-1">
+            <span>⚠️</span>
+          </div>
+          <div className="text-xs mt-1">{courseName}</div>
+          <div className="text-xs text-red-300 mt-1">(не знайдено)</div>
+        </div>
+      ),
+      courseName: courseName,
+      isMissing: true
+    },
+    position: { x: 0, y: 0 },
+    style: {
+      background: '#7f1d1d',
+      color: '#fecaca',
+      border: '2px solid #ef4444',
+      borderRadius: '12px',
+      padding: '8px',
+      width: '180px',
+      minHeight: '100px'
+    }
+  };
+}
+
 export default function CourseGraph() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMissingCourses, setShowMissingCourses] = useState(false);
 
   // Load all courses
   useEffect(() => {
@@ -77,241 +347,7 @@ export default function CourseGraph() {
   }, []);
 
   // Create nodes and edges for the graph
-  const { nodes: initialNodes, edges: initialEdges, missingCourses } = useMemo(() => {
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-    const courseMap = new Map<string, Course>();
-    const missingCourseSet = new Set<string>();
-    const processedMissingNodes = new Set<string>();
-
-    // Build a map of course names to courses (case-insensitive)
-    courses.forEach(course => {
-      const normalizedName = course.name.toLowerCase().trim();
-      courseMap.set(normalizedName, course);
-    });
-
-    // Create nodes for all existing courses
-    courses.forEach(course => {
-      const nodeId = `course-${course.id}`;
-      const node: Node = {
-        id: nodeId,
-        type: 'default',
-        data: {
-          label: (
-            <div className="text-center p-2">
-              <div className="font-bold text-sm text-amber-200">
-                { formatDisciplineCode(course.data.ok_no) }
-              </div>
-              <div className="text-xs mt-1">{course.name}</div>              
-            </div>
-          ),
-          courseId: course.id,
-          courseName: course.name,
-          isMissing: false
-        },
-        position: { x: 0, y: 0 },
-        style: {
-          background: '#18181b',
-          color: '#fffbeb',
-          border: '2px solid #fffbeb',
-          borderRadius: '12px',
-          padding: '8px',
-          width: '180px',
-          minHeight: '100px'
-        }
-      };
-      
-      nodes.push(node);
-    });
-
-    // Process prerequisites and postrequisites to create edges
-    courses.forEach(course => {
-      const currentCourseNode = nodes.find(n => n.data.courseId === course.id);
-      if (!currentCourseNode) return;
-
-      // Process prerequisites (courses that must be taken before this one)
-      // Arrow direction: prerequisite -> current course
-      course.data.prerequisites?.forEach(prereqName => {
-        if (!prereqName || prereqName.trim() === '') return;
-        
-        const normalizedPrereqName = prereqName.toLowerCase().trim();
-        const prereqCourse = courseMap.get(normalizedPrereqName);
-        
-        if (prereqCourse) {
-          // Found matching course - create edge from prerequisite to current course
-          const prereqNode = nodes.find(n => n.data.courseId === prereqCourse.id);
-          if (prereqNode) {
-            const edgeId = `edge-prereq-${prereqNode.id}-to-${currentCourseNode.id}`;
-            edges.push({
-              id: edgeId,
-              source: prereqNode.id,
-              target: currentCourseNode.id,
-              type: 'smoothstep',
-              animated: false,
-              style: { stroke: '#f59e0b', strokeWidth: 2 },
-              markerEnd: { 
-                type: MarkerType.ArrowClosed, 
-                width: 20, 
-                height: 20, 
-                color: '#f59e0b' 
-              },
-              label: 'prerequisite',
-              labelStyle: { fill: '#f59e0b', fontSize: 10 },
-              labelBgStyle: { fill: '#18181b' }
-            });
-          }
-        } else {
-          // Missing prerequisite - track it and create a red node
-          missingCourseSet.add(prereqName);
-          
-          const missingNodeId = `missing-${normalizedPrereqName.replace(/\s+/g, '-')}`;
-          
-          // Only create the node if we haven't processed it yet
-          if (!processedMissingNodes.has(missingNodeId)) {
-            nodes.push({
-              id: missingNodeId,
-              type: 'default',
-              data: {
-                label: (
-                  <div className="text-center p-2">
-                    <div className="font-bold text-sm text-red-400 flex items-center justify-center gap-1">
-                      <span>⚠️</span>
-                    </div>
-                    <div className="text-xs mt-1 line-clamp-2">{prereqName}</div>
-                    <div className="text-xs text-red-300 mt-1">(не знайдено)</div>
-                  </div>
-                ),
-                courseName: prereqName,
-                isMissing: true
-              },
-              position: { x: 0, y: 0 },
-              style: {
-                background: '#7f1d1d',
-                color: '#fecaca',
-                border: '2px solid #ef4444',
-                borderRadius: '12px',
-                padding: '8px',
-                width: '180px',
-                minHeight: '100px'
-              }
-            });
-            processedMissingNodes.add(missingNodeId);
-          }
-          
-          // Create edge from missing prerequisite to current course
-          const edgeId = `edge-prereq-missing-${missingNodeId}-to-${currentCourseNode.id}`;
-          edges.push({
-            id: edgeId,
-            source: missingNodeId,
-            target: currentCourseNode.id,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '5,5' },
-            markerEnd: { 
-              type: MarkerType.ArrowClosed, 
-              width: 20, 
-              height: 20, 
-              color: '#ef4444' 
-            }
-          });
-        }
-      });
-
-      // Process postrequisites (courses that should be taken after this one)
-      // Arrow direction: current course -> postrequisite
-      course.data.postrequisites?.forEach(postreqName => {
-        if (!postreqName || postreqName.trim() === '') return;
-        
-        const normalizedPostreqName = postreqName.toLowerCase().trim();
-        const postreqCourse = courseMap.get(normalizedPostreqName);
-        
-        if (postreqCourse) {
-          // Found matching course - create edge from current course to postrequisite
-          const postreqNode = nodes.find(n => n.data.courseId === postreqCourse.id);
-          if (postreqNode) {
-            const edgeId = `edge-postreq-${currentCourseNode.id}-to-${postreqNode.id}`;
-            edges.push({
-              id: edgeId,
-              source: currentCourseNode.id,
-              target: postreqNode.id,
-              type: 'smoothstep',
-              animated: false,
-              style: { stroke: '#10b981', strokeWidth: 2 },
-              markerEnd: { 
-                type: MarkerType.ArrowClosed, 
-                width: 20, 
-                height: 20, 
-                color: '#10b981' 
-              },
-              label: 'postrequisite',
-              labelStyle: { fill: '#10b981', fontSize: 10 },
-              labelBgStyle: { fill: '#18181b' }
-            });
-          }
-        } else {
-          // Missing postrequisite - track it and create a red node
-          missingCourseSet.add(postreqName);
-          
-          const missingNodeId = `missing-${normalizedPostreqName.replace(/\s+/g, '-')}`;
-          
-          // Only create the node if we haven't processed it yet
-          if (!processedMissingNodes.has(missingNodeId)) {
-            nodes.push({
-              id: missingNodeId,
-              type: 'default',
-              data: {
-                label: (
-                  <div className="text-center p-2">
-                    <div className="font-bold text-sm text-red-400 flex items-center justify-center gap-1">
-                      <span>⚠️</span>
-                    </div>
-                    <div className="text-xs mt-1 line-clamp-2">{postreqName}</div>
-                    <div className="text-xs text-red-300 mt-1">(не знайдено)</div>
-                  </div>
-                ),
-                courseName: postreqName,
-                isMissing: true
-              },
-              position: { x: 0, y: 0 },
-              style: {
-                background: '#7f1d1d',
-                color: '#fecaca',
-                border: '2px solid #ef4444',
-                borderRadius: '12px',
-                padding: '8px',
-                width: '180px',
-                minHeight: '100px'
-              }
-            });
-            processedMissingNodes.add(missingNodeId);
-          }
-          
-          // Create edge from current course to missing postrequisite
-          const edgeId = `edge-postreq-${currentCourseNode.id}-to-missing-${missingNodeId}`;
-          edges.push({
-            id: edgeId,
-            source: currentCourseNode.id,
-            target: missingNodeId,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '5,5' },
-            markerEnd: { 
-              type: MarkerType.ArrowClosed, 
-              width: 20, 
-              height: 20, 
-              color: '#ef4444' 
-            }
-          });
-        }
-      });
-    });
-
-    return { 
-      nodes, 
-      edges, 
-      missingCourses: Array.from(missingCourseSet) 
-    };
-  }, [courses]);
+  const { nodes: initialNodes, edges: initialEdges, missingCourses } = useMemo(() => buildCoursesGraph(courses), [courses]);
 
   // Apply layout algorithm
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(() => {
@@ -367,17 +403,32 @@ export default function CourseGraph() {
             <h1 className="font-mono text-2xl text-amber-50">Граф залежностей дисциплін</h1>
           </div>
 
-          {missingCourses.length > 0 && (
-            <div className="bg-red-950 border-2 border-red-500 rounded-lg p-3 text-red-200 text-sm font-mono">
-              <div className="flex items-start gap-2">
-                <FontAwesomeIcon icon={faExclamationTriangle} className="mt-0.5" />
-                <div>
-                  <p className="font-bold"> Знайдено {missingCourses.length} відсутніх дисциплін:</p>
-                  <p className="list-disc list-inside mt-1 ml-2">
-                    { missingCourses.join(', ') }                    
-                  </p>
+           {missingCourses.length > 0 && (
+            <div className="bg-red-950 border-2 border-red-500 rounded-lg text-red-200 text-sm font-mono">
+              <button
+                onClick={() => setShowMissingCourses(!showMissingCourses)}
+                className="w-full flex items-center justify-between p-3 hover:bg-red-900/80 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="mt-0.5" />
+                  <span className="font-bold">
+                    Знайдено {missingCourses.length} відсутніх дисциплін
+                  </span>
                 </div>
-              </div>
+                <span className="text-lg">
+                  {showMissingCourses ? '−' : '+'}
+                </span>
+              </button>
+              
+              {showMissingCourses && (
+                <div className="p-3 pt-0 border-t-2 border-red-500/30">
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    {missingCourses.map((courseName, index) => (
+                      <li key={index}>{courseName}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
