@@ -4,6 +4,7 @@ import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 import { id } from "zod/v4/locales";
+import { computeFileHash } from "./utils/files";
 
 
 const resultsApi = {
@@ -66,13 +67,16 @@ const resultsApi = {
           return new Response("Invalid file type. Expected .docx or .pdf file", { status: 400 });
         }
 
-        const uploadFileName = `${Date.now()}.${isDocxFile ? "docx" : "pdf"}`;
+        // Generate unique filename using hash
+        const hash = await computeFileHash(file);
+        const fileExtension = path.extname(file.name);
+        const uploadFileName = `${hash}${fileExtension}`;        
         const uploadsDir = path.join(process.cwd(), "uploads", "opps");
         const uploadPath = path.join(uploadsDir, uploadFileName);
 
         // Save the file (Bun.write will create directories if needed)
         await Bun.write(uploadPath, file);
-        console.log("Saving uploaded file to:", uploadPath);
+        console.log("Saving uploaded OPP file to:", uploadPath);
 
         // Parse the docx file
         const opp = await parseOPP(uploadPath);
@@ -99,9 +103,10 @@ const resultsApi = {
           console.log("Adding new specialty:", updatedSpecialty.name);
           specialtyId = (await specialties.add(opp.specialty))[0].id;
         }
-
         
         const parsedResults = [...opp.integralResults, ...opp.specialResults, ...opp.generalResults, ...opp.programResults];
+
+        const oldResults = await courseResults.bySpecialty(specialtyId);
 
         const savedResults: (CourseResult | null)[] = await Promise.all(parsedResults.map(async (result) => {
           try {
@@ -114,6 +119,14 @@ const resultsApi = {
             return null;
           }
         }));
+
+        // remove old extra results that were not in the parsed document
+        for (const oldResult of oldResults) {
+          if (!parsedResults.find(r => r && r.type === oldResult.type && r.no === oldResult.no)) {
+            console.log("Deleting old result not in parsed document:", oldResult);
+            await courseResults.delete(oldResult.id);
+          }
+        }
         
         return Response.json(savedResults.filter(result => result !== null));
       } catch (error) {

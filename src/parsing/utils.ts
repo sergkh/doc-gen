@@ -10,3 +10,15 @@ export function splitTeacherName(name: string): { lastName: string, firstName?: 
 
   return { firstName, lastName, middleName };
 }
+
+export function dropDot(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.endsWith('.')) {
+    return trimmed.substring(0, trimmed.length - 1);
+  }
+  return trimmed;
+}
+
+export function normalizeWhitespaces(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}

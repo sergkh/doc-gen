@@ -8,6 +8,7 @@ import { courseResults, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
+import { dropDot, normalizeWhitespaces } from '@/parsing/utils';
 
 type CourseInitialInfo = {
   okNo?: string | null;
@@ -37,14 +38,6 @@ const PrepostRequisitesExtraction = z.object({
   prerequisites: z.array(z.string()),
   postrequisites: z.array(z.string())
 });
-
-export function dropDot(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.endsWith('.')) {
-    return trimmed.substring(0, trimmed.length - 1);
-  }
-  return trimmed;
-}
 
 export async function parseSylabusOrProgram(filepath: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
@@ -143,7 +136,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const nameMatch = header.match(/«([^»]+)»/);
     const parsedName = (nameMatch?.[1]?.trim() || "");
     // some syllabuses have all caps names, or names that span multiple lines
-    const name = (parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase()).replace(/\s+/g, ' ');
+    const name = normalizeWhitespaces(parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase());
 
     if (!name) {
       console.error("Could not find course name");

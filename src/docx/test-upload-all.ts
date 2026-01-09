@@ -173,6 +173,7 @@ async function main() {
   const successfulFolders = results.filter((r) => r.successes.length > 0 && r.failures.length === 0);
   const emptyFolders = results.filter((r) => r.files.length === 0);
   const problematicFolders = results.filter((r) => r.failures.length > 0);
+  const foldersWithoutSuccess = results.filter((r) => r.files.length > 0 && r.successes.length === 0);
 
   console.log(`\n${COLORS.bold}${COLORS.yellow}===== Upload report =====${COLORS.reset}`);
   formatFolderList("Successful folders", successfulFolders);
@@ -180,12 +181,21 @@ async function main() {
   formatFolderList("Empty folders", emptyFolders);
   console.log("");
   formatFolderList("Folders with errors", problematicFolders);
+  console.log("");
+  formatFolderList("Folders without successful uploads", foldersWithoutSuccess);
 
   console.log(`\n${COLORS.bold}Summary:${COLORS.reset}`);
   console.log(`  Processed folders: ${results.length}`);
   console.log(`  Successful: ${successfulFolders.length}`);
   console.log(`  Empty: ${emptyFolders.length}`);
   console.log(`  With errors: ${problematicFolders.length}`);
+  console.log(`  Without successful uploads: ${foldersWithoutSuccess.length}`);
+
+  // Show error if there were folders with files but no successful uploads
+  if (foldersWithoutSuccess.length > 0) {
+    console.log(`\n${COLORS.red}⚠️  Error: ${foldersWithoutSuccess.length} folder(s) had files but no successful uploads${COLORS.reset}`);
+    process.exit(1);
+  }
 }
 
 main().catch((error) => {

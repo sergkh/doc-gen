@@ -179,6 +179,7 @@ export function App() {
         <Route path="/teachers/:id" element={<TeacherEdit />} />
         <Route path="/results" element={<ResultsList />} />
         <Route path="/results/matrix" element={<ResultsMatrix />} />
+        <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
         <Route path="/results/:id" element={<ResultEdit />} />
         <Route path="/templates" element={<TemplatesList />} />
         <Route path="/templates/:id" element={<TemplateEdit />} />

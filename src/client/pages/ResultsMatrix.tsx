@@ -20,7 +20,7 @@ const RESULT_TYPE_ORDER: ResultType[] = ["ЗК", "СК", "РН"];
 type ExtendedDiscipline = SpecialtyDisciplineConfig & {
   id?: number | string;
   code?: string;
-  ok_no?: string | number;
+  ok_no?: string;
 };
 
 type MatrixRow = {
@@ -29,19 +29,6 @@ type MatrixRow = {
   displayCode: string;
   course: Course | null;
 };
-
-function normalizeOkNo(value: string | number | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
-  const normalized = typeof value === "number" ? value.toString() : value;
-  const cleaned = normalized
-    .replace(/[,]/g, ".")
-    .replace(/\s+/g, "")
-    .replace(/^[ОOВB][КK]/i, "");
-  const match = cleaned.match(/(\d+(?:\.\d+)?)/);
-  if (!match || !match[1]) return null;
-  const trimmed = match[1].replace(/\.$/, "");
-  return trimmed.length > 0 ? trimmed : null;
-}
 
 function formatDisciplineCode(discipline: ExtendedDiscipline, normalized: string | null): string {
   const rawCode = discipline.code ?? discipline.id ?? discipline.ok_no;
@@ -68,7 +55,11 @@ export default function ResultsMatrix() {
 
   useEffect(() => {
     loadAllSpecialties()
-      .then(setSpecialties)
+      .then(list => {
+        setSpecialties(list);
+        const id = list.length > 0 ? list[0]?.id : null;
+        if(id) setSelectedSpecialtyId(id);
+      })
       .catch((error) => {
         console.error("Error loading specialties", error);
         toast.error("Не вдалося завантажити спеціальності");
@@ -116,14 +107,14 @@ export default function ResultsMatrix() {
     const coursesByOkNo = new Map<string, Course>();
 
     courses.forEach((course) => {
-      const okNo = normalizeOkNo((course as any).ok_no ?? course.data?.ok_no ?? null);
+      const okNo = (course as any).ok_no ?? course.data?.ok_no ?? null;
       if (okNo && !coursesByOkNo.has(okNo)) {
         coursesByOkNo.set(okNo, course);
       }
     });
 
     return specialtyDisciplines.map((discipline) => {
-      const normalized = normalizeOkNo(discipline.ok_no ?? discipline.id ?? discipline.no);
+      const normalized = discipline.ok_no ?? '';
       const displayCode = formatDisciplineCode(discipline, normalized);
       const course = normalized ? coursesByOkNo.get(normalized) ?? null : null;
       return {
@@ -155,6 +146,37 @@ export default function ResultsMatrix() {
     return grouped;
   }, [results]);
 
+  const uncoveredResultsByType = useMemo(() => {
+    const uncovered: Record<ResultType, CourseResult[]> = {
+      "ЗК": [],
+      "СК": [],
+      "РН": []
+    };
+
+    // Collect all result IDs covered by courses
+    const coveredResultIds = new Set<number>();
+    courses.forEach((course) => {
+      (course.data?.results ?? []).forEach((resultId) => {
+        coveredResultIds.add(resultId);
+      });
+    });
+
+    // Find results that are not covered by any course
+    results.forEach((result) => {
+      if (result.type === "ЗК" || result.type === "СК" || result.type === "РН") {
+        if (!coveredResultIds.has(result.id)) {
+          uncovered[result.type].push(result);
+        }
+      }
+    });
+
+    return uncovered;
+  }, [results, courses]);
+
+  const hasUncoveredResults = useMemo(() => {
+    return RESULT_TYPE_ORDER.some((type) => uncoveredResultsByType[type].length > 0);
+  }, [uncoveredResultsByType]);
+
   const isBusy = isLoadingSpecialty || isLoadingCourses;
 
   return (
@@ -162,13 +184,6 @@ export default function ResultsMatrix() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
         <div className="flex flex-wrap justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/results")}
-              className="text-amber-50 hover:text-amber-200 cursor-pointer px-3 py-2 rounded-lg font-bold flex items-center gap-2"
-            >
-              <FontAwesomeIcon icon={faArrowLeft} />
-              <span className="hidden sm:inline">До результатів</span>
-            </button>
             <h1 className="font-mono text-2xl text-amber-50">Матриця результатів</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -200,83 +215,105 @@ export default function ResultsMatrix() {
           <div className="text-amber-50 font-mono">Завантаження даних...</div>
         ) : disciplineRows.length === 0 ? (
           <div className="text-amber-50 font-mono">Для цієї спеціальності немає переліку дисциплін</div>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {disciplineRows.some((row) => !row.course) && (
-              <div className="bg-red-950/40 border border-red-500 text-red-200 rounded-xl p-4 flex items-center gap-3 font-mono">
-                <FontAwesomeIcon icon={faExclamationTriangle} className="text-red-400" />
-                <span>Деякі дисципліни відсутні серед курсів – відповідні рядки підсвічені червоним.</span>
-              </div>
-            )}
+         ) : (
+           <div className="flex flex-col gap-8">
+             {RESULT_TYPE_ORDER.map((type) => {
+               const resultsForType = resultsByType[type];
+               return (
+                 <div key={type} className="flex flex-col gap-3">
+                   <h2 className="text-amber-200 font-bold text-xl font-mono border-b-2 border-amber-50 pb-2">
+                     {RESULT_TYPES[type]}
+                   </h2>
+                   {resultsForType.length === 0 ? (
+                     <div className="text-amber-50 font-mono text-sm">Немає результатів типу {type}</div>
+                   ) : (
+                     <div className="overflow-x-auto">
+                       <table className="min-w-full border-2 border-amber-50 rounded-xl overflow-hidden">
+                         <thead>
+                           <tr className="bg-zinc-900 text-amber-50 font-mono">
+                             <th className="px-3 py-2 border border-amber-50 text-left">ОК</th>
+                             {resultsForType.map((result) => (
+                               <th
+                                 key={result.id}
+                                 className="px-3 py-2 border border-amber-50 text-center text-sm"
+                                 title={result.name}
+                               >
+                                 {formatResultCode(result)}
+                               </th>
+                             ))}
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {disciplineRows.map((row) => {
+                             const hasCourse = Boolean(row.course);
+                             return (
+                               <tr
+                                 key={`${row.displayCode}-${row.discipline.name}`}
+                                 className={hasCourse ? "bg-zinc-900" : "bg-red-950/30"}
+                               >
+                                 <th className="px-3 py-2 border border-amber-50 text-left align-top text-amber-50 font-mono">
+                                   <div className="font-bold">{row.normalizedOkNo ?? row.displayCode}</div>
+                                   <div className="text-xs text-amber-200">{row.discipline.name}</div>
+                                   {row.course && (
+                                     <div className="text-[11px] text-amber-400 mt-1">{row.course.name}</div>
+                                   )}
+                                   {!row.course && (
+                                     <div className="text-[11px] text-red-200 mt-1">Дисципліну не знайдено</div>
+                                   )}
+                                 </th>
+                                 {resultsForType.map((result) => {
+                                   const courseResults = row.course?.data?.results ?? [];
+                                   const hasResult = courseResults.includes(result.id);
+                                   return (
+                                     <td
+                                       key={`${row.displayCode}-${result.id}`}
+                                       className="px-3 py-2 border border-amber-50 text-center text-amber-50 font-bold"
+                                     >
+                                       {hasResult ? "+" : ""}
+                                     </td>
+                                   );
+                                 })}
+                               </tr>
+                             );
+                           })}
+                         </tbody>
+                       </table>
+                     </div>
+                   )}
+                 </div>
+               );
+             })}
+           </div>
+         )}
+         
+         {selectedSpecialtyId && !isBusy && (
+           <div className={'mt-8 border-2 rounded-xl p-4' + (hasUncoveredResults ? ' bg-red-950/20 border-red-500' : ' bg-green-950/20 border-green-500')}>
+             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+               <FontAwesomeIcon icon={faExclamationTriangle} />
+               {hasUncoveredResults ? "Результати, які не покриті жодною дисципліною" : "Всі результати покриті"}
+             </h3>
 
-            {RESULT_TYPE_ORDER.map((type) => {
-              const resultsForType = resultsByType[type];
-              return (
-                <div key={type} className="flex flex-col gap-3">
-                  <h2 className="text-amber-200 font-bold text-xl font-mono border-b-2 border-amber-50 pb-2">
-                    {RESULT_TYPES[type]}
-                  </h2>
-                  {resultsForType.length === 0 ? (
-                    <div className="text-amber-50 font-mono text-sm">Немає результатів типу {type}</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border-2 border-amber-50 rounded-xl overflow-hidden">
-                        <thead>
-                          <tr className="bg-zinc-900 text-amber-50 font-mono">
-                            <th className="px-3 py-2 border border-amber-50 text-left">ОК</th>
-                            {resultsForType.map((result) => (
-                              <th
-                                key={result.id}
-                                className="px-3 py-2 border border-amber-50 text-center text-sm"
-                                title={result.name}
-                              >
-                                {formatResultCode(result)}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {disciplineRows.map((row) => {
-                            const hasCourse = Boolean(row.course);
-                            return (
-                              <tr
-                                key={`${row.displayCode}-${row.discipline.name}`}
-                                className={hasCourse ? "bg-zinc-900" : "bg-red-950/30"}
-                              >
-                                <th className="px-3 py-2 border border-amber-50 text-left align-top text-amber-50 font-mono">
-                                  <div className="font-bold">{row.normalizedOkNo ?? row.displayCode}</div>
-                                  <div className="text-xs text-amber-200">{row.discipline.name}</div>
-                                  {row.course && (
-                                    <div className="text-[11px] text-amber-400 mt-1">{row.course.name}</div>
-                                  )}
-                                  {!row.course && (
-                                    <div className="text-[11px] text-red-200 mt-1">Дисципліну не знайдено</div>
-                                  )}
-                                </th>
-                                {resultsForType.map((result) => {
-                                  const courseResults = row.course?.data?.results ?? [];
-                                  const hasResult = courseResults.includes(result.id);
-                                  return (
-                                    <td
-                                      key={`${row.displayCode}-${result.id}`}
-                                      className="px-3 py-2 border border-amber-50 text-center text-amber-50 font-bold"
-                                    >
-                                      {hasResult ? "+" : ""}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+             {RESULT_TYPE_ORDER.map((type) => {
+               const uncoveredResults = uncoveredResultsByType[type];
+               return (
+                 <div key={type} className="mb-4">
+                   <h4 className="font-bold text-amber-200 mb-2">{RESULT_TYPES[type]}</h4>
+                   {uncoveredResults.length === 0 ? (
+                     <div className="text-green-200 text-sm">Всі результати типу {type} покриті</div>
+                   ) : (
+                     <ul className="list-disc list-inside space-y-1">
+                       {uncoveredResults.map((result) => (
+                         <li key={result.id} className="text-sm">
+                           {formatResultCode(result)} - {result.name}
+                         </li>
+                       ))}
+                     </ul>
+                   )}
+                 </div>
+               );
+             })}
+           </div>
+         )}
       </div>
     </div>
   );

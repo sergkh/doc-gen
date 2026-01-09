@@ -111,8 +111,8 @@ const teacherPublications = {
 
   add: async (publication: Omit<TeacherPublication, "id">) => {
     return await sql`INSERT INTO teacher_publications 
-      (teacher_id, title, year, journal, publication_type, link, data) 
-      VALUES (${publication.teacher_id}, ${publication.title}, ${publication.year}, ${publication.journal}, ${publication.publication_type}, ${publication.link}, ${publication.data}) 
+      (teacher_id, title, year, journal, publication_type, repo_id, data) 
+      VALUES (${publication.teacher_id}, ${publication.title}, ${publication.year}, ${publication.journal}, ${publication.publication_type}, ${publication.repo_id}, ${publication.data}) 
       RETURNING *`;
   },
 
@@ -123,7 +123,7 @@ const teacherPublications = {
           year = ${publication.year},
           journal = ${publication.journal},
           publication_type = ${publication.publication_type},
-          link = ${publication.link},
+          repo_id = ${publication.repo_id},
           data = ${publication.data},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${publication.id}
@@ -219,7 +219,9 @@ const courseResults = {
   },
 
   add: async (result: CourseResult) : Promise<number> => {
-    return (await sql`INSERT INTO course_results (no, type, name, specialty_id) VALUES (${result.no}, ${result.type}, ${result.name}, ${result.specialty_id}) RETURNING *`)[0].id;
+    return (await sql`INSERT INTO course_results (no, type, name, specialty_id) 
+      VALUES (${result.no}, ${result.type}, ${result.name}, ${result.specialty_id}) 
+      ON CONFLICT (no, type, specialty_id) DO UPDATE SET name = EXCLUDED.name RETURNING *`)[0].id;
   },
 
   update: async (result: CourseResult) => {

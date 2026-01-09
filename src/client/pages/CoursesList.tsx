@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTableList } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { Course, ParsedData } from "@/stores/models";
@@ -101,12 +101,22 @@ export default function CoursesList() {
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <h1 className="font-mono">Дисципліни</h1>
-          <button
-            onClick={() => navigate("/courses/new")}
-            className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
+          <div className="flex items-end">
+            <button
+                onClick={() => navigate("/results/matrix")}
+                className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 flex items-center"
+                aria-label="Переглянути матрицю результатів"
+                title="Матриця результатів"
+              >
+                <FontAwesomeIcon icon={faTableList} />
+              </button>
+            <button
+              onClick={() => navigate("/courses/new")}
+              className="text-amber-50 hover:text-amber-200 cursor-pointer px-4 py-2 font-bold flex items-center"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">

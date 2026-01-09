@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faUpload, faTableList } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { CourseResult, Specialty } from "@/stores/models";
@@ -25,7 +25,11 @@ export default function ResultsList() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadAllSpecialties().then(setSpecialties).catch(console.error);
+    loadAllSpecialties().then(list => {
+      setSpecialties(list)
+      const first = list.length > 0 ? list[0]?.id ?? null : null;
+      if(first) setSelectedSpecialtyId(first);
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -157,20 +161,14 @@ export default function ResultsList() {
                 </option>
               ))}
             </select>
-            <button
-              onClick={() => navigate("/results/matrix")}
-              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"
-              aria-label="Переглянути матрицю результатів"
-              title="Матриця результатів"
-            >
-              <FontAwesomeIcon icon={faTableList} />
-            </button>
-            <button
-              onClick={() => navigate("/results/new")}
-              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"
-            >
-              <FontAwesomeIcon icon={faPlus} />
-            </button>
+             {
+              selectedSpecialtyId && <button
+                onClick={() => navigate(`/specialties/${selectedSpecialtyId}/results/new`)}
+                className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-2 rounded-lg font-bold flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faPlus} />
+              </button>
+             }
           </div>
         </div>
 
@@ -228,14 +226,14 @@ export default function ResultsList() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button 
-                            onClick={() => navigate(`/results/${result.id}`)} 
-                            className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                            aria-label="Редагувати результат"
-                            title="Редагувати результат"
-                          >
-                            <FontAwesomeIcon icon={faPen} />
-                          </button>
+                           <button 
+                             onClick={() => navigate(`/specialties/${selectedSpecialtyId!}/results/${result.id}`)} 
+                             className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                             aria-label="Редагувати результат"
+                             title="Редагувати результат"
+                           >
+                             <FontAwesomeIcon icon={faPen} />
+                           </button>
                           <button 
                             onClick={() => handleDelete(result)} 
                             className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"

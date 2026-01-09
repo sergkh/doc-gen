@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS course_results (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_course_results_no_type ON course_results (no, type);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_course_results_no_type_specialty ON course_results (no, type, specialty_id);
 
 CREATE TABLE IF NOT EXISTS courses(
   id SERIAL PRIMARY KEY,

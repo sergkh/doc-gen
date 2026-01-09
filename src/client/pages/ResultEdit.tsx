@@ -4,13 +4,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import { loadResult, upsertResult } from "../results";
 
 export default function ResultEdit() {
-  const { id } = useParams();
+  const { id, specialtyId } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState<CourseResult | null>(null);
 
   useEffect(() => {
-    loadResult(id || "new").then(setItem).catch(console.error);
-  }, [id]);
+    loadResult(id || "new").then((loadedItem) => {
+      // If we're creating a new result and have a specialtyId, set it
+      if (id === "new" && specialtyId && loadedItem.specialty_id === null) {
+        loadedItem.specialty_id = Number(specialtyId);
+      }
+      setItem(loadedItem);
+    }).catch(console.error);
+  }, [id, specialtyId]);
 
   const update = (json: Partial<CourseResult>) => {
     if (!item) return;
@@ -21,7 +27,12 @@ export default function ResultEdit() {
     if (!item || !isValid) return;
     try {
       await upsertResult(item);
-      navigate("/results");
+      // Navigate back to results with the specialty ID if available
+      if (specialtyId) {
+        navigate("/results");
+      } else {
+        navigate("/results");
+      }
     } catch (error) {
       console.error("Error saving result:", error);
       alert("Не вдалося зберегти результат");

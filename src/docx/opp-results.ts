@@ -1,9 +1,11 @@
 import type { CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { z } from "zod";
-import { file2text, dropDot } from "./parse";
+import { file2text } from "./parse";
 import { extractInformationAI } from "@/ai/extractor";
 import { specialties } from "@/stores/db";
 import { extractDocTables, findFirstTable, findNextTable, findNextTableRow, findTableRow, type DocTable } from "./structured-parser";
+import { find } from "node_modules/cheerio/dist/esm/api/traversing";
+import { dropDot, normalizeWhitespaces } from "@/parsing/utils";
 
 export type OPPCourse = {
   name: string;
@@ -47,7 +49,7 @@ function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfi
       (controlTypeRow.includes("зал") ? "both" : "exam") : "credit";
 
     disciplines.push({
-      no: parseInt(numRow ?? '0'),
+      no: numRow ?? '-',
       name: nameRow ?? "",
       credits: parseInt(creditsRow ?? '0'),
       control_type: controlType
@@ -76,10 +78,9 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
     name = name.replace(/\s+/g, ' ').trim();
     
     if (name) {
-      results.push({ id: -1, no, type, name: dropDot(name), specialty_id: 0 });
+      results.push({ id: -1, no, type, name: normalizeWhitespaces(dropDot(name)), specialty_id: 0 });
     }
   }
-  
   results.sort((a, b) => a.no - b.no);
   
   return results;
@@ -88,33 +89,19 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
 export function parseOPPIntegralResult(table: DocTable | null): CourseResult[] {
   if (!table) return [];
   
-  const ikRow = findTableRow(table, "ІК.");
+  const ikRow = findTableRow(table, "Інтегральна компетентність");
 
   if (!ikRow) return [];
 
-  const results: CourseResult[] = [];
+  if (ikRow[1]) return [ {
+    id: -1,
+    no: 1,
+    type: "ІК",
+    name: normalizeWhitespaces(dropDot(ikRow[1])),
+    specialty_id: 0
+  }];
 
-  // They all ends with a dot or a newline.
-  const pattern = /ІК(\d+)\*?\.?\s{0,2}([ʼ\s\S]*?)(\.|\n)/g;
-    
-  let match;
-  while ((match = pattern.exec(ikRow[1] ?? "")) !== null) {
-    if (!match[1]) continue;
-    
-    const no = 0;
-    let name = match[1].trim();
-    
-    name = name.replace(/\s*(ІК)\s*\d+\.?\s*$/, '').trim();    
-    name = name.replace(/\s+/g, ' ').trim();
-    
-    if (name) {
-      results.push({ id: -1, no, type: "ІК", name: dropDot(name), specialty_id: 0 });
-    }
-  }
-  
-  results.sort((a, b) => a.no - b.no);
-  
-  return results;
+  return [];
 }
 
 export async function parseOPP(filepath: string): Promise<OPP | null> {
