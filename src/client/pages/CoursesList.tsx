@@ -9,7 +9,7 @@ import { loadAllCourses, deleteCourse } from "../courses";
 
 function formatOK(okNo: string | null): string {
   if (!okNo) return "??";
-  if(/^\d{1,2}/.test(okNo)) return `ОК${okNo}`;
+  if(/^\d{1,2}$/.test(okNo)) return `ОК${okNo}`;
   return `ВК${okNo}`;
 }
 

@@ -49,7 +49,7 @@ function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfi
       (controlTypeRow.includes("зал") ? "both" : "exam") : "credit";
 
     disciplines.push({
-      no: numRow ?? '-',
+      ok_no: numRow ?? '-',
       name: nameRow ?? "",
       credits: parseInt(creditsRow ?? '0'),
       control_type: controlType

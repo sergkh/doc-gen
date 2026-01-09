@@ -221,7 +221,7 @@ export type ParsedData = {
 }
 
 export type SpecialtyDisciplineConfig = {
-  no: string,
+  ok_no: string,
   name: string,
   credits: number,
   control_type: "exam" | "credit" | "both"

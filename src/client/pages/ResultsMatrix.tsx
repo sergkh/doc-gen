@@ -17,26 +17,15 @@ const RESULT_TYPES = {
 type ResultType = keyof typeof RESULT_TYPES;
 const RESULT_TYPE_ORDER: ResultType[] = ["ЗК", "СК", "РН"];
 
-type ExtendedDiscipline = SpecialtyDisciplineConfig & {
-  id?: number | string;
-  code?: string;
-  ok_no?: string;
-};
-
 type MatrixRow = {
-  discipline: ExtendedDiscipline;
+  discipline: SpecialtyDisciplineConfig;
   normalizedOkNo: string | null;
   displayCode: string;
   course: Course | null;
 };
 
-function formatDisciplineCode(discipline: ExtendedDiscipline, normalized: string | null): string {
-  const rawCode = discipline.code ?? discipline.id ?? discipline.ok_no;
-  if (rawCode !== undefined && rawCode !== null) {
-    const rawString = String(rawCode).trim();
-    if (rawString.length > 0) return rawString;
-  }
-  return normalized ? `ОК${normalized}` : "—";
+function formatDisciplineCode(discipline: SpecialtyDisciplineConfig): string {
+  return `ОК${discipline.ok_no ?? '??'}`;
 }
 
 function formatResultCode(result: CourseResult): string {
@@ -44,7 +33,6 @@ function formatResultCode(result: CourseResult): string {
 }
 
 export default function ResultsMatrix() {
-  const navigate = useNavigate();
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number | null>(null);
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
@@ -103,23 +91,28 @@ export default function ResultsMatrix() {
   }, [selectedSpecialtyId]);
 
   const disciplineRows: MatrixRow[] = useMemo(() => {
-    const specialtyDisciplines = (selectedSpecialty?.data?.disciplines ?? []) as ExtendedDiscipline[];
+    const specialtyDisciplines = (selectedSpecialty?.data?.disciplines ?? []) as SpecialtyDisciplineConfig[];
     const coursesByOkNo = new Map<string, Course>();
 
     courses.forEach((course) => {
-      const okNo = (course as any).ok_no ?? course.data?.ok_no ?? null;
-      if (okNo && !coursesByOkNo.has(okNo)) {
+      const okNo = course.data?.ok_no;
+      if (okNo) {
+        if(coursesByOkNo.has(okNo)) {
+          // TODO: show errors list in UI
+          console.warn(`Duplicate course for OK number ${okNo}: "${coursesByOkNo.get(okNo)?.name}" and "${course.name}"`);
+        }
         coursesByOkNo.set(okNo, course);
       }
     });
 
     return specialtyDisciplines.map((discipline) => {
-      const normalized = discipline.ok_no ?? '';
-      const displayCode = formatDisciplineCode(discipline, normalized);
-      const course = normalized ? coursesByOkNo.get(normalized) ?? null : null;
+      const okNo = discipline.ok_no ?? '';
+      const displayCode = formatDisciplineCode(discipline);
+      const course = okNo ? coursesByOkNo.get(okNo) ?? null : null;
+
       return {
         discipline,
-        normalizedOkNo: normalized,
+        normalizedOkNo: okNo,
         displayCode,
         course,
       };
