@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faTableCells, faListCheck } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { Course, ParsedData } from "@/stores/models";
@@ -104,15 +104,23 @@ export default function CoursesList() {
             >
             <FontAwesomeIcon icon={faTableCells} />
           </button>
-          <button
-            onClick={() => navigate("/courses/results")}
-            className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-            aria-label="Переглянути дисципліни з результатами"
-            title="Дисципліни з результатами"
-            >
-            <FontAwesomeIcon icon={faListCheck} />
-          </button>
-          </div>
+           <button
+             onClick={() => navigate("/courses/results")}
+             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
+             aria-label="Переглянути дисципліни з результатами"
+             title="Дисципліни з результатами"
+             >
+             <FontAwesomeIcon icon={faListCheck} />
+           </button>
+           <button
+             onClick={() => navigate("/courses/graph")}
+             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
+             aria-label="Переглянути граф залежностей дисциплін"
+             title="Граф залежностей"
+             >
+             <FontAwesomeIcon icon={faSitemap} />
+           </button>
+           </div>
           <button
             onClick={() => navigate("/courses/new")}
             className="text-amber-50 hover:text-amber-200 cursor-pointer px-4 py-2 font-bold flex items-center"
