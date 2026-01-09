@@ -12,6 +12,7 @@ import CourseEdit from "./client/pages/CourseEdit";
 import ResultsList from "./client/pages/ResultsList";
 import ResultEdit from "./client/pages/ResultEdit";
 import ResultsMatrix from "./client/pages/ResultsMatrix";
+import CoursesWithResults from "./client/pages/CoursesWithResults";
 import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
@@ -171,10 +172,11 @@ export function App() {
           path="/"
           element={<GeneratorPage />}
         />
-        <Route path="/courses" element={<CoursesList />} />
-        <Route path="/courses/:id" element={<CourseEdit />} />
-        <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
-        <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
+         <Route path="/courses" element={<CoursesList />} />
+         <Route path="/courses/results" element={<CoursesWithResults />} />
+         <Route path="/courses/:id" element={<CourseEdit />} />
+         <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
+         <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
         <Route path="/teachers" element={<TeachersList />} />
         <Route path="/teachers/:id" element={<TeacherEdit />} />
         <Route path="/results" element={<ResultsList />} />

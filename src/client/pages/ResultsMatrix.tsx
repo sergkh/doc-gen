@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { Course, CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { loadAllSpecialties, loadSpecialty } from "../specialties";
 import { loadResultsBySpecialty } from "../results";
-import { loadAllCourses } from "../courses";
+import { formatDisciplineCode, loadAllCourses } from "../courses";
 
 const RESULT_TYPES = {
   "ЗК": "Загальні компетентності",
@@ -23,10 +22,6 @@ type MatrixRow = {
   displayCode: string;
   course: Course | null;
 };
-
-function formatDisciplineCode(discipline: SpecialtyDisciplineConfig): string {
-  return `ОК${discipline.ok_no ?? '??'}`;
-}
 
 function formatResultCode(result: CourseResult): string {
   return `${result.type ?? ""}${result.no}`;
@@ -107,7 +102,7 @@ export default function ResultsMatrix() {
 
     return specialtyDisciplines.map((discipline) => {
       const okNo = discipline.ok_no ?? '';
-      const displayCode = formatDisciplineCode(discipline);
+      const displayCode = formatDisciplineCode(discipline.ok_no);
       const course = okNo ? coursesByOkNo.get(okNo) ?? null : null;
 
       return {

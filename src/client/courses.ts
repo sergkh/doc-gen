@@ -1,5 +1,31 @@
 import type { Course, KeyValue } from "@/stores/models";
 
+export function formatDisciplineCode(okNo: string | null): string {
+  if (!okNo) return "??";
+  if(/^\d{1,2}$/.test(okNo)) return `ОК${okNo}`;
+  return `ВК${okNo}`;
+}
+
+export function compareOks(codeA: string | null, codeB: string | null): number {
+  if (codeA === codeB) return 0;
+  if (codeA === null) return -1;
+  if (codeB === null) return 1;
+
+  if (/^\d{1,2}$/.test(codeA)) {
+    if(/^\d{1,2}$/.test(codeB)) {
+      return Number(codeA) - Number(codeB);
+    } else {
+      return -1;
+    }
+  } else {
+    if(/^\d{1,2}$/.test(codeB)) {
+      return 1;
+    }
+  }
+
+  return codeA.localeCompare(codeB);
+}
+
 export async function loadAllCourses() {
   const res = await fetch(`/api/courses`)
 
@@ -7,7 +33,11 @@ export async function loadAllCourses() {
     throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
   }
 
-  return await res.json() as Course[];
+  const courses = await res.json() as Course[];
+
+  courses.sort((a, b) => compareOks(a.data.ok_no, b.data.ok_no));
+
+  return courses;
 }
 
 export async function loadAllCoursesBrief() {
