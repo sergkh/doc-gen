@@ -46,6 +46,7 @@ async function main() {
           console.log(`${colors.green}✓ Successfully parsed ${colors.yellow}${file}${colors.reset} ${colors.cyan}${result.name}${colors.reset}`);
 
           const { issues, successes } = verifyCourse(result);
+          issues.push(...result.parse_warnings.map(w => `Parse warning: ${w}`));
           // Print verification results
           console.log(`\n${colors.bold}${colors.yellow}--- Verification Results ---${colors.reset}`);
           if (successes.length > 0) {
@@ -53,7 +54,7 @@ async function main() {
           }
           if (issues.length > 0) {
             console.log(`\n${colors.bold}${colors.red}Issues found:${colors.reset}`);
-            issues.forEach(msg => console.log(msg));
+            issues.forEach(msg => console.log('⚠️ ' + msg));
           } else {
             console.log(`\n${colors.green}${colors.bold}✓ All checks passed!${colors.reset}`);
           }

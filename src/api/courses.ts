@@ -138,6 +138,10 @@ const coursesApi = {
           }
         }
 
+        const { issues } = verifyCourse(course);
+        const warnings = [...course.parse_warnings, ...issues];        
+        course.data.warnings = warnings;
+
         let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
       
         console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
@@ -155,9 +159,6 @@ const coursesApi = {
               .map(c => courseTopics.add(c))
           )
         }
-
-        const { issues } = verifyCourse(course);
-        const warnings = issues.length > 0 ? issues : null;
 
         return Response.json({ ...course, warnings });
       } catch (error) {

@@ -292,23 +292,3 @@ bun run start        # Run production build
 6. **Validate Input**: Check data before saving to prevent corruption
 7. **Test File Operations**: Ensure file uploads and parsing work correctly
 8. **Consider Mobile**: Responsive design using Tailwind breakpoints
-
-## Build & Deployment Notes
-
-- Built using custom `build.ts` script with Bun.build API
-- Outputs to `/dist` directory
-- Includes HTML processing, CSS bundling, and sourcemaps
-- Production build optimizes and minifies assets
-- Environment variables control AI API keys and other config
-
-## Testing Approach
-
-- Manual testing through UI is primary method
-- File parsing tested with sample documents
-- AI generation tested with various prompts
-- Database integrity maintained through schema constraints
-- Build process validates TypeScript compilation
-
----
-
-This documentation should help AI assistants understand the project structure, make appropriate changes, and maintain consistency with existing patterns.

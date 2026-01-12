@@ -5,61 +5,69 @@ export function verifyCourse(course: Course & ParsedData): { issues: string[], s
   const issues: string[] = [];
   const successes: string[] = [];
   
+  if(course.name.length < 5) {
+    issues.push(`Назва дисципліни занадто коротка: "${course.name}"`);
+  } else if (course.name.length > 150) {
+    issues.push(`Назва дисципліни виглядає занадто довгою: "${course.name}"`);
+  } else {
+    successes.push(`Назва дисципліни: "${course.name}"`);
+  }
+
   // Check 1: Course has a list of results
   if (!course.data?.results || !Array.isArray(course.data.results) || course.data.results.length === 0) {
-    issues.push(`Course missing results list or results list is empty`);
+    issues.push(`Не вдалось розібрати результати навчання для цієї дисципліни`);
   } else {
-    successes.push(`Course has ${course.data.results.length} result(s)`);
+    successes.push(`Дисципліна має ${course.data.results.length} результат(ів) навчання`);
   }
   
   // Check 2: Course has a teacher
   if (!course.teacher_id && !course.parsed_teacher) {
-    issues.push(`Course missing teacher (no teacher_id or parsed_teacher)`);
+    issues.push(`Відсутній викладач (немає teacher_id або parsed_teacher)`);
   } else {
     const teacherName = course.parsed_teacher?.name || course.teacher || 'Unknown';
-    successes.push(`Course has teacher: ${teacherName}`);
+    successes.push(`Дисципліна має викладача: ${teacherName}`);
   }
   
   // Check 3: Course has a list of attestations
   if (!course.data?.attestations || !Array.isArray(course.data.attestations) || course.data.attestations.length === 0) {
-    issues.push(`Course missing attestations list or attestations list is empty`);
+    issues.push(`Відсутній список атестацій або список атестацій порожній`);
   } else {
-    successes.push(`Course has ${course.data.attestations.length} attestation(s)`);
+    successes.push(`Дисципліна має ${course.data.attestations.length} атестацій(ю)`);
   }
   
   // Check 4: Course has semesters and years set for fulltime
   if (!course.data?.fulltime?.semesters || !Array.isArray(course.data.fulltime.semesters) || course.data.fulltime.semesters.length === 0) {
-    issues.push(`Course missing fulltime semesters or semesters list is empty`);
+    issues.push(`Відсутні семестри для денної форми навчання або список семестрів порожній`);
   } else {
     successes.push(`Course has fulltime semesters: ${course.data.fulltime.semesters.join(', ')}`);
   }
   
   if (!course.data?.fulltime?.study_year || typeof course.data.fulltime.study_year !== 'number') {
-    issues.push(`Course missing fulltime study_year or study_year is not a number`);
+    issues.push(`Відсутній рік навчання для денної форми навчання або рік навчання не є числом`);
   } else {
-    successes.push(`Course has fulltime study year: ${course.data.fulltime.study_year}`);
+    successes.push(`Дисципліна має рік навчання для денної форми: ${course.data.fulltime.study_year}`);
   }
   
   // Check 5: Course has semesters and years set for inabscentia (if applicable)
-  if (course.data?.inabscentia) {
+  if (course.data?.inabscentia && course.type === 'program') {
     if (!course.data.inabscentia.semesters || !Array.isArray(course.data.inabscentia.semesters) || course.data.inabscentia.semesters.length === 0) {
-      issues.push(`Course missing inabscentia semesters or semesters list is empty`);
+      issues.push(`Відсутні семестри для заочної форми навчання або список семестрів порожній`);
     } else {
-      successes.push(`Course has inabscentia semesters: ${course.data.inabscentia.semesters.join(', ')}`);
+      successes.push(`Дисципліна має семестри для заочної форми: ${course.data.inabscentia.semesters.join(', ')}`);
     }
     
     if (!course.data.inabscentia.study_year || typeof course.data.inabscentia.study_year !== 'number') {
-      issues.push(`Course missing inabscentia study_year or study_year is not a number`);
+      issues.push(`Відсутній рік навчання для заочної форми навчання або рік навчання не є числом`);
     } else {
-      successes.push(`Course has inabscentia study year: ${course.data.inabscentia.study_year}`);
+      successes.push(`Дисципліна має рік навчання для заочної форми: ${course.data.inabscentia.study_year}`);
     }
   }
   
   // Check 6: Course has topics
   if (course.type === 'program' && (!course.topics || !Array.isArray(course.topics) || course.topics.length === 0)) {
-    issues.push(`Course missing topics list or topics list is empty`);
+    issues.push(`Відсутній список тем або список тем порожній`);
   } else {
-    successes.push(`Course has ${course.topics.length} topic(s)`);
+    successes.push(`Дисципліна має ${course.topics.length} тему(и)`);
     
     // Check 7: Topics have some hours set
     const topicsWithoutHours = course.topics.filter(topic => {
@@ -76,9 +84,9 @@ export function verifyCourse(course: Course & ParsedData): { issues: string[], s
     });
     
     if (topicsWithoutHours.length > 0) {
-      issues.push(` ${topicsWithoutHours.length} topic(s) have no hours set: ${topicsWithoutHours.map(t => t.name).join(', ')}`);
-    } else {
-      successes.push(`All topics have hours set`);
+      issues.push(` ${topicsWithoutHours.length} тема(и) не мають встановлених годин: ${topicsWithoutHours.map(t => t.name).join(', ')}`);
+    } else if (course.topics.length > 0) {
+      successes.push(`Всі теми мають встановлені години`);
     }
     // Additional check: show hours summary
     const topicsWithHours = course.topics.filter(topic => {
@@ -87,41 +95,41 @@ export function verifyCourse(course: Course & ParsedData): { issues: string[], s
       return fulltimeHours > 0 || inabscentiaHours > 0;
     });
     if (topicsWithHours.length > 0) {
-      successes.push(` ${topicsWithHours.length} topic(s) have hours configured`);
+      successes.push(` ${topicsWithHours.length} тема(и) мають встановлені години`);
     }
   }
 
   // Check 7: Course has a list of prerequisites
   if (!course.data?.prerequisites || course.data.prerequisites.length === 0) {
-    issues.push(`Course missing prerequisites list or prerequisites is not an array`);
+    issues.push(`Відсутній список передумов`);
   } else {
-    successes.push(`Course has ${course.data.prerequisites.join(', ')} prerequisite(s)`);
+    successes.push(`Дисципліна має ${course.data.prerequisites.join(', ')} передумову(и)`);
   }
 
   // Check 8: Course has a list of postrequisites
-  if (!course.data?.postrequisites || course.data.prerequisites.length === 0) {
-    issues.push(`Course missing postrequisites list or postrequisites is not an array`);
+  if (!course.data?.postrequisites || course.data.postrequisites.length === 0) {
+    issues.push(`Відсутній список постреквізитів`);
   } else {
-    successes.push(`Course has ${course.data.postrequisites.join(', ')} postrequisite(s)`);
+    successes.push(`Дисципліна має ${course.data.postrequisites.join(', ')} постреквізитів`);
   }
 
   // Check 8. Literature
   if (!course.data?.literature?.main || course.data.literature.main.length === 0) {
-    issues.push(`Course missing main literature list or literature is not an array`);
+    issues.push(`Не вдалось розібрати список основної літератури`);
   } else {
-    successes.push(`Course has ${course.data.literature.main.length} main literature item(s)`);
+    successes.push(`Дисципліна має ${course.data.literature.main.length} основний(их) літературний(их) джерело(ів)`);
   }
 
   if (!course.data?.literature?.additional || course.data.literature.additional.length === 0) {
-    issues.push(`Course missing additional literature list or literature is not an array`);
+    issues.push(`Не вдалось розібрати список додаткової літератури`);
   } else {
-    successes.push(`Course has ${course.data.literature.additional.length} additional literature item(s)`);
+    successes.push(`Дисципліна має ${course.data.literature.additional.length} додатковий(их) літературний(их) джерело(ів)`);
   }
 
   if (!course.data?.literature?.internet || course.data.literature.internet.length === 0) {
-    issues.push(`Course missing internet literature list or literature is not an array`);
+    issues.push(`Не вдалось розібрати список інтернет-літератури`);
   } else {
-    successes.push(`Course has ${course.data.literature.internet.length} internet literature item(s)`);
+    successes.push(`Дисципліна має ${course.data.literature.internet.length} інтернет-літературний(их) джерело(ів)`);
   }
 
   return { issues, successes };

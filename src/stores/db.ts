@@ -281,18 +281,19 @@ const specialties = {
   },
 
   findByName: async (name: string): Promise<Specialty | null> => {
-    const result = await sql`SELECT * FROM specialties WHERE name=${name}`;
+    const result = await sql`SELECT * FROM specialties WHERE name=${name} or old_name=${name}`;
     return result[0] || null;
   },
 
   findByCode: async (code: string): Promise<Specialty | null> => {
-    const result = await sql`SELECT * FROM specialties WHERE code=${code}`;
+    console.log("Searching specialty by code:", code);
+    const result = await sql`SELECT * FROM specialties WHERE code=${code} or old_code=${code}`;
     return result[0] || null;
   },
   
   add: async (specialty: Specialty) => {
-    return await sql`INSERT INTO specialties (code, name, area_code, area, qualification, data) 
-      VALUES (${specialty.code}, ${specialty.name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}, ${specialty.data}) 
+    return await sql`INSERT INTO specialties (code, name, old_code, old_name, area_code, area, qualification, data) 
+      VALUES (${specialty.code}, ${specialty.name}, ${specialty.old_code}, ${specialty.old_name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}, ${specialty.data}) 
       RETURNING *`;
   },
 
@@ -300,6 +301,8 @@ const specialties = {
     return await sql`UPDATE specialties 
       SET name = ${specialty.name}, 
           code = ${specialty.code},
+          old_code = ${specialty.old_code},
+          old_name = ${specialty.old_name},
           area_code = ${specialty.area_code},
           area = ${specialty.area}, 
           qualification = ${specialty.qualification},

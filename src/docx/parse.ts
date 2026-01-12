@@ -3,15 +3,29 @@ import fs from 'fs/promises';
 import { z } from "zod";
 import type { Course, CourseSemesters, CourseTopic, ParsedData, Teacher } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
-import path from 'path';
-import { courseResults, teachers } from '@/stores/db';
+import path, { parse } from 'path';
+import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
 import { dropDot, normalizeWhitespaces } from '@/parsing/utils';
 
+// Methods to parse syllabuses and programs from .docx and .pdf files
+
 type CourseInitialInfo = {
   okNo?: string | null;
+}
+
+type SpecialtyInfo = {
+  specialtyId: number | null,
+  specialtyName: string | null, 
+  specialtyCode: string | null, 
+  specialtyOldCode: string | null, 
+  specialtyOldName: string | null, 
+  specialtyMode: 'new_only' | 'old_only' | 'both' | 'unknown',
+  specialtyFormatted: string,
+  area: string | null,
+  warnings: string[]
 }
 
 function validateInitialInfo(initialInfo: CourseInitialInfo | null) {
@@ -130,7 +144,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     Bun.write(path.join(process.cwd(), "uploads", "courses", `syllabus_${hash}.txt`), text);
 
     console.log("Parsing syllabus:");
-    // approx first 500 characters of the text
+    const warnings: string[] = [];
+    // approx first 800 characters of the text
     const header = text.substring(0, 800);
 
     const nameMatch = header.match(/«([^»]+)»/);
@@ -143,7 +158,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
       return null;
     }
 
-    const [specialty, area] = parseSpecialtyAndArea(header);
+    const specInfo = await parseSpecialtyAndArea(header);
+    warnings.push(...specInfo.warnings);
 
     // Extract credits
     const creditsMatch = header.match(/Кількість кредитів ECTS:\s*(\d+)/i);
@@ -195,8 +211,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     const {prerequisites, postrequisites} = await parsePreAndPostRequisites(description);
 
-    const results = 
-      await parseSylabusOrProgramResults(text);
+    const results = await parseSylabusOrProgramResults(text);
+    warnings.push(...results.warnings);
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
     const topics: { name: string; index: number }[] = [];
@@ -256,18 +272,20 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
         id: -1,        
         name,
         teacher_id: teacher.id,
+        specialty_id: specInfo.specialtyId,
         data: {
           ok_no: initialInfo?.okNo ?? null,
           optional,
           control_type: controlType,
           hours,
           credits,
-          specialty: specialty || "",
-          area: area || "",
+          specialty: specInfo.specialtyFormatted,
+          specialty_mode: specInfo.specialtyMode,
+          area: specInfo.area ?? "",
           description: "",
           prerequisites,
           postrequisites,
-          results,
+          results: results.ids,
           attestations,
           fulltime: {
             semesters: [semester],
@@ -277,12 +295,14 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
             semesters: [],
             study_year: 1
           },
-          literature
+          literature,
+          warnings
         },
         generated: null,
         type: 'syllabus',
         topics: [],
-        parsed_teacher: teacher
+        parsed_teacher: teacher,
+        parse_warnings: warnings
       };
 
     return course;
@@ -298,6 +318,9 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     // save for debugging
     const hash = createHash("sha256").update(text).digest("hex");
     Bun.write(path.join(process.cwd(), "uploads", "courses", `program_${hash}.txt`), text);
+    
+    const warnings: string[] = [];
+    
     // approx first 500 characters of the text
     const header = text.substring(0, 500);
 
@@ -311,7 +334,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
       return null;
     }
 
-    const [specialty, area] = parseSpecialtyAndArea(header);
+    const specInfo = await parseSpecialtyAndArea(header);
+    warnings.push(...specInfo.warnings);
 
     const opysIndex = Math.max(text.indexOf("Опис навчальної дисципліни"), 500);
     const tableArea = text.substring(opysIndex, opysIndex + 1000);
@@ -361,6 +385,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     const postrequisites: string[] = [];
 
     const results = await parseSylabusOrProgramResults(text);
+    warnings.push(...results.warnings);
 
     const programPart = text.substring(
       Math.max(text.indexOf("Програма навчальної дисципліни"), text.indexOf("5. Програма")), 
@@ -503,18 +528,20 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
       id: -1,      
       name,
       teacher_id: teacher.id,
+      specialty_id: specInfo.specialtyId,
       data: {
         ok_no: initialInfo?.okNo ?? null,
         optional,
         control_type: controlType,
         hours,
         credits,
-        specialty: specialty || "",
-        area: area || "",
+        specialty: specInfo.specialtyFormatted,
+        specialty_mode: specInfo.specialtyMode,
+        area: specInfo.area ?? "",
         description: "",
         prerequisites,
         postrequisites,
-        results,
+        results: results.ids,
         attestations,
         fulltime: semesters.fulltime,
         inabscentia: semesters.inabscentia,
@@ -523,7 +550,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
       generated: null,
       type: 'program',
       topics: topics,
-      parsed_teacher: teacher
+      parsed_teacher: teacher,
+      parse_warnings: warnings
     };
 
     return course;
@@ -560,20 +588,33 @@ export async function file2text(filepath: string): Promise<string> {
 }
 
 
-async function parseSylabusOrProgramResults(text: string): Promise<number[]> {
+async function parseSylabusOrProgramResults(text: string): Promise<{ ids: number[], warnings: string[] }> {
   const allResults = await courseResults.all();
+  const warnings: string[] = [];
     
-  return Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\.?\s/g)).map(m => {
+  const ids = Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\.?\s(.*)[\.\n]/g)).map(m => {
     const type = m[1] === "ПРН" || m[1] === "ПР" ? "РН" : m[1];
     const no = parseInt(m[2] || "-1");
     const result = allResults.find(r => r.type === type && r.no === no);
+    const nameNormalized = normalizeWhitespaces(dropDot(m[3] ?? 'failed to parse')).toLowerCase().replace(';', '');
+
+    if (result && result?.name?.toLowerCase() !== nameNormalized) {
+      warnings.push(`Результат навчання не співпадає з базою: "${nameNormalized}" vs "${result?.name}"`);
+    }
+
     return result?.id;      
   }).filter(r => r !== undefined) || [] as number[];
+
+  return { ids, warnings };
 }
 
-export function parseSpecialtyAndArea(text: string): (string | null)[] {
-  let specialty: string | null = null;
+export async function parseSpecialtyAndArea(text: string): Promise<SpecialtyInfo> {
+  let specialtyName: string | null = null;
+  let specialtyCode: string | null = null;
+  let oldCode: string | null = null;
+  let oldSpecialtyName: string | null = null;
   let area: string | null = null;
+  let warnings: string[] = [];
 
   const areaMatch = text.match(/Галузь\s+знань\s+([^\n]+)/i);
 
@@ -594,72 +635,72 @@ export function parseSpecialtyAndArea(text: string): (string | null)[] {
   }
 
   const specialtyMatch = text.match(/Спеціальність:?\s+([^\n]+)/i);
+  const isNewCode = (code: string) => /^[A-Z]\d{1,2}$/i.test(code);
+
   if (specialtyMatch?.[1]) {
     let specialtyText = specialtyMatch[1].trim();
-    // Handle format with / separator
-    if (specialtyText.includes('/')) {
-      // For test 5, it seems to expect the area text as specialty (this looks like a test issue)
-      // But let's check if we have area already
-      if (area && area.includes('/')) {
-        // Special case: use area text as specialty
-        specialty = area;
-      } else {
-        // Extract both parts
-        const parts = specialtyText.split('/').map(p => p.trim());
-        if (parts.length === 2) {
-          // Format: "122 «Комп'ютерні науки» / F3 «Комп'ютерні науки»"
-          // For test 5, it expects area text as specialty
-          specialty = area || specialtyText;
-        } else {
-          specialty = specialtyText;
-        }
-      }
-    } else {
-      // Extract code and name
-      // Remove quotes if present
-      specialtyText = specialtyText.replace(/[«»"]/g, '');
-      const specialtyCodeMatch = specialtyText.match(/^(\d+|F\d*)\s+(.+)$/);
-      if (specialtyCodeMatch && specialtyCodeMatch[1] && specialtyCodeMatch[2]) {
-        const code = specialtyCodeMatch[1];
-        const name = specialtyCodeMatch[2].trim();
+
+    const specRegex = /(\d{2,3}|\w\d{1,2})\s?[«"]?([А-Яа-я'’іїєґ\s]+)[»"]?(\s?\/\s?(\d{2,3}|\w\d{1,2}) [«"]?([А-Яа-я'’іїєґ\s]+)[»"]?)?/i;
+    const specMatch = specialtyText.match(specRegex);
+    
+
+    if (specMatch) {
+      const code1 = specMatch[1] ?? null;
+      const name1 = specMatch[2]?.trim()  ?? null;
+      
+      const code2 = specMatch[4] ?? null;
+      const name2 = specMatch[5]?.trim() ?? null;
+
+
+      specialtyName = name1;
+      specialtyCode = code1;
+
+      // has both old and new specialty
+      if (code1 && code2 && name2) {
         
-        // If code starts with F, convert to numeric format for test 4
-        if (code && code.startsWith('F') && !area) {
-          // Test 4: F3 -> 122, and infer area as 12
-          specialty = `122 – ${name}`;
-          area = "12 – Інформаційні технології";
-        } else if (code) {
-          specialty = `${code} – ${name}`;
+        if (!isNewCode(code1)) { // numbers only code is an old format
+          oldCode = code1;
+          oldSpecialtyName = name1;
+          specialtyName = name2;
+          specialtyCode = code2;
         } else {
-          specialty = specialtyText;
-        }
-      } else {
-        specialty = specialtyText;
+          oldCode = code2;
+          oldSpecialtyName = name2;
+        }        
       }
+    }    
+  }
+
+  let spec = specialtyCode ? await specialties.findByCode(specialtyCode) : null;
+  if (!spec && oldCode) spec = await specialties.findByCode(oldCode);
+
+  if (!spec) {
+    warnings.push(`Спеціальність не знайдена: ${specialtyCode || '???'} ${specialtyName || ''}`.trim());
+  } else {
+    // Some people using ' instead of apostrophe
+    if (spec.name.replaceAll("’", "'") !== specialtyName?.replaceAll("’", "'")) {
+      warnings.push(`Назва спеціальності не співпадає з базою: "${specialtyName}" vs "${spec.name}"`);
     }
   }
 
-  // If we have specialty but no area (syllabus format), infer area from specialty
-  if (specialty && !area) {
-    const specialtyCodeMatch = specialty.match(/^(\d+)\s*–/);
-    if (specialtyCodeMatch?.[1]) {
-      const specialtyCode = specialtyCodeMatch[1];
-      // Extract first 1-2 digits as area code
-      if (specialtyCode.length >= 3) {
-        const areaCode = specialtyCode.substring(0, specialtyCode.length - 1);
-        area = `${areaCode} – Інформаційні технології`;
-      }
-    }
-  }
+  const specialtyMode = (specialtyCode && oldCode) ? 'both' : 
+    specialtyCode ? (isNewCode(specialtyCode) ? 'new_only' : 'old_only') : 'unknown';
 
-  // Handle test 5 special case - if area has /, use it for specialty too
-  if (area && area.includes('/') && specialty && specialty.includes('/')) {
-    // Test expects specialty to be the area text (with original spacing)
-    // Create a copy to preserve original spacing
-    specialty = area;
-    // Normalize area (remove extra spaces) - create a new string
-    area = `${area}`.replace(/\s{2,}/g, ' ');
-  }
+  const formatted = (oldCode && oldSpecialtyName)
+    ? `${oldCode} – ${oldSpecialtyName} / ${specialtyCode} – ${specialtyName}`
+    : (specialtyCode && specialtyName) ? `${specialtyCode} – ${specialtyName}` : '';
 
-  return [specialty, area];
+  const data = {
+    specialtyName, 
+    area, 
+    specialtyCode, 
+    specialtyOldCode: oldCode, 
+    specialtyOldName: oldSpecialtyName, 
+    specialtyId: spec?.id ?? null,
+    specialtyMode,
+    specialtyFormatted: formatted,
+    warnings
+  } as SpecialtyInfo;
+
+  return data;
 }

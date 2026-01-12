@@ -28,6 +28,7 @@ export type CourseData = {
   control_type: "exam" | "credit" | "both",
   hours: number,
   credits: number,
+  specialty_mode: 'new_only' | 'old_only' | 'both' | 'unknown',
   specialty: string,
   area: string,
   description: string,
@@ -44,7 +45,8 @@ export type CourseData = {
     main: string[],
     additional: string[],
     internet: string[]
-  }
+  },
+  warnings?: string[]
 }
 
 export type GeneratedCourseData = {
@@ -67,6 +69,7 @@ export type Course = {
   id: number,
   name: string,
   teacher_id: number,
+  specialty_id: number | null,
   teacher?: string,
   data: CourseData,
   generated: GeneratedCourseData | null  
@@ -217,7 +220,8 @@ export type Prompt = {
 export type ParsedData = {
   type: 'syllabus' | 'program';
   topics: CourseTopic[],
-  parsed_teacher: Teacher
+  parsed_teacher: Teacher,
+  parse_warnings: string[]
 }
 
 export type SpecialtyDisciplineConfig = {
@@ -234,6 +238,8 @@ export type Specialty = {
   id: number,
   code: string,
   name: string,
+  old_code: string,
+  old_name: string,
   area_code: string,
   area: string,
   qualification: string;

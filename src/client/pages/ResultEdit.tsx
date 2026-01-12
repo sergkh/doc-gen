@@ -27,12 +27,7 @@ export default function ResultEdit() {
     if (!item || !isValid) return;
     try {
       await upsertResult(item);
-      // Navigate back to results with the specialty ID if available
-      if (specialtyId) {
-        navigate("/results");
-      } else {
-        navigate("/results");
-      }
+      navigate("/specialties/" + specialtyId);      
     } catch (error) {
       console.error("Error saving result:", error);
       alert("Не вдалося зберегти результат");
@@ -104,7 +99,7 @@ export default function ResultEdit() {
               Зберегти
             </button>
             <button
-              onClick={() => navigate("/results")}
+              onClick={() => navigate("/specialties/" + specialtyId)}
               className="bg-gray-600 hover:bg-gray-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
             >
               Скасувати

@@ -14,7 +14,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import type { Course } from "@/stores/models";
-import { formatDisciplineCode, loadAllCourses } from "../courses";
+import { formatDisciplineCode, loadAllCourses, normalizeCourseName } from "../courses";
 import dagre from '@dagrejs/dagre';
 
 // Layout algorithm using dagre
@@ -60,8 +60,7 @@ function buildCoursesGraph(courses: Course[]) {
 
   // Build a map of course names to courses (case-insensitive)
   courses.forEach(course => {
-    const normalizedName = course.name.toLowerCase().trim();
-    courseMap.set(normalizedName, course);
+    courseMap.set(normalizeCourseName(course.name), course);
   });
 
   // Create nodes for all existing courses
@@ -145,7 +144,7 @@ function processPrerequisites(
   course.data.prerequisites?.forEach(prereqName => {
     if (!prereqName || prereqName.trim() === '') return;
     
-    const normalizedPrereqName = prereqName.toLowerCase().trim();
+    const normalizedPrereqName = normalizeCourseName(prereqName);
     const prereqCourse = courseMap.get(normalizedPrereqName);
     
     if (prereqCourse) {
@@ -187,7 +186,7 @@ function processPostrequisites(
   course.data.postrequisites?.forEach(postreqName => {
     if (!postreqName || postreqName.trim() === '') return;
     
-    const normalizedPostreqName = postreqName.toLowerCase().trim();
+    const normalizedPostreqName = normalizeCourseName(postreqName);
     const postreqCourse = courseMap.get(normalizedPostreqName);
     
     if (postreqCourse) {

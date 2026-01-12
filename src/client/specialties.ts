@@ -16,8 +16,12 @@ export async function loadSpecialty(id: string): Promise<Specialty> {
       id: -1,
       code: "",
       name: "",
+      old_code: "",
+      old_name: "",
       area_code: "",
-      area: ""
+      area: "",
+      qualification: "",
+      data: { disciplines: [] }
     };
   }
 
@@ -38,8 +42,12 @@ export async function upsertSpecialty(specialty: Specialty): Promise<void> {
     id: specialty.id, 
     code: specialty.code, 
     name: specialty.name, 
+    old_code: specialty.old_code,
+    old_name: specialty.old_name,
     area_code: specialty.area_code,
-    area: specialty.area 
+    area: specialty.area,
+    qualification: specialty.qualification,
+    data: specialty.data
   };
 
   const res = await fetch(url, {

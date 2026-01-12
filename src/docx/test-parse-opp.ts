@@ -79,7 +79,7 @@ function verifyOPP(opp: OPP) {
 
   if (issues.length > 0) {
     console.log(`\n${colors.bold}${colors.red}Issues found:${colors.reset}`);
-    issues.forEach(msg => console.log(msg));
+    issues.forEach(msg => console.log('⚠️ ' + msg));
   } else {
     console.log(`\n${colors.green}${colors.bold}✓ All checks passed!${colors.reset}`);
   }

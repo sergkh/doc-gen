@@ -6,6 +6,10 @@ export function formatDisciplineCode(okNo: string | null): string {
   return `ВК${okNo}`;
 }
 
+export function normalizeCourseName(name: string): string {
+  return name.toLowerCase().trim().replaceAll("'", "ʼ"); // fix apostrophe variations
+}
+
 export function compareOks(codeA: string | null, codeB: string | null): number {
   if (codeA === codeB) return 0;
   if (codeA === null) return -1;
@@ -56,6 +60,7 @@ export async function loadCourse(id: string): Promise<Course> {
       id: -1,
       name: "",
       teacher_id: 0,
+      specialty_id: 1,
       generated: null,
       data: {
         ok_no: null,
@@ -64,12 +69,13 @@ export async function loadCourse(id: string): Promise<Course> {
         optional: false,
         credits: 0,
         specialty: "122 – Компʼютерні науки",
+        specialty_mode: 'old_only',
         area: "Компʼютерні науки",
         description: "",
         prerequisites: [],
         postrequisites: [],
         results: [],
-        attestations: [],
+        attestations: [],        
         fulltime: {
           semesters: [],
           study_year: 1
@@ -82,7 +88,7 @@ export async function loadCourse(id: string): Promise<Course> {
           main: [],
           additional: [],
           internet: []
-        }
+        }        
       }
     };
   }
