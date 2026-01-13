@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { existsSync } from "fs";
-import { rm } from "fs/promises";
+import { rm, readdir } from "fs/promises";
 import path from "path";
 
 export async function computeFileHash(file: File): Promise<string> {
@@ -30,4 +30,34 @@ export async function deleteOldFile(filePath: string): Promise<void> {
       console.error("Error deleting old file:", error);
     }
   }
+}
+
+export async function findDocxFilesInDirectory(directoryPath: string): Promise<File[]> {
+  const files: File[] = [];
+  
+  async function traverseDirectory(currentPath: string) {
+    try {
+      const entries = await readdir(currentPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(currentPath, entry.name);
+        
+        if (entry.isDirectory()) {
+          await traverseDirectory(fullPath);
+        } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.docx')) {
+          // Create a File object from the file path
+          const fileContent = await Bun.file(fullPath).arrayBuffer();
+          const file = new File([fileContent], entry.name, {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          });
+          files.push(file);
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading directory ${currentPath}:`, error);
+    }
+  }
+  
+  await traverseDirectory(directoryPath);
+  return files;
 }

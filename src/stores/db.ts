@@ -25,18 +25,18 @@ const courses = {
   },
   
   get: async (id: number): Promise<Course | null> => {
-    const result = await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id WHERE c.id = ${id}`;
+    const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id = ${id}`;
     return result[0] || null;
   },
 
   findByName: async (name: string): Promise<Course | null> => {
-    const result = await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
+    const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
     return result[0] || null;
   },
 
   getShortInfos: async(list: number[]): Promise<ShortCourseInfo[]> => {
     if (list.length === 0) return []; // sending empty array returns an error
-    return await sql`SELECT c.id, c.name, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id WHERE c.id IN ${sql(list)}` as ShortCourseInfo[];
+    return await sql`SELECT c.id, c.name, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id IN ${sql(list)}` as ShortCourseInfo[];
   },
 
   update: async (course: Course) => {

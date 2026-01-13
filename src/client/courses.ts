@@ -121,6 +121,22 @@ export async function upsertCourse(course: Course): Promise<Course> {
   return await res.json() as Course;
 }
 
+export async function uploadMultipleCourses(files: File[]): Promise<any[]> {
+  const formData = new FormData();
+  files.forEach(file => formData.append("files", file));
+
+  const res = await fetch(`/api/courses/parse-docx`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження файлів: ${res.status}`);
+  }
+
+  return await res.json();
+}
+
 export async function deleteCourse(id: number): Promise<void> {
   const res = await fetch(`/api/courses/${id}`, {
     method: "DELETE"

@@ -94,7 +94,7 @@ async function loadDocxFiles(folderPath: string) {
 async function uploadDocx(filePath: string, okNo: string | null = null) {
   const file = Bun.file(filePath);
   const formData = new FormData();
-  formData.append("file", file, path.basename(filePath));
+  formData.append("files", file, path.basename(filePath));
   if (okNo) {
     formData.append("ok_no", okNo);
   }

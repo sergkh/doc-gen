@@ -1,6 +1,6 @@
 import { parseSylabusOrProgram } from "@/docx/parse";
 import { courses, courseTopics, teachers } from "@/stores/db";
-import type { Course, CourseData, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
+import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
@@ -77,93 +77,123 @@ const coursesApi = {
     async POST(req: BunRequest) {
       try {
         const formData = await req.formData();
-        const file = formData.get("file") as File;
+        const files = formData.getAll("files") as File[];
         
-        if (!file) {
-          return new Response("No file provided", { status: 400 });
+        if (!files || files.length === 0) {
+          return new Response("No files provided", { status: 400 });
         }
 
-        // Validate file type
-        const fileName = file.name.toLowerCase();
-        const isDocxFile = 
-          file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-          fileName.endsWith(".docx");
-        
-        if (!isDocxFile) {
-          return new Response("Invalid file type. Expected .docx file", { status: 400 });
-        }
+        const results = [];
+        const okNo = formData.get("ok_no") as string | null;
 
-        // Generate unique filename using hash
-        const hash = await computeFileHash(file);
-        const fileExtension = path.extname(file.name);
-        const uploadFileName = `${hash}${fileExtension}`;
-        const uploadsDir = path.join(process.cwd(), "uploads", "courses");
-        const uploadPath = path.join(uploadsDir, uploadFileName);
+        for (const file of files) {
+          // Validate file type
+          const fileName = file.name.toLowerCase();
+          const isDocxFile = 
+            file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+            fileName.endsWith(".docx");
+          
+          if (!isDocxFile) {
+            results.push({
+              file: file.name,
+              error: "Invalid file type. Expected .docx file",
+              success: false
+            });
+            continue;
+          }
 
-        await Bun.write(uploadPath, file);
-        console.log("Saving uploaded file to:", uploadPath);
+          try {
+            // Generate unique filename using hash
+            const hash = await computeFileHash(file);
+            const fileExtension = path.extname(file.name);
+            const uploadFileName = `${hash}${fileExtension}`;
+            const uploadsDir = path.join(process.cwd(), "uploads", "courses");
+            const uploadPath = path.join(uploadsDir, uploadFileName);
 
-         const okNo = formData.get("ok_no") as string | null;
-         const course = await parseSylabusOrProgram(uploadPath, true, { okNo });
-        
-        if (!course) {
-          return new Response("Не вдалось розібрати файл", { status: 400 });
-        }
+            await Bun.write(uploadPath, file);
+            console.log("Saving uploaded file to:", uploadPath);
 
-        const dbCourse = await courses.findByName(course.name);
-
-        if (course.parsed_teacher) {
-          // new teacher 
-          if (course.parsed_teacher.id === -1) {
-            const id = (await teachers.add(course.parsed_teacher))[0].id;
-            course.teacher_id = id;
-          } else if (course.type === "syllabus") {
+            const course = await parseSylabusOrProgram(uploadPath, true, { okNo });
             
-            const dbTeacher = await teachers.get(course.parsed_teacher.id);
-
-            if (dbTeacher) {
-              console.log("Updating existing teacher with parsed syllabus data:", dbTeacher, course.parsed_teacher);
-              
-              const updatedTeacher = { 
-                ...dbTeacher, 
-                // Syllabus has full teacher name, while program has only short one, so update it
-                name: dbTeacher.name.length < course.parsed_teacher.name.length ? course.parsed_teacher.name : dbTeacher.name,
-                position: course.parsed_teacher.position || dbTeacher.position,
-                email: course.parsed_teacher.email || dbTeacher.email,
-                academic_title: course.parsed_teacher.academic_title || dbTeacher.academic_title
-              };
-              await teachers.update(updatedTeacher);
+            if (!course) {
+              results.push({
+                file: file.name,
+                error: "Не вдалось розібрати файл",
+                success: false
+              });
+              continue;
             }
-            await teachers.update(course.parsed_teacher);
+
+            const dbCourse = await courses.findByName(course.name);
+            console.log("Searching by name:", course.name, "Found in DB:", dbCourse);
+
+            if (course.parsed_teacher) {
+              // new teacher 
+              if (course.parsed_teacher.id === -1) {
+                const id = (await teachers.add(course.parsed_teacher))[0].id;
+                course.teacher_id = id;
+              } else if (course.type === "syllabus") {
+                
+                const dbTeacher = await teachers.get(course.parsed_teacher.id);
+
+                if (dbTeacher) {
+                  console.log("Updating existing teacher with parsed syllabus data:", dbTeacher, course.parsed_teacher);
+                  
+                  const updatedTeacher = { 
+                    ...dbTeacher, 
+                    // Syllabus has full teacher name, while program has only short one, so update it
+                    name: dbTeacher.name.length < course.parsed_teacher.name.length ? course.parsed_teacher.name : dbTeacher.name,
+                    position: course.parsed_teacher.position || dbTeacher.position,
+                    email: course.parsed_teacher.email || dbTeacher.email,
+                    academic_title: course.parsed_teacher.academic_title || dbTeacher.academic_title
+                  };
+                  await teachers.update(updatedTeacher);
+                }
+                await teachers.update(course.parsed_teacher);
+              }
+            }
+
+            const { issues } = verifyCourse(course);
+            const warnings = [...course.parse_warnings, ...issues];        
+            course.data.warnings = warnings;
+
+            let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
+          
+            console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
+            
+            if (dbCourse) {
+              console.log("Existing course found in DB, updating:", dbCourse);
+              await courses.update(updated) 
+            } else {
+              const id = (await courses.add(updated))[0].id;
+              course.id = id;
+
+              await Promise.all(
+                course.topics
+                  .map(c => Object.assign(c, { course_id: course.id }))
+                  .map(c => courseTopics.add(c))
+              )
+            }
+
+            results.push({
+              file: file.name,
+              course: { ...course, warnings },
+              success: true
+            });
+          } catch (error) {
+            console.error("Error processing file " + file.name + ":", error);
+            results.push({
+              file: file.name,
+              error: error instanceof Error ? error.message : "Unknown error",
+              success: false
+            });
           }
         }
 
-        const { issues } = verifyCourse(course);
-        const warnings = [...course.parse_warnings, ...issues];        
-        course.data.warnings = warnings;
-
-        let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
-      
-        console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
-        
-        if (dbCourse) {
-          console.log("Existing course found in DB, updating:", dbCourse);
-          await courses.update(updated) 
-        } else {
-          const id = (await courses.add(updated))[0].id;
-          course.id = id;
-
-          await Promise.all(
-            course.topics
-              .map(c => Object.assign(c, { course_id: course.id }))
-              .map(c => courseTopics.add(c))
-          )
-        }
-
-        return Response.json({ ...course, warnings });
+        return Response.json(results);
       } catch (error) {
-        console.error("Error processing syllabus:", error);
-        return new Response(`Error processing syllabus: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+        console.error("Error processing files:", error);
+        return new Response(`Error processing files: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
       }
     }
   },

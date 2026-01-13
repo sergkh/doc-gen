@@ -190,8 +190,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     }
     const lecturer = lecturerMatch?.[1]?.trim() || "";
 
-    // stupid, but works: take last 3 words
-    const lecturerName = lecturer.split(' ').slice(-3).join(' ');
+    // stupid, but works: take last 3 words (sometimes there's more than one space, so filter empty)
+    const lecturerName = lecturer.split(' ').filter(n => n.length > 0).slice(-3).join(' ');
     
     const emailMatch = text.match(/e-mail[\)]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     const email = emailMatch?.[1]?.trim() || null;
@@ -269,7 +269,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     // Create Course object
       const course: Course & ParsedData = {
-        id: -1,        
+        id: -1,
         name,
         teacher_id: teacher.id,
         specialty_id: specInfo.specialtyId,
@@ -361,7 +361,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     const teacherMatch = text.match(/(?:Викладач|Розробник):\s*([^\n]+)/i);
     const teacherFull = teacherMatch?.[1]?.trim() || "";
     // Extract just the name part (before comma or first few words)
-    const teacherName = teacherFull.split(',')[0]?.trim() || teacherFull.split(' ').slice(0, 3).join(' ').trim() || "";
+    const teacherName = teacherFull.split(',')[0]?.trim() || teacherFull.split(' ').filter(n => n.length > 0).slice(0, 3).join(' ').trim() || "";
     
     // Extract email if available
     const emailMatch = text.match(/e-mail[\)]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);

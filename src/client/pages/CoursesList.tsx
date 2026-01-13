@@ -4,8 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import type { Course, ParsedData } from "@/stores/models";
-import { loadAllCourses, deleteCourse, formatDisciplineCode } from "../courses";
+import type { Course } from "@/stores/models";
+import { loadAllCourses, deleteCourse, formatDisciplineCode, uploadMultipleCourses } from "../courses";
 
 export default function CoursesList() {
   const navigate = useNavigate();
@@ -17,38 +17,37 @@ export default function CoursesList() {
     loadAllCourses().then(setItems).catch(console.error);
   }, []);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (files: File[]) => {
     setIsUploading(true);
     const uploadPromise = (async () => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/courses/parse-docx", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to process syllabus");
+      const results = await uploadMultipleCourses(files);
+      
+      // Count successful uploads
+      const successfulUploads = results.filter((r: any) => r.success).length;
+      const failedUploads = results.filter((r: any) => !r.success).length;
+      
+      if (successfulUploads > 0) {
+        toast.success(`Успішно оброблено ${successfulUploads} файл${successfulUploads > 1 ? 'и' : ''}`);
+      }
+      
+      if (failedUploads > 0) {
+        toast.error(`Не вдалося обробити ${failedUploads} файл${failedUploads > 1 ? 'и' : ''}`);
       }
 
-      const course = await response.json() as Course & ParsedData;
-
-      toast.success(`Файл ${course.type === 'syllabus' ? "cилабуса" : "програми"} успішно оброблено`);
-
-      return course;
+      return results;
     })();
 
     toast.promise(uploadPromise, {
-      loading: "Завантаження та обробка файлу...",
-      error: "Не вдалося обробити файл syllabus",
+      loading: `Завантаження та обробка ${files.length} файл${files.length > 1 ? 'ів' : 'у'}...`,
+      error: "Не вдалося обробити файли",
     });
 
     try {
-      const course = await uploadPromise;
-      // Navigate to edit page after successful upload
-      if (course.id) {
-        navigate(`/courses/${course.id}`);
+      const results = await uploadPromise;
+      if (results.length > 0) {
+        // Reload courses after upload
+        const updatedCourses = await loadAllCourses();
+        setItems(updatedCourses);
       }
     } catch (error) {
       console.error("Error uploading syllabus:", error);
@@ -58,19 +57,28 @@ export default function CoursesList() {
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        handleFileUpload(file);
+    onDrop: async (acceptedFiles) => {
+      if (acceptedFiles.length > 0) {
+        // Check if any of the dropped items are directories
+        const directoryItems = acceptedFiles.filter(file => file.type === 'application/x-directory');
+        
+        if (directoryItems.length > 0) {
+          // For now, we'll just process the files directly
+          // In a real implementation, you would need browser API support for directory reading
+          toast("Обробка папок ще не підтримується в браузері. Будь ласка, перетягніть файли .docx безпосередньо.");
+          return;
+        }
+        
+        handleFileUpload(acceptedFiles);
       }
     },
     accept: {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
     },
-    maxFiles: 1,
+    maxFiles: 100,
     disabled: isUploading,
     onDropRejected: () => {
-      toast.error("Будь ласка, перетягніть файл .docx");
+      toast.error("Будь ласка, перетягніть файли .docx");
     }
   });
 
@@ -171,11 +179,11 @@ export default function CoursesList() {
             className={`border-2 ${isDragActive ? "border-amber-200 border-dashed bg-zinc-800" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
           >
             <input {...getInputProps()} />
-            {isUploading ? (<span className="text-amber-50">Завантаження...</span>) : (
-              <span className="text-amber-50">
-                {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл .docx або натисніть для вибору"}
-              </span>
-            )}
+             {isUploading ? (<span className="text-amber-50">Завантаження...</span>) : (
+               <span className="text-amber-50">
+                 {isDragActive ? "Відпустіть файли тут" : "Перетягніть файли .docx або натисніть для вибору"}
+               </span>
+             )}
           </div>
         </div>
       </div>
