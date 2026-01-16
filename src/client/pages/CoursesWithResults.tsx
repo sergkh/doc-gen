@@ -80,14 +80,69 @@ export default function CoursesWithResults() {
      return `${result.type ?? ""}${result.no}`;
    }
  
-   // Check if a course exists by normalized name comparison
    function isCourseMissing(courseName: string): boolean {
-     if (!courseName) return true;
-     
-     const normalizedSearchName = normalizeCourseName(courseName);
-     
-     return !courses.some(course => normalizeCourseName(course.name) === normalizedSearchName);
-   }
+      if (!courseName) return true;
+
+      const normalizedSearchName = normalizeCourseName(courseName);
+
+      return !courses.some(course => normalizeCourseName(course.name) === normalizedSearchName);
+    }
+
+    function findCourseByName(courseName: string): Course | null {
+      if (!courseName) return null;
+
+      const normalizedSearchName = normalizeCourseName(courseName);
+
+      return courses.find(course => normalizeCourseName(course.name) === normalizedSearchName) ?? null;
+    }
+
+    function getBidirectionalDependencyWarnings(course: Course): string[] {
+      const warnings: string[] = [];
+      const currentNormalizedName = normalizeCourseName(course.name);
+      const prerequisites = course.data.prerequisites ?? [];
+      const postrequisites = course.data.postrequisites ?? [];
+
+      prerequisites.forEach(prereq => {
+        const prereqCourse = findCourseByName(prereq);
+        if (prereqCourse) {
+          const prereqPostreqs = prereqCourse.data.postrequisites ?? [];
+          const hasThisAsPostreq = prereqPostreqs.some(
+            postreq => normalizeCourseName(postreq) === currentNormalizedName
+          );
+
+          if (!hasThisAsPostreq) {
+            warnings.push(
+              `Дисципліна "${prereq}" вказана як пререквізит, але не має цю дисципліну в постреквізитах.`
+            );
+          }
+        }
+      });
+
+      postrequisites.forEach(postreq => {
+        const postreqCourse = findCourseByName(postreq);
+        if (postreqCourse) {
+          const postreqPrereqs = postreqCourse.data.prerequisites ?? [];
+          const hasThisAsPrereq = postreqPrereqs.some(
+            prereq => normalizeCourseName(prereq) === currentNormalizedName
+          );
+
+          if (!hasThisAsPrereq) {
+            warnings.push(
+              `Дисципліна "${postreq}" вказана як постреквізит, але не має цю дисципліну в пререквізитах.`
+            );
+          }
+        }
+      });
+
+      return warnings;
+    }
+
+    function getAllCourseWarnings(course: Course): string[] {
+      const existingWarnings = course.data.warnings ?? [];
+      const bidirectionalWarnings = getBidirectionalDependencyWarnings(course);
+
+      return [...existingWarnings, ...bidirectionalWarnings];
+    }
 
   if (isLoading) {
     return (
@@ -150,12 +205,12 @@ export default function CoursesWithResults() {
                 <div key={course.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
                    <div className="flex justify-between items-start mb-4">
                      <div className="flex-1">
-                       <div className="font-bold text-lg flex items-center gap-2">
-                         {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
-                         {course.data.warnings && course.data.warnings.length > 0 && (
-                           <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
-                         )}
-                       </div>
+                        <div className="font-bold text-lg flex items-center gap-2">
+                          {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
+                          {getAllCourseWarnings(course).length > 0 && (
+                            <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
+                          )}
+                        </div>
                        <div className="text-sm opacity-80">
                          Викладач: {course.teacher ?? course.teacher_id}
                        </div>
@@ -249,35 +304,35 @@ export default function CoursesWithResults() {
                       </div>
                     )}
  
-                    {course.data.warnings && course.data.warnings.length > 0 && (
-                      <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="text-yellow-400 font-bold text-base flex items-center gap-2">
-                            <FontAwesomeIcon icon={faExclamationTriangle} />
-                            Можливі помилки
-                          </h3>
-                          <button
-                            onClick={() => {
-                              setExpandedWarnings({
-                                ...expandedWarnings,
-                                [course.id]: !expandedWarnings[course.id]
-                              });
-                            }}
-                            className="text-yellow-400 hover:text-yellow-300 transition-colors"
-                            title={expandedWarnings[course.id] ? "Згорнути попередження" : "Розгорнути попередження"}
-                          >
-                            <FontAwesomeIcon icon={expandedWarnings[course.id] ? faChevronUp : faChevronDown} size="sm" />
-                          </button>
-                        </div>
-                        {expandedWarnings[course.id] && (
-                          <ul className="list-disc list-inside space-y-1 ml-4 text-yellow-300 text-sm">
-                            {course.data.warnings.map((warning, index) => (
-                              <li key={index}>{warning}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
+                     {getAllCourseWarnings(course).length > 0 && (
+                       <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-lg">
+                         <div className="flex justify-between items-center mb-2">
+                           <h3 className="text-yellow-400 font-bold text-base flex items-center gap-2">
+                             <FontAwesomeIcon icon={faExclamationTriangle} />
+                             Можливі помилки
+                           </h3>
+                           <button
+                             onClick={() => {
+                               setExpandedWarnings({
+                                 ...expandedWarnings,
+                                 [course.id]: !expandedWarnings[course.id]
+                               });
+                             }}
+                             className="text-yellow-400 hover:text-yellow-300 transition-colors"
+                             title={expandedWarnings[course.id] ? "Згорнути попередження" : "Розгорнути попередження"}
+                           >
+                             <FontAwesomeIcon icon={expandedWarnings[course.id] ? faChevronUp : faChevronDown} size="sm" />
+                           </button>
+                         </div>
+                         {expandedWarnings[course.id] && (
+                           <ul className="list-disc list-inside space-y-1 ml-4 text-yellow-300 text-sm">
+                             {getAllCourseWarnings(course).map((warning, index) => (
+                               <li key={index}>{warning}</li>
+                             ))}
+                           </ul>
+                         )}
+                       </div>
+                     )}
                 </div>
               );
             })}
