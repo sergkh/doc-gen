@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, QuizQuestion, Template } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, QuizQuestion, Specialty, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -92,12 +92,24 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
 export async function loadFullCourseInfo(
   template: Template,
   course: Course, 
+  specialty: Specialty,
   topics: CourseTopic[],
   params: Record<string, any>,
   onProgress?: (progress: number) => void,
   apiKey?: string
 ): Promise<CourseGenerationData> {
-  onProgress?.(5);
+  onProgress?.(1);
+
+  // update course specialty and area strings
+  if (course.data.specialty_mode === 'both') {
+    course.data.specialty = `${specialty.old_code} ${specialty.old_name} / ${specialty.code} ${specialty.name}`;  
+  }else if (course.data.specialty_mode === 'old_only') {
+    course.data.specialty = `${specialty.old_code} ${specialty.old_name}`;  
+  } else {
+    course.data.specialty = `${specialty.code} ${specialty.name}`;
+  }
+  
+  course.data.area = `${specialty.area_code} ${specialty.area}`;
   
   // Generate course info - this is the slowest part (as might use AI)
   // Progress from 5% to 70% (65% for AI generation)

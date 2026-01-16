@@ -69,7 +69,7 @@ export type Course = {
   id: number,
   name: string,
   teacher_id: number,
-  specialty_id: number | null,
+  specialty_id: number,
   teacher?: string,
   data: CourseData,
   generated: GeneratedCourseData | null  

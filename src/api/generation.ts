@@ -1,5 +1,5 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
-import { courses, courseTopics, templates } from "@/stores/db";
+import { courses, courseTopics, specialties, templates } from "@/stores/db";
 import type { Course, Prompt, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
@@ -34,14 +34,19 @@ function wordResp(file: ArrayBuffer, name: string = "result.docx"): Response {
 async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string, parameters?: Record<string, any>) {
   try {
     job.status = "generating";
-    job.progress = 5;
+    job.progress = 1;
 
     const topics = await courseTopics.all(course.id);
     if (topics.length === 0) {
       throw new Error("No topics found");
     }
 
-    const renderData = await loadFullCourseInfo(template, course, topics, parameters ?? {}, (progress) => {
+    const specialty =  await specialties.get(course.specialty_id);
+    if (!specialty) {
+      throw new Error("Specialty not found");
+    }
+
+    const renderData = await loadFullCourseInfo(template, course, specialty, topics, parameters ?? {}, (progress) => {
       job.progress = progress;
     }, apiKey);
 

@@ -12,7 +12,7 @@ try {
 
 const courses = {
   all: async (): Promise<Course[]> => {
-    return await sql`SELECT c.*, t.name as teacher FROM courses c INNER JOIN teachers t ON c.teacher_id = t.id ORDER BY name`;
+    return await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id ORDER BY name`;
   },
 
   brief: async (): Promise<KeyValue[]> => {

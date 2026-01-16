@@ -21,6 +21,9 @@ function mergeCourseData(original: Course, parsed: Course & ParsedData): Course 
 
   return {
     ...original,
+    teacher_id: parsed.teacher_id || original.teacher_id,
+    specialty_id: parsed.specialty_id || original.specialty_id,
+    teacher: parsed.teacher || original.teacher,
     generated,
     data
   } as Course;
@@ -147,9 +150,12 @@ const coursesApi = {
                     email: course.parsed_teacher.email || dbTeacher.email,
                     academic_title: course.parsed_teacher.academic_title || dbTeacher.academic_title
                   };
-                  await teachers.update(updatedTeacher);
+                  await teachers.update(updatedTeacher);                  
                 }
+                
                 await teachers.update(course.parsed_teacher);
+
+                course.teacher_id = course.parsed_teacher.id;
               }
             }
 
