@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip } from 'react-tooltip';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faSearch, faExclamationTriangle, faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faSearch, faExclamationTriangle, faChevronDown, faChevronUp, faCheck } from "@fortawesome/free-solid-svg-icons";
 import type { Course, CourseResult } from "@/stores/models";
 import { formatDisciplineCode, loadAllCourses, normalizeCourseName } from "../courses";
 import { loadAllResults } from "../results";
@@ -13,10 +13,77 @@ const RESULT_TYPES = {
   "РН": "Результати навчання"
 };
 
+type ExtDependency = {
+  name: string,
+  type: 'ok' | 'unknown_course' | 'not_added'
+}
+
+type ExtendedCourse = {
+  ext_prerequisites: ExtDependency[],
+  ext_postrequisites: ExtDependency[]
+}
+
+// Format result code for display
+function formatResultCode(result: CourseResult): string {
+  return `${result.type ?? ""}${result.no}`;
+}
+
+function findCourseByName(courses: (Course & ExtendedCourse)[], courseName: string): Course & ExtendedCourse | null {
+  if (!courseName) return null;
+  const normalizedSearchName = normalizeCourseName(courseName);
+  return courses.find(course => normalizeCourseName(course.name) === normalizedSearchName) ?? null;
+}
+
+function validatePostPreRequisites(courses: Course[]): (Course & ExtendedCourse)[] {
+  const extCourses = courses.map(c => {
+    // Hide some unimportant warnings
+    c.data.warnings = (c.data.warnings || []).filter(w => !w.includes('literature') && !w.includes('inabscentia'));
+    return {...c, ext_prerequisites: [], ext_postrequisites: []} as Course & ExtendedCourse;
+  });
+
+  return extCourses.map(course => {    
+    course.data.prerequisites?.forEach(prereqName => {
+      const otherCourse = findCourseByName(extCourses, prereqName);
+      if (!otherCourse) {
+        course.ext_prerequisites.push({name: prereqName, type: 'unknown_course'});
+        course.data.warnings = course.data.warnings || [];
+        course.data.warnings.push(`Пререквізит "${prereqName}" не знайдено`);
+      } else {
+        course.ext_prerequisites.push({name: prereqName, type: 'ok'});
+        // Check that the other course has this course as postrequisite
+        if (!otherCourse.data.postrequisites || !otherCourse.data.postrequisites.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
+          otherCourse.ext_postrequisites.push({name: course.name, type: 'not_added'});
+          otherCourse.data.warnings = otherCourse.data.warnings || [];
+          otherCourse.data.warnings.push(`Дисципліна "${course.name}" не вказана як постреквізит, однак ссилається на цю`);
+        }
+      }
+    });
+
+    course.data.postrequisites?.forEach(postreqName => {
+      const otherCourse = findCourseByName(extCourses, postreqName);
+      if (!otherCourse) {
+        course.ext_postrequisites.push({name: postreqName, type: 'unknown_course'});
+        course.data.warnings = course.data.warnings || [];
+        course.data.warnings.push(`Постреквізит "${postreqName}" не знайдено`);
+      } else {
+        course.ext_postrequisites.push({name: postreqName, type: 'ok'});
+        // Check that the other course has this course as prerequisite
+        if (!otherCourse.data.prerequisites || !otherCourse.data.prerequisites.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
+          otherCourse.ext_prerequisites.push({name: course.name, type: 'not_added'});
+          otherCourse.data.warnings = otherCourse.data.warnings || [];
+          otherCourse.data.warnings.push(`Дисципліна "${course.name}" не вказана як пререквізит, однак ссилається на цю`);
+        }
+      }
+    });
+
+    return course;
+  });
+}
+
 export default function CoursesWithResults() {
   const navigate = useNavigate();
 
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<(Course & ExtendedCourse)[]>([]);
   const [results, setResults] = useState<CourseResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,15 +94,9 @@ export default function CoursesWithResults() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        setError(null);
-        
-        // Load courses and results in parallel
-        const [coursesData, resultsData] = await Promise.all([
-          loadAllCourses(),
-          loadAllResults()
-        ]);
-        
-        setCourses(coursesData);
+        setError(null);        
+        const [coursesData, resultsData] = await Promise.all([ loadAllCourses(), loadAllResults()]);
+        setCourses(validatePostPreRequisites(coursesData));
         setResults(resultsData);
       } catch (err) {
         console.error("Error loading data:", err);
@@ -48,16 +109,14 @@ export default function CoursesWithResults() {
     fetchData();
   }, []);
 
-
-
-   // Create a map of result IDs to result objects for quick lookup
-   const resultIdMap = useMemo(() => {
-     const map = new Map<number, CourseResult>();
-     results.forEach(result => {
-       map.set(result.id, result);
-     });
-     return map;
-   }, [results]);
+  // Create a map of result IDs to result objects for quick lookup
+  const resultIdMap = useMemo(() => {
+    const map = new Map<number, CourseResult>();
+    results.forEach(result => {
+      map.set(result.id, result);
+    });
+    return map;
+  }, [results]);
 
    // Filter courses based on search text
    const filteredCourses = useMemo(() => {
@@ -69,80 +128,9 @@ export default function CoursesWithResults() {
        const nameText = course.name.toLowerCase();
        const teacherText = (course.teacher ?? course.teacher_id.toString()).toLowerCase();
        
-       return okNoText.includes(searchText) || 
-              nameText.includes(searchText) || 
-              teacherText.includes(searchText);
+       return okNoText.includes(searchText) || nameText.includes(searchText) || teacherText.includes(searchText);
      });
    }, [courses, filterText]);
-
-   // Format result code for display
-   function formatResultCode(result: CourseResult): string {
-     return `${result.type ?? ""}${result.no}`;
-   }
- 
-   function isCourseMissing(courseName: string): boolean {
-      if (!courseName) return true;
-
-      const normalizedSearchName = normalizeCourseName(courseName);
-
-      return !courses.some(course => normalizeCourseName(course.name) === normalizedSearchName);
-    }
-
-    function findCourseByName(courseName: string): Course | null {
-      if (!courseName) return null;
-
-      const normalizedSearchName = normalizeCourseName(courseName);
-
-      return courses.find(course => normalizeCourseName(course.name) === normalizedSearchName) ?? null;
-    }
-
-    function getBidirectionalDependencyWarnings(course: Course): string[] {
-      const warnings: string[] = [];
-      const currentNormalizedName = normalizeCourseName(course.name);
-      const prerequisites = course.data.prerequisites ?? [];
-      const postrequisites = course.data.postrequisites ?? [];
-
-      prerequisites.forEach(prereq => {
-        const prereqCourse = findCourseByName(prereq);
-        if (prereqCourse) {
-          const prereqPostreqs = prereqCourse.data.postrequisites ?? [];
-          const hasThisAsPostreq = prereqPostreqs.some(
-            postreq => normalizeCourseName(postreq) === currentNormalizedName
-          );
-
-          if (!hasThisAsPostreq) {
-            warnings.push(
-              `Дисципліна "${prereq}" вказана як пререквізит, але не має цю дисципліну в постреквізитах.`
-            );
-          }
-        }
-      });
-
-      postrequisites.forEach(postreq => {
-        const postreqCourse = findCourseByName(postreq);
-        if (postreqCourse) {
-          const postreqPrereqs = postreqCourse.data.prerequisites ?? [];
-          const hasThisAsPrereq = postreqPrereqs.some(
-            prereq => normalizeCourseName(prereq) === currentNormalizedName
-          );
-
-          if (!hasThisAsPrereq) {
-            warnings.push(
-              `Дисципліна "${postreq}" вказана як постреквізит, але не має цю дисципліну в пререквізитах.`
-            );
-          }
-        }
-      });
-
-      return warnings;
-    }
-
-    function getAllCourseWarnings(course: Course): string[] {
-      const existingWarnings = course.data.warnings ?? [];
-      const bidirectionalWarnings = getBidirectionalDependencyWarnings(course);
-
-      return [...existingWarnings, ...bidirectionalWarnings];
-    }
 
   if (isLoading) {
     return (
@@ -207,7 +195,7 @@ export default function CoursesWithResults() {
                      <div className="flex-1">
                         <div className="font-bold text-lg flex items-center gap-2">
                           {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
-                          {getAllCourseWarnings(course).length > 0 && (
+                          {(course.data.warnings?.length ?? 0) > 0 && (
                             <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
                           )}
                         </div>
@@ -256,23 +244,32 @@ export default function CoursesWithResults() {
                       </div>
                     )}
  
-                    {(course.data.prerequisites?.length > 0 || course.data.postrequisites?.length > 0) && (
+                    {(course.ext_prerequisites?.length > 0 || course.ext_postrequisites?.length > 0) && (
                       <div className="mt-4 p-3 bg-zinc-800 border border-zinc-600 rounded-lg">
                         <h3 className="text-amber-200 font-bold text-base mb-2">Залежності дисципліни</h3>
                         <div className="flex flex-col gap-3">
-                          {course.data.prerequisites?.length > 0 && (
+                          {course.ext_prerequisites?.length > 0 && (
                             <div className="flex flex-col gap-1">
                               <span className="text-amber-300 font-semibold text-sm">Пререквізити:</span>
                               <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-                                {course.data.prerequisites.map((prereq, index) => (
-                                  <li key={index} className="text-amber-100 flex items-center gap-2">
-                                    {prereq}
-                                    {isCourseMissing(prereq) && (
-                                      <FontAwesomeIcon 
+                                {course.ext_prerequisites.map((prereq, index) => (
+                                  <li key={index} className={"flex items-center gap-2" + (prereq.type === 'not_added' ? ' text-red-400' : ' text-amber-100')}>
+                                    {prereq.name}     
+                                    {prereq.type === 'ok' && <FontAwesomeIcon icon={faCheck} className="text-green-400 text-xs" />}
+                                    {prereq.type === 'unknown_course' && (
+                                      <FontAwesomeIcon
                                         icon={faExclamationTriangle} 
                                         className="text-yellow-400 text-xs"
                                         data-tooltip-id="my-tooltip"
                                         data-tooltip-content="Ця дисципліна не знайдена в системі"
+                                      />
+                                    )}
+                                    {prereq.type === 'not_added' && (
+                                      <FontAwesomeIcon 
+                                        icon={faExclamationTriangle}
+                                        className="text-yellow-400 text-xs"
+                                        data-tooltip-id="my-tooltip"
+                                        data-tooltip-content="У вказаній дисципліні вказано цю як пререквізит"
                                       />
                                     )}
                                   </li>
@@ -280,19 +277,28 @@ export default function CoursesWithResults() {
                               </ul>
                             </div>
                           )}
-                          {course.data.postrequisites?.length > 0 && (
+                          {course.ext_postrequisites?.length > 0 && (
                             <div className="flex flex-col gap-1">
                               <span className="text-amber-300 font-semibold text-sm">Постреквізити:</span>
                               <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-                                {course.data.postrequisites.map((postreq, index) => (
-                                  <li key={index} className="text-amber-100 flex items-center gap-2">
-                                    {postreq}
-                                    {isCourseMissing(postreq) && (
-                                      <FontAwesomeIcon 
+                                {course.ext_postrequisites.map((postreq, index) => (
+                                  <li key={index} className={"flex items-center gap-2" + (postreq.type === 'not_added' ? ' text-red-400' : ' text-amber-100')}>
+                                    {postreq.name}
+                                    {postreq.type === 'ok' && <FontAwesomeIcon icon={faCheck} className="text-green-400 text-xs" />}
+                                    {postreq.type === 'unknown_course' && (
+                                      <FontAwesomeIcon
                                         icon={faExclamationTriangle} 
-                                        className="text-yellow-400 text-xs" 
+                                        className="text-yellow-400 text-xs"
                                         data-tooltip-id="my-tooltip"
                                         data-tooltip-content="Ця дисципліна не знайдена в системі"
+                                      />
+                                    )}
+                                    {postreq.type === 'not_added' && (
+                                      <FontAwesomeIcon 
+                                        icon={faExclamationTriangle}
+                                        className="text-yellow-400 text-xs"
+                                        data-tooltip-id="my-tooltip"
+                                        data-tooltip-content="У вказаній дисципліні вказано цю як постреквізит"
                                       />
                                     )}
                                   </li>
@@ -304,7 +310,7 @@ export default function CoursesWithResults() {
                       </div>
                     )}
  
-                     {getAllCourseWarnings(course).length > 0 && (
+                     {(course.data.warnings?.length ?? 0) > 0 && (
                        <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-lg">
                          <div className="flex justify-between items-center mb-2">
                            <h3 className="text-yellow-400 font-bold text-base flex items-center gap-2">
@@ -326,7 +332,7 @@ export default function CoursesWithResults() {
                          </div>
                          {expandedWarnings[course.id] && (
                            <ul className="list-disc list-inside space-y-1 ml-4 text-yellow-300 text-sm">
-                             {getAllCourseWarnings(course).map((warning, index) => (
+                             {(course.data.warnings ?? []).map((warning, index) => (
                                <li key={index}>{warning}</li>
                              ))}
                            </ul>
