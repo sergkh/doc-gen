@@ -8,7 +8,7 @@ import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
-import { dropDot, normalizeWhitespaces } from '@/parsing/utils';
+import { dropDot, noQuotes, normalizeWhitespaces } from '@/parsing/utils';
 
 // Methods to parse syllabuses and programs from .docx and .pdf files
 
@@ -145,7 +145,7 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
   if (!topicsPart) return [];
 
   const topics = topicsPart.map((row, index) => {
-    let name = dropDot(normalizeWhitespaces(row[1]?.trim() ?? ``));
+    let name = dropDot(noQuotes(normalizeWhitespaces(row[1]?.trim() ?? ``)));
     if (name.startsWith(`Тема `)) {
       name = name.replace(/^Тема\s*\d+\.?\s*/i, '');
     }

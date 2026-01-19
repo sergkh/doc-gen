@@ -22,3 +22,7 @@ export function dropDot(text: string): string {
 export function normalizeWhitespaces(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
+
+export function noQuotes(text: string): string {
+  return text.replace(/^[«"']|["'»]$/g, '');
+}
