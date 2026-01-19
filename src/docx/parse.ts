@@ -6,7 +6,7 @@ import { PDFParse } from 'pdf-parse';
 import path, { parse } from 'path';
 import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
-import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowIndex, type DocTable } from './structured-parser';
+import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
 import { dropDot, normalizeWhitespaces } from '@/parsing/utils';
 
@@ -136,6 +136,44 @@ async function parsePreAndPostRequisites(text: string): Promise<{prerequisites: 
   return parseResult;
 }
 
+function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
+  const table = findFirstTable(tables, "Назви теми");
+  if (!table) return [];
+
+  // might contain rows like "semester 1"
+  const topicsPart = table.slice(2, -1).filter(row => row.length >= 4);
+  if (!topicsPart) return [];
+
+  const topics = topicsPart.map((row, index) => {
+    let name = dropDot(normalizeWhitespaces(row[1]?.trim() ?? ``));
+    if (name.startsWith(`Тема `)) {
+      name = name.replace(/^Тема\s*\d+\.?\s*/i, '');
+    }
+
+    return {
+      id: -1,
+      course_id: -1,
+      index: index + 1,
+      name,
+      lection: '',
+      data: {
+        attestation: 1,
+        fulltime: { 
+          hours: parseInt(row[2]?.trim() || "0") || 0,
+          practical_hours: parseInt(row[3]?.trim() || "0") || 0,
+          srs_hours: parseInt(row[4]?.trim() || "0") || 0,
+        },
+        inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+      },
+      generated: {}
+    } as CourseTopic;
+  });
+
+  console.log(`Parsed ${topics.length} topics from syllabus`, topics.map(t => t.name));
+
+  return topics;
+}
+
 // Best effort parsing of syllabus
 async function parseSylabus(filepath: string, text: string, dryRun: boolean = false, initialInfo: CourseInitialInfo | null = null): Promise<Course & ParsedData | null> {
   try {
@@ -215,43 +253,20 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     warnings.push(...results.warnings);
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
-    const topics: { name: string; index: number }[] = [];
-    const planMatch = text.match(/ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ[\s\S]*?№\s*з\/п[\s\S]*?Назви теми([\s\S]*?)(?=Самостійна робота|РЕКОМЕНДОВАНІ|СИСТЕМА)/i);
-    if (planMatch?.[1]) {
-      const topicsText = planMatch[1];
-      const topicLines = topicsText.split(/\n/);
-      let currentIndex = 0;
-      
-      for (let i = 0; i < topicLines.length; i++) {
-        const line = topicLines[i]?.trim();
-        if (!line) continue;
-        // Look for lines that start with a number (topic index)
-        const indexMatch = line.match(/^(\d+)$/);
-        if (indexMatch?.[1]) {
-          currentIndex = parseInt(indexMatch[1], 10);
-          // Next non-empty line should be the topic name
-          for (let j = i + 1; j < topicLines.length; j++) {
-            const nameLine = topicLines[j]?.trim();
-            if (nameLine && !/^\d+$/.test(nameLine) && !/год/i.test(nameLine)) {
-              topics.push({ name: nameLine, index: currentIndex });
-              break;
-            }
-          }
-        }
-      }
-    }
+    const docTables = await extractDocTables(filepath);
+    const topics = parseSylabusTopics(docTables);
 
-    const literatureText = text.substring(Math.min(text.lastIndexOf("РЕКОМЕНДОВАНІ ДЖЕРЕЛА ІНФОРМАЦІЇ"), text.lastIndexOf("ЛІТЕРАТУРА")));
+    const literatureText = text.substring(Math.min(...filterAbsent(text.lastIndexOf("РЕКОМЕНДОВАНІ ДЖЕРЕЛА ІНФОРМАЦІЇ"), text.lastIndexOf("ЛІТЕРАТУРА"))));
 
     // Extract main literature
-    const mainLitMatch = literatureText.match(/Основна література\s+([\s\S]*?)(?=Додаткова література|Інтернет|СИСТЕМА)/i);
-    const addLitMatch = literatureText.match(/Додаткова література\s+([\s\S]*?)(?=Інтернет|СИСТЕМА)/i);
-    const internetMatch = literatureText.match(/Інтернет\s+ресурси?\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
+    const mainLitMatch = literatureText.match(/(Основна література|Основні|Основна)\s+([\s\S]*?)(?=Додаткова література|Інтернет|СИСТЕМА|Додаткові)/i);
+    const addLitMatch = literatureText.match(/(Додаткова література|Додаткові|Додаткова)\s+([\s\S]*?)(?=Інтернет ресурси|Інформаційні ресурси|СИСТЕМА)/i);
+    const internetMatch = literatureText.match(/(Інформаційні ресурси в Інтернеті|Інтернет ресурси|Інформаційні ресурси)?\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
     
     const literature = {
-      main: mainLitMatch?.[1] ? normalizeLiterature(mainLitMatch[1]) : [],
-      additional: addLitMatch?.[1] ? normalizeLiterature(addLitMatch[1]) : [],
-      internet: internetMatch?.[1] ? normalizeLiterature(internetMatch[1]) : []
+      main: mainLitMatch?.[2] ? normalizeLiterature(mainLitMatch[2]) : [],
+      additional: addLitMatch?.[2] ? normalizeLiterature(addLitMatch[2]) : [],
+      internet: internetMatch?.[2] ? normalizeLiterature(internetMatch[2]) : []
     };
 
     // Parse attestations from "Розподіл балів за видами навчальної діяльності"
@@ -272,7 +287,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
         id: -1,
         name,
         teacher_id: teacher.id,
-        specialty_id: specInfo.specialtyId,
+        specialty_id: specInfo.specialtyId ?? -1,
         data: {
           ok_no: initialInfo?.okNo ?? null,
           optional,
@@ -300,7 +315,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
         },
         generated: null,
         type: 'syllabus',
-        topics: [],
+        topics: topics,
         parsed_teacher: teacher,
         parse_warnings: warnings
       };
@@ -528,7 +543,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
       id: -1,      
       name,
       teacher_id: teacher.id,
-      specialty_id: specInfo.specialtyId,
+      specialty_id: specInfo.specialtyId ?? -1,
       data: {
         ok_no: initialInfo?.okNo ?? null,
         optional,

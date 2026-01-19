@@ -118,7 +118,7 @@ export type CourseTopic = {
   name: string,
   lection: string,
   data: CourseTopicData,
-  generated: GeneratedTopicData | null
+  generated: GeneratedTopicData
 }
 
 export type QuizQuestion = {

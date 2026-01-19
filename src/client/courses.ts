@@ -1,4 +1,4 @@
-import type { Course, KeyValue } from "@/stores/models";
+import type { Course, CourseTopic, KeyValue } from "@/stores/models";
 
 export function formatDisciplineCode(okNo: string | null): string {
   if (!okNo) return "??";
@@ -38,6 +38,20 @@ export async function loadAllCourses() {
   }
 
   const courses = await res.json() as Course[];
+
+  courses.sort((a, b) => compareOks(a.data.ok_no, b.data.ok_no));
+
+  return courses;
+}
+
+export async function loadAllCoursesWithTopics() {
+  const res = await fetch(`/api/courses?topics=true`)
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
+  }
+
+  const courses = await res.json() as (Course & { topics: CourseTopic[] })[];
 
   courses.sort((a, b) => compareOks(a.data.ok_no, b.data.ok_no));
 

@@ -29,12 +29,45 @@ function mergeCourseData(original: Course, parsed: Course & ParsedData): Course 
   } as Course;
 }
 
+async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) {
+  if (parsedTopics.length === 0) return ;
+  const existingTopics = await courseTopics.all(courseId);
+  const existingTopicsMap = new Map(existingTopics.map(t => [t.name, t]));
+
+  if (existingTopics.length === 0) {
+    // No existing topics, just add all parsed
+    await Promise.all(
+      parsedTopics
+        .map(c => Object.assign(c, { course_id: courseId }))
+        .map(c => courseTopics.add(c))
+    );
+    return;
+  } else {
+    // ignore for now
+    // TODO: implement merging of topics based on name matching
+  }
+
+}
+
 const coursesApi = {
   "/api/courses": {
       async GET(req: BunRequest) {
         const brief = new URL(req.url).searchParams.get("brief") === "true";
-        console.log(`Fetching all courses ${brief ? "brief" : ""}`);
-        return Response.json(brief ? await courses.brief() : await courses.all());
+        const topics = new URL(req.url).searchParams.get("topics") === "true";
+        console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}`);
+        const loadedCourses = brief ? await courses.brief() : await courses.all();
+        
+        // not nice, but works for now
+        if (topics) {
+          await Promise.all(
+            loadedCourses.map(async (course) => {
+              const courseTopicsList = await courseTopics.all(course.id);
+              (course as Course & { topics: CourseTopic[] }).topics = courseTopicsList;
+            })
+          );
+        }
+
+        return Response.json(loadedCourses);
       },
       async POST(req: BunRequest) {
         const course = await req.json() as Course;
@@ -169,7 +202,8 @@ const coursesApi = {
             
             if (dbCourse) {
               console.log("Existing course found in DB, updating:", dbCourse);
-              await courses.update(updated) 
+              await courses.update(updated)
+              mergeCourseTopics(dbCourse.id, course.topics);
             } else {
               const id = (await courses.add(updated))[0].id;
               course.id = id;

@@ -45,6 +45,17 @@ export function findTableRow(table: DocTable, ...texts: string[]): string[] | nu
   return null;
 }
 
+// Searches a row in a table that equals any of the given texts.
+export function findTableRowExact(table: DocTable, columnIndex: number, ...texts: string[]): string[] | null {
+  for (const row of table) {
+    if (texts.some(text => row[columnIndex]?.toLowerCase() === text.toLowerCase())) {
+      return row;
+    }
+  }
+  return null;
+}
+
+
 export function findNextTableRow(table: DocTable, previousRow: string[] | null, ...texts: string[]): string[] | null {
   const startIndex = previousRow ? table.indexOf(previousRow) + 1 : 0;
   
@@ -86,7 +97,7 @@ export function findNextTable(tables: DocTable[], previousTable: DocTable | null
 
 // Returns an array of all document tables. 
 // Each table is an array of rows, each row is an array of cells.
-export async function extractDocTables(path: string): Promise<any> {
+export async function extractDocTables(path: string): Promise<DocTable[]> {
   const docx = await docx4js.load(path);
   
   const rendered = docx.render(function createElement(type: any, props: any, children: any){
