@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import { z } from "zod";
 import type { Course, CourseSemesters, CourseTopic, ParsedData, Teacher } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
-import path, { parse } from 'path';
+import path from 'path';
 import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
@@ -137,7 +137,7 @@ async function parsePreAndPostRequisites(text: string): Promise<{prerequisites: 
 }
 
 function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
-  const table = findFirstTable(tables, "Назви теми");
+  const table = findFirstTable(tables, "Назви теми", "Назва теми");
   if (!table) return [];
 
   // might contain rows like "semester 1"
@@ -607,7 +607,7 @@ async function parseSylabusOrProgramResults(text: string): Promise<{ ids: number
   const allResults = await courseResults.all();
   const warnings: string[] = [];
     
-  const ids = Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\.?\s(.*)[\.\n]/g)).map(m => {
+  const ids = Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\*?\.?\s(.*)[\.\n]/g)).map(m => {
     const type = m[1] === "ПРН" || m[1] === "ПР" ? "РН" : m[1];
     const no = parseInt(m[2] || "-1");
     const result = allResults.find(r => r.type === type && r.no === no);
