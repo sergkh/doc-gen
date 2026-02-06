@@ -26,3 +26,11 @@ export function normalizeWhitespaces(text: string): string {
 export function noQuotes(text: string): string {
   return text.replace(/^[«"']|["'»]$/g, '');
 }
+
+export function normalizeApostrophe(text: string): string {
+  return text.replace(/[`']/g, "ʼ");
+}
+
+export function genericNormalize(text: string): string {
+  return normalizeApostrophe(noQuotes(normalizeWhitespaces(dropDot(text))));
+}

@@ -8,7 +8,7 @@ import { verifyCourse } from './verification';
 
 const UPLOADS_COURSES_DIR = join(process.cwd(), 'uploads', 'courses');
 
-const filter: string[] | null = ['e1523909f484e6ebc3e3b8a83c8ec73cfc01623f06da736197230bb6c224cbcd'];
+const filter: string[] | null = null;
 
 const typesFilter: ('program' | 'syllabus')[] = [ 'syllabus' ]; // 'program', 
 

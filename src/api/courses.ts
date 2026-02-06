@@ -16,7 +16,9 @@ function mergeCourseData(original: Course, parsed: Course & ParsedData): Course 
 
   const data = {
     ...original.data,
-    ...dropEmpty(parsed.data)
+    ...dropEmpty(parsed.data, { 
+      blacklist: ['prerequisites', 'postrequisites'] // those might become empty
+    })
   }
 
   return {

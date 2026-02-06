@@ -62,6 +62,19 @@ export function verifyCourse(course: Course & ParsedData): { issues: string[], s
       successes.push(`Дисципліна має рік навчання для заочної форми: ${course.data.inabscentia.study_year}`);
     }
   }
+
+  // Pre and post requisites
+  if (!course.data?.prerequisites || course.data.prerequisites.length === 0) {
+    issues.push(`Відсутній список дисциплін пререквізитів`);
+  } else {
+    successes.push(`Дисципліна має пререквізити: ${course.data.prerequisites.join(', ')}`);
+  }
+
+  if (!course.data?.postrequisites || course.data.postrequisites.length === 0) {
+    issues.push(`Відсутній список постреквізитів`);
+  } else {
+    successes.push(`Дисципліна має постреквізити: ${course.data.postrequisites.join(', ')} `);
+  }
   
   // Check 6: Course has topics
   if (course.type === 'program' && (!course.topics || !Array.isArray(course.topics) || course.topics.length === 0)) {

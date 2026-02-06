@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { loadCourse, upsertCourse, loadAllCourses } from "../courses";
+import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName } from "../courses";
 import { loadAllTeachers } from "../teachers";
 import { loadAllResults } from "../results";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
@@ -16,6 +16,8 @@ const RESULT_TYPES = {
   "РН": "Результати навчання"
 };
 
+type DependencyField = "prerequisites" | "postrequisites";
+
 export default function CourseEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -23,11 +25,28 @@ export default function CourseEdit() {
   const [teachers, setTeachers] = useState([] as Teacher[]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
+  const [allCoursesList, setAllCoursesList] = useState<ShortCourseInfo[]>([]);
+  const [dependencyInputs, setDependencyInputs] = useState<Record<DependencyField, string>>({
+    prerequisites: "",
+    postrequisites: ""
+  });
 
   useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
   useEffect(() => { 
     loadAllTeachers().then(setTeachers).catch(console.error); 
     loadAllResults().then(setAllResults).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    loadAllCourses()
+      .then(courses => {
+        setAllCoursesList(courses.map(course => ({
+          id: course.id,
+          name: course.name,
+          teacher: course.teacher || ""
+        })));
+      })
+      .catch(console.error);
   }, []);
   
   // Load prerequisite and postrequisite info when item or prerequisites/postrequisites change
@@ -86,6 +105,120 @@ export default function CourseEdit() {
   // Get selected results for each type
   const getSelectedResultsForType = (type: 'ЗК' | 'СК' | 'РН') => {
     return selectedResults.filter(r => r.type === type);
+  };
+
+  const dependencyCourseOptions = useMemo(() => {
+    const excludeName = item ? normalizeCourseName(item.name) : null;
+    const seen = new Set<string>();
+    const deduped: ShortCourseInfo[] = [];
+
+    allCoursesList.forEach(course => {
+      const name = course.name?.trim();
+      if (!name) return;
+      const normalized = normalizeCourseName(name);
+      if (excludeName && normalized === excludeName) return;
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      deduped.push(course);
+    });
+
+    return deduped.sort((a, b) => a.name.localeCompare(b.name, "uk"));
+  }, [allCoursesList, item?.name]);
+
+  const handleAddDependency = (field: DependencyField) => {
+    if (!item) return;
+    const value = dependencyInputs[field].trim();
+    if (!value) return;
+
+    const normalizedNew = normalizeCourseName(value);
+    const current = item.data[field] || [];
+    const alreadyExists = current.some(existing => normalizeCourseName(existing) === normalizedNew);
+
+    if (alreadyExists) {
+      setDependencyInputs(prev => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    updateData({ [field]: [...current, value] });
+    setDependencyInputs(prev => ({ ...prev, [field]: "" }));
+  };
+
+  const handleRemoveDependency = (field: DependencyField, index: number) => {
+    if (!item) return;
+    const current = item.data[field] || [];
+    const next = current.filter((_, i) => i !== index);
+    updateData({ [field]: next });
+  };
+
+  const renderDependencyEditor = (field: DependencyField, label: string) => {
+    if (!item) return null;
+    const dependencies = item.data[field] || [];
+    const datalistId = `${field}-courses`;
+    const inputValue = dependencyInputs[field];
+    const isAddDisabled = inputValue.trim() === "";
+
+    return (
+      <div className="col-span-2">
+        <label className="block text-amber-50 font-bold mb-2">{label}:</label>
+        <div className="flex flex-col gap-2">
+          {dependencies.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {dependencies.map((name, index) => (
+                <div
+                  key={`${field}-${name}-${index}`}
+                  className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
+                >
+                  <span className="text-amber-50 font-mono text-sm">{name}</span>
+                  <button
+                    onClick={() => handleRemoveDependency(field, index)}
+                    className="bg-gray-600 hover:bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
+                    aria-label={`Видалити ${label}`}
+                  >
+                    <FontAwesomeIcon icon={faTimes} size="xs" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col md:flex-row gap-2">
+            <input
+              className="flex-1 w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+              list={datalistId}
+              value={inputValue}
+              onChange={(e) => setDependencyInputs(prev => ({ ...prev, [field]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddDependency(field);
+                }
+              }}
+              placeholder="Почніть вводити назву дисципліни"
+            />
+            <button
+              type="button"
+              onClick={() => handleAddDependency(field)}
+              disabled={isAddDisabled}
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:cursor-not-allowed text-black font-semibold px-4 py-1.5 rounded transition-colors"
+            >
+              Додати
+            </button>
+          </div>
+          <datalist id={datalistId}>
+            {dependencyCourseOptions.map(course => (
+              <option
+                key={`${field}-${course.id}`}
+                value={course.name}
+              >
+                {course.name}
+              </option>
+            ))}
+          </datalist>
+          <span className="text-xs text-zinc-500">
+            Можна додати будь-яку назву; підказки показують наявні дисципліни.
+          </span>
+        </div>
+      </div>
+    );
   };
 
   const handleAddAttestation = (attestation: string, semester: number = 1) => {
@@ -318,6 +451,8 @@ export default function CourseEdit() {
                 onRemove={handleRemoveResult}
               />
             ))}
+            {renderDependencyEditor("prerequisites", "Пререквізити")}
+            {renderDependencyEditor("postrequisites", "Постреквізити")}
             <div className="col-span-2">
               <label className="block text-amber-50 font-bold mb-2">Семестри:</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

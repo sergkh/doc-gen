@@ -8,7 +8,7 @@ import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
-import { dropDot, noQuotes, normalizeWhitespaces } from '@/parsing/utils';
+import { dropDot, genericNormalize, noQuotes, normalizeWhitespaces } from '@/parsing/utils';
 
 // Methods to parse syllabuses and programs from .docx and .pdf files
 
@@ -145,7 +145,7 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
   if (!topicsPart) return [];
 
   const topics = topicsPart.map((row, index) => {
-    let name = dropDot(noQuotes(normalizeWhitespaces(row[1]?.trim() ?? ``)));
+    let name = genericNormalize(row[1]?.trim() ?? ``);
     if (name.startsWith(`Тема `)) {
       name = name.replace(/^Тема\s*\d+\.?\s*/i, '');
     }
@@ -189,7 +189,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const nameMatch = header.match(/«([^»]+)»/);
     const parsedName = (nameMatch?.[1]?.trim() || "");
     // some syllabuses have all caps names, or names that span multiple lines
-    const name = normalizeWhitespaces(parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase());
+    const name = genericNormalize(parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase());
 
     if (!name) {
       console.error("Could not find course name");
@@ -341,7 +341,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
 
     // Extract course name (after "РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ")
     const nameMatch = header.match(/РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ\s+([^\n]+)/i);
-    const parsedName = (nameMatch?.[1]?.trim() || "");
+    const parsedName = genericNormalize(nameMatch?.[1]?.trim() || "");
     const name = parsedName.charAt(0).toUpperCase() + parsedName.slice(1).toLowerCase();
 
     if (!name) {
@@ -611,7 +611,7 @@ async function parseSylabusOrProgramResults(text: string): Promise<{ ids: number
     const type = m[1] === "ПРН" || m[1] === "ПР" ? "РН" : m[1];
     const no = parseInt(m[2] || "-1");
     const result = allResults.find(r => r.type === type && r.no === no);
-    const nameNormalized = normalizeWhitespaces(dropDot(m[3] ?? 'failed to parse')).toLowerCase().replace(';', '');
+    const nameNormalized = genericNormalize(m[3] ?? 'failed to parse').toLowerCase().replace(';', '');
 
     if (result && result?.name?.toLowerCase() !== nameNormalized) {
       warnings.push(`Результат навчання не співпадає з базою: "${nameNormalized}" vs "${result?.name}"`);
