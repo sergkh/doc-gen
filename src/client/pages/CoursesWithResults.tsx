@@ -24,16 +24,24 @@ type ExtendedCourse = {
   ext_postrequisites: ExtDependency[]
 }
 
-function courseMatch(course: Course & ExtendedCourse, searchText: string): boolean {
+function courseMatch(course: Course & ExtendedCourse, searchText: string, results: Map<number, CourseResult>): boolean {
+  const text = searchText.toLocaleLowerCase();
   const okNoText = course.data.ok_no ? course.data.ok_no.toString().toLowerCase() : "";
   const nameText = course.name.toLowerCase();
   const teacherText = (course.teacher ?? course.teacher_id.toString()).toLowerCase();
-  const match = okNoText.includes(searchText) || nameText.includes(searchText) || teacherText.includes(searchText);
+  
+  // let's match results as well
+  const  resultMatch = course.data.results?.some(resultId => {
+    const result = results.get(resultId);
+    return result && formatResultCode(result).toLowerCase().includes(text) || result?.name.toLowerCase().includes(text);
+  }) ?? false;
 
+  const match = okNoText.includes(text) || nameText.includes(text) || teacherText.includes(text) || resultMatch;
+  
   if (match) return true;
   
   // Also check in topics
-  if (course.topics.some(topic => topic.name.toLowerCase().includes(searchText))) return true;
+  if (course.topics.some(topic => topic.name.toLowerCase().includes(text))) return true;
 
   return false;
 }
@@ -138,8 +146,8 @@ export default function CoursesWithResults() {
      if (!filterText.trim()) return courses;
      
      const searchText = filterText.toLowerCase();
-     return courses.filter(course => courseMatch(course, searchText));
-   }, [courses, filterText]);
+     return courses.filter(course => courseMatch(course, searchText, resultIdMap));
+   }, [courses, filterText, resultIdMap]);
 
   if (isLoading) {
     return (
