@@ -19,6 +19,16 @@ const courses = {
     return await sql`SELECT c.id, c.name FROM courses c ORDER BY name`;
   },
 
+  bySpecialty: async (specialtyId: number): Promise<Course[]> => {
+    return await sql`
+      SELECT c.*, t.name as teacher
+      FROM courses c
+      LEFT JOIN teachers t ON c.teacher_id = t.id
+      WHERE c.specialty_id = ${specialtyId}
+      ORDER BY c.name
+    ` as Course[];
+  },
+
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
       (name, teacher_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.data}, ${c.generated}) RETURNING *`;
@@ -142,6 +152,16 @@ const teacherPublications = {
 const courseTopics = {
   all: async (courseId: number): Promise<CourseTopic[]> => {
     return await sql`SELECT * FROM course_topics WHERE course_id = ${courseId} ORDER BY index`;
+  },
+
+  byCourseIds: async (courseIds: number[]): Promise<CourseTopic[]> => {
+    if (courseIds.length === 0) return [];
+    return await sql`
+      SELECT *
+      FROM course_topics
+      WHERE course_id IN ${sql(courseIds)}
+      ORDER BY course_id, index
+    ` as CourseTopic[];
   },
 
   get: async (id: number): Promise<CourseTopic | null> => {

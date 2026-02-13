@@ -20,6 +20,7 @@ import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
 import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
+import ChatPage from "./client/pages/ChatPage";
 
 function Navigation() {
   const location = useLocation();
@@ -91,7 +92,14 @@ function Navigation() {
            >
              Шаблони
            </Link>
-        </div>
+           <Link
+             to="/chat"
+             onClick={closeMenu}
+             className={linkClassName(location.pathname.startsWith("/chat"))}
+           >
+             Чат
+           </Link>
+         </div>
 
         {/* Mobile menu */}
         <div
@@ -135,14 +143,21 @@ function Navigation() {
              >
                Результати
              </Link>
-             <Link
+              <Link
                to="/templates"
                onClick={closeMenu}
                className={linkClassName(location.pathname.startsWith("/templates"))}
              >
                Шаблони
              </Link>
-          </div>
+             <Link
+               to="/chat"
+               onClick={closeMenu}
+               className={linkClassName(location.pathname.startsWith("/chat"))}
+             >
+               Чат
+             </Link>
+           </div>
         </div>
       </div>
     </nav>
@@ -197,9 +212,10 @@ export function App() {
          <Route path="/results/matrix" element={<ResultsMatrix />} />
          <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
          <Route path="/results/:id" element={<ResultEdit />} />
-         <Route path="/templates" element={<TemplatesList />} />
-         <Route path="/templates/:id" element={<TemplateEdit />} />
-      </Routes>
+          <Route path="/templates" element={<TemplatesList />} />
+          <Route path="/templates/:id" element={<TemplateEdit />} />
+          <Route path="/chat" element={<ChatPage />} />
+       </Routes>
     </div>
   );
 }
