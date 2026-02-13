@@ -6,6 +6,7 @@ import { faPen, faSearch, faExclamationTriangle, faChevronDown, faChevronUp, faC
 import type { Course, CourseResult, CourseTopic } from "@/stores/models";
 import { formatDisciplineCode, loadAllCoursesWithTopics, normalizeCourseName } from "../courses";
 import { loadAllResults } from "../results";
+import { text } from "node_modules/cheerio/dist/esm/api/manipulation";
 
 const RESULT_TYPES = {
   "ЗК": "Загальні компетентності",
@@ -25,23 +26,22 @@ type ExtendedCourse = {
 }
 
 function courseMatch(course: Course & ExtendedCourse, searchText: string, results: Map<number, CourseResult>): boolean {
-  const text = searchText.toLocaleLowerCase();
-  const okNoText = course.data.ok_no ? course.data.ok_no.toString().toLowerCase() : "";
+  const okNoText = course.data.ok_no ? formatDisciplineCode(course.data.ok_no).toLowerCase() : "";
   const nameText = course.name.toLowerCase();
   const teacherText = (course.teacher ?? course.teacher_id.toString()).toLowerCase();
   
   // let's match results as well
   const  resultMatch = course.data.results?.some(resultId => {
     const result = results.get(resultId);
-    return result && formatResultCode(result).toLowerCase().includes(text) || result?.name.toLowerCase().includes(text);
+    return result && formatResultCode(result).toLowerCase().includes(searchText) || result?.name.toLowerCase().includes(searchText);
   }) ?? false;
 
-  const match = okNoText.includes(text) || nameText.includes(text) || teacherText.includes(text) || resultMatch;
+  const match = okNoText.includes(searchText) || nameText.includes(searchText) || teacherText.includes(searchText) || resultMatch;
   
   if (match) return true;
   
   // Also check in topics
-  if (course.topics.some(topic => topic.name.toLowerCase().includes(text))) return true;
+  if (course.topics.some(topic => topic.name.toLowerCase().includes(searchText))) return true;
 
   return false;
 }
