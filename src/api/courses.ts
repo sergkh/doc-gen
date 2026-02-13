@@ -34,7 +34,7 @@ function mergeCourseData(original: Course, parsed: Course & ParsedData): Course 
 async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) {
   if (parsedTopics.length === 0) return ;
   const existingTopics = await courseTopics.all(courseId);
-  const existingTopicsMap = new Map(existingTopics.map(t => [t.name, t]));
+  const existingTopicsMap = new Map(existingTopics.map(t => [t.index, t]));
 
   if (existingTopics.length === 0) {
     // No existing topics, just add all parsed
@@ -44,11 +44,46 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
         .map(c => courseTopics.add(c))
     );
     return;
-  } else {
-    // ignore for now
-    // TODO: implement merging of topics based on name matching
+  } else {    
+    // implement merging of topics based on name matching
+    for (const parsedTopic of parsedTopics) {
+      const existingTopic = existingTopicsMap.get(parsedTopic.index);
+      if (existingTopic) {
+        // Update existing topic with parsed data
+        await courseTopics.update(mergeCourseTopic(existingTopic, parsedTopic));
+      } else {
+        // Add new topic
+        await courseTopics.add(Object.assign(parsedTopic, { course_id: courseId }));
+      }
+    }
+  }
+}
+
+function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
+  // pick whatever is not 0
+  const mergedData = {
+    attestation: parsed.data?.attestation ?? existing.data?.attestation,
+    fulltime: {    
+      hours: parsed.data?.fulltime?.hours ?? existing.data?.fulltime?.hours,
+      practical_hours: parsed.data?.fulltime?.practical_hours ?? existing.data?.fulltime?.practical_hours,
+      srs_hours: parsed.data?.fulltime?.srs_hours ?? existing.data?.fulltime?.srs_hours,
+    },
+    inabscentia: {
+      hours: parsed.data?.inabscentia?.hours ?? existing.data?.inabscentia?.hours,
+      practical_hours: parsed.data?.inabscentia?.practical_hours ?? existing.data?.inabscentia?.practical_hours,
+      srs_hours: parsed.data?.inabscentia?.srs_hours ?? existing.data?.inabscentia?.srs_hours
+    }
   }
 
+  return {
+    id: existing.id,
+    course_id: existing.course_id,
+    index: existing.index,
+    name: parsed.name ?? existing.name,
+    lection: parsed.lection ?? existing.lection,
+    data: mergedData,
+    generated: existing.generated
+  } as CourseTopic;
 }
 
 const coursesApi = {

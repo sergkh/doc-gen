@@ -13,6 +13,7 @@ import ResultEdit from "./client/pages/ResultEdit";
 import ResultsMatrix from "./client/pages/ResultsMatrix";
 import CoursesWithResults from "./client/pages/CoursesWithResults";
 import CourseGraph from "./client/pages/CourseGraph";
+import CoursesSummary from "./client/pages/CoursesSummary";
 import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
@@ -177,13 +178,15 @@ export function App() {
       />
       <Navigation />
       <Routes>
-        <Route
-          path="/"
-          element={<GeneratorPage />}
-        />
-         <Route path="/courses" element={<CoursesList />} />
-         <Route path="/courses/results" element={<CoursesWithResults />} />
-         <Route path="/courses/graph" element={<CourseGraph />} />
+         <Route
+           path="/"
+           element={<GeneratorPage />}
+         />
+          <Route path="/courses" element={<CoursesList />} />
+          <Route path="/courses/summary" element={<CoursesSummary />} />
+          <Route path="/courses/results" element={<CoursesWithResults />} />
+          <Route path="/courses/graph" element={<CourseGraph />} />
+
          <Route path="/courses/:id" element={<CourseEdit />} />
          <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
          <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />

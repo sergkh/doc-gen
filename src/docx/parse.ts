@@ -146,6 +146,7 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
 
   const topics = topicsPart.map((row, index) => {
     let name = genericNormalize(row[1]?.trim() ?? ``);
+    
     if (name.startsWith(`Тема `)) {
       name = name.replace(/^Тема\s*\d+\.?\s*/i, '');
     }
@@ -169,7 +170,7 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
     } as CourseTopic;
   });
 
-  console.log(`Parsed ${topics.length} topics from syllabus`, topics.map(t => t.name));
+  console.log(`Parsed ${topics.length} topics from syllabus`, topics.map(t => `${t.name} ${t.data.fulltime.hours}h ${t.data.fulltime.practical_hours}h ${t.data.fulltime.srs_hours}h`));
 
   return topics;
 }

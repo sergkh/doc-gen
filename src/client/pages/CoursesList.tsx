@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPie } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { Course } from "@/stores/models";
@@ -104,15 +104,15 @@ export default function CoursesList() {
         <div className="flex justify-between items-center">
           <div className="flex items-start">
           <h1 className="font-mono px-2">Дисципліни</h1>
-          <button
-            onClick={() => navigate("/results/matrix")}
-            className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-            aria-label="Переглянути матрицю результатів"
-            title="Матриця результатів"
-            >
-            <FontAwesomeIcon icon={faTableCells} />
-          </button>
            <button
+             onClick={() => navigate("/results/matrix")}
+             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
+             aria-label="Переглянути матрицю результатів"
+             title="Матриця результатів"
+             >
+             <FontAwesomeIcon icon={faTableCells} />
+           </button>
+            <button
              onClick={() => navigate("/courses/results")}
              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
              aria-label="Переглянути дисципліни з результатами"
@@ -128,7 +128,16 @@ export default function CoursesList() {
              >
              <FontAwesomeIcon icon={faSitemap} />
            </button>
+           <button
+             onClick={() => navigate("/courses/summary")}
+             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
+             aria-label="Переглянути зведення годин"
+             title="Зведення годин"
+             >
+             <FontAwesomeIcon icon={faChartPie} />
+           </button>
            </div>
+
           <button
             onClick={() => navigate("/courses/new")}
             className="text-amber-50 hover:text-amber-200 cursor-pointer px-4 py-2 font-bold flex items-center"
