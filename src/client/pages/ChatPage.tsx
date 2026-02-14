@@ -10,6 +10,8 @@ type ChatAction =
   | "disciplines_by_pr"
   | "disciplines_by_topic"
   | "sum_practical_hours"
+  | "discipline_details"
+  | "list_disciplines"
   | "clarify";
 
 type DisciplineItem = {
@@ -21,15 +23,47 @@ type TopicMatchItem = DisciplineItem & {
   matchedTopics: string[];
 };
 
-type ChatResponse = {
-  reply: string;
-  data?:
+type PracticalHoursBreakdownItem = DisciplineItem & {
+  practicalHours: number;
+};
+
+type DisciplineBasicInfo = DisciplineItem & {
+  credits: number | null;
+  hours: number | null;
+  controlType: string | null;
+};
+
+type DisciplineDetailsItem = {
+  discipline: DisciplineItem & {
+    description: string | null;
+    credits: number | null;
+    hours: number | null;
+    controlType: string | null;
+    semesters: number[];
+    resultIds: number[];
+  };
+  results: Array<{ type: string; no: number; name: string }>;
+  topics: Array<{ name: string; lection: string }>;
+};
+
+type ToolHistoryEntry = {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  result:
     | { action: "disciplines_by_sk"; items: DisciplineItem[] }
     | { action: "disciplines_by_zk"; items: DisciplineItem[] }
     | { action: "disciplines_by_pr"; items: DisciplineItem[] }
     | { action: "disciplines_by_topic"; items: TopicMatchItem[] }
-    | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: Array<DisciplineItem & { practicalHours: number }> }
+    | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: PracticalHoursBreakdownItem[] }
+    | { action: "discipline_details"; item: DisciplineDetailsItem | null }
+    | { action: "list_disciplines"; items: DisciplineBasicInfo[] }
     | { action: "clarify" };
+};
+
+type ChatResponse = {
+  reply: string;
+  data: ToolHistoryEntry["result"];
+  toolHistory: ToolHistoryEntry[];
 };
 
 type ChatMessage = {
@@ -37,6 +71,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   data?: ChatResponse["data"];
+  toolHistory?: ToolHistoryEntry[];
 };
 
 const API_KEY_STORAGE_KEY = "openai_api_key";
@@ -66,6 +101,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [expandedToolHistory, setExpandedToolHistory] = useState<Record<string, boolean>>({});
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -148,6 +184,7 @@ export default function ChatPage() {
         role: "assistant",
         text: data.reply,
         data: data.data,
+        toolHistory: data.toolHistory,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -164,6 +201,13 @@ export default function ChatPage() {
       e.preventDefault();
       send();
     }
+  };
+
+  const toggleToolHistory = (messageId: string) => {
+    setExpandedToolHistory((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
   };
 
   if (isLoading) {
@@ -286,6 +330,48 @@ export default function ChatPage() {
                   <div className="mt-3 text-sm">
                     <div className="text-xs text-amber-200 mb-1">Практичні години (денна форма)</div>
                     <div className="text-amber-50">Разом: {practicalData.totalPracticalHours} год.</div>
+                  </div>
+                ) : null}
+
+                {m.role === "assistant" && m.toolHistory && m.toolHistory.length > 0 ? (
+                  <div className="mt-3">
+                    <button
+                      onClick={() => toggleToolHistory(m.id)}
+                      className="text-xs text-amber-300 hover:text-amber-100 transition-colors flex items-center gap-1"
+                    >
+                      {expandedToolHistory[m.id] ? "▼" : "▶"} Використані інструменти ({m.toolHistory.length})
+                    </button>
+                    {expandedToolHistory[m.id] && (
+                      <div className="mt-2 text-xs bg-zinc-800 border border-zinc-700 rounded-lg p-3">
+                        {m.toolHistory.map((entry, idx) => (
+                          <div key={idx} className="mb-3 last:mb-0">
+                            <div className="font-semibold text-amber-200 mb-1">
+                              {idx + 1}. {entry.toolName}
+                            </div>
+                            {Object.keys(entry.arguments).length > 0 && (
+                              <div className="text-zinc-400 mb-1">
+                                Аргументи: {JSON.stringify(entry.arguments, null, 2)}
+                              </div>
+                            )}
+                            <div className="text-zinc-300">
+                              {entry.result.action === "disciplines_by_sk" || entry.result.action === "disciplines_by_zk" || entry.result.action === "disciplines_by_pr" ? (
+                                `Знайдено ${entry.result.items.length} дисциплін`
+                              ) : entry.result.action === "disciplines_by_topic" ? (
+                                `Знайдено ${entry.result.items.length} дисциплін зі збігами`
+                              ) : entry.result.action === "sum_practical_hours" ? (
+                                `Разом: ${entry.result.totalPracticalHours} практичних годин`
+                              ) : entry.result.action === "discipline_details" ? (
+                                entry.result.item ? `Деталі: ${entry.result.item.discipline.name}` : "Дисципліну не знайдено"
+                              ) : entry.result.action === "list_disciplines" ? (
+                                `Завантажено ${entry.result.items.length} дисциплін`
+                              ) : (
+                                "Невідомий результат"
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>

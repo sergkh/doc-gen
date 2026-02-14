@@ -45,8 +45,9 @@ const chatApi = {
 
         const reply = conversation.reply?.trim() || CLARIFICATION_MESSAGE;
         const data = conversation.data ?? DEFAULT_DATA;
+        const toolHistory = conversation.toolHistory ?? [];
 
-        return Response.json({ reply, data });
+        return Response.json({ reply, data, toolHistory });
       } catch (error) {
         console.error("Chat API error:", error);
         return new Response(`Chat error: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });

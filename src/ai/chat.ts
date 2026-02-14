@@ -16,6 +16,8 @@ export type ChatAction =
   | "disciplines_by_pr"
   | "disciplines_by_topic"
   | "sum_practical_hours"
+  | "discipline_details"
+  | "list_disciplines"
   | "clarify";
 
 export type DisciplineItem = {
@@ -31,23 +33,67 @@ export type PracticalHoursBreakdownItem = DisciplineItem & {
   practicalHours: number;
 };
 
+export type DisciplineBasicInfo = DisciplineItem & {
+  credits: number | null;
+  hours: number | null;
+  controlType: string | null;
+};
+
+export type DisciplineDetailsItem = {
+  discipline: DisciplineItem & {
+    description: string | null;
+    credits: number | null;
+    hours: number | null;
+    controlType: string | null;
+    semesters: number[];
+    resultIds: number[];
+  };
+  results: Array<{ type: string; no: number; name: string }>;
+  topics: Array<{ name: string; lection: string }>;
+};
+
 export type ChatToolData =
   | { action: "clarify" }
   | { action: "disciplines_by_sk"; items: DisciplineItem[] }
   | { action: "disciplines_by_zk"; items: DisciplineItem[] }
   | { action: "disciplines_by_pr"; items: DisciplineItem[] }
   | { action: "disciplines_by_topic"; items: TopicMatchItem[] }
-  | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: Array<DisciplineItem & { practicalHours: number }> };
+  | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: Array<DisciplineItem & { practicalHours: number }> }
+  | { action: "discipline_details"; item: DisciplineDetailsItem | null }
+  | { action: "list_disciplines"; items: DisciplineBasicInfo[] };
+
+export type ToolHistoryEntry = {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  result: ChatToolData;
+};
 
 export type ChatToolConversationResult = {
   reply: string;
   data: ChatToolData;
+  toolHistory: ToolHistoryEntry[];
 };
 
 type ToolExecutionResult = {
   content: string;
   data: ChatToolData;
+  toolName: string;
+  arguments: Record<string, unknown>;
 };
+
+type ToolParameterSchema = {
+  type: "integer" | "string";
+  description: string;
+  minimum?: number;
+};
+
+interface ChatTool {
+  name: string;
+  description: string;
+  parameters: Record<string, ToolParameterSchema>;
+  required: string[];
+  execute: (args: Record<string, unknown>, specialtyId: number) => Promise<{ result: ChatToolData; content: string }>;
+}
 
 function normalizeText(value: string): string {
   return value.toLowerCase().trim().replaceAll("'", "ʼ");
@@ -196,96 +242,88 @@ export async function sumPracticalHours(
   return { totalPracticalHours, byDiscipline };
 }
 
-const SYSTEM_PROMPT =
-  "Ти асистент, що аналізує навчальні плани. " +
-  "Використовуй надані інструменти для пошуку інформації та відповідай українською. " +
-  "Перед фінальною відповіддю ОБОВʼЯЗКОВО виконай усі необхідні виклики інструментів. " +
-  "Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані.";
+export async function listDisciplines(
+  specialtyId: number,
+): Promise<{ items: DisciplineBasicInfo[] }> {
+  const coursesList = await listCoursesBySpecialty(specialtyId);
 
-const CHAT_COMPLETION_TOOLS: ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "disciplines_by_sk",
-      description: "Повертає дисципліни, що покривають конкретну спеціальну компетентність (СК-№)",
-      parameters: {
-        type: "object",
-        properties: {
-          number: {
-            type: "integer",
-            minimum: 1,
-            description: "Номер СК (наприклад, 5 для СК-5)",
-          },
-        },
-        required: ["number"],
-      },
+  const items: DisciplineBasicInfo[] = coursesList
+    .map((course) => ({
+      ok_no: course.data?.ok_no ?? null,
+      name: course.name,
+      credits: course.data?.credits ?? null,
+      hours: course.data?.hours ?? null,
+      controlType: course.data?.control_type ?? null,
+    }))
+    .sort((a, b) => compareOkNo(a.ok_no, b.ok_no));
+
+  return { items };
+}
+
+export async function disciplineDetails(
+  specialtyId: number,
+  query: string,
+): Promise<{ item: DisciplineDetailsItem | null }> {
+  const normalizedQuery = normalizeText(query);
+  const coursesList = await listCoursesBySpecialty(specialtyId);
+
+  let discipline: Course | null = null;
+
+  for (const course of coursesList) {
+    const courseText = normalizeText([course.name, course.data?.ok_no ?? ""].join("\n"));
+    if (courseText === normalizedQuery) {
+      discipline = course;
+      break;
+    }
+  }
+
+  if (!discipline) {
+    return { item: null };
+  }
+
+  const allResults = await courseResults.bySpecialty(specialtyId);
+  const results = allResults
+    .filter((r) => Array.isArray(discipline.data?.results) && discipline.data.results.includes(r.id))
+    .map((r) => ({ type: r.type, no: r.no, name: r.name }))
+    .sort((a, b) => {
+      const typeOrder: Record<string, number> = { ЗК: 1, СК: 2, РН: 3 };
+      const typeDiff = (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99);
+      if (typeDiff !== 0) return typeDiff;
+      return a.no - b.no;
+    });
+
+  const topics = await courseTopics.byCourseIds([discipline.id]);
+  const sortedTopics = topics
+    .map((t) => ({
+      name: t.name,
+      lection: t.lection,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "uk"));
+
+  const semesters = discipline.data?.attestations?.map((a) => a.semester) ?? [];
+  const uniqueSemesters = [...new Set(semesters)].sort((a, b) => a - b);
+
+  const item: DisciplineDetailsItem = {
+    discipline: {
+      ok_no: discipline.data?.ok_no ?? null,
+      name: discipline.name,
+      description: discipline.data?.description ?? null,
+      credits: discipline.data?.credits ?? null,
+      hours: discipline.data?.hours ?? null,
+      controlType: discipline.data?.control_type ?? null,
+      semesters: uniqueSemesters,
+      resultIds: discipline.data?.results ?? [],
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "disciplines_by_zk",
-      description: "Повертає дисципліни, що покривають конкретну загальну компетентність (ЗК-№)",
-      parameters: {
-        type: "object",
-        properties: {
-          number: {
-            type: "integer",
-            minimum: 1,
-            description: "Номер ЗК (наприклад, 3 для ЗК-3)",
-          },
-        },
-        required: ["number"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "disciplines_by_pr",
-      description: "Повертає дисципліни, що покривають результати навчання/ПР (РН/ПР-№)",
-      parameters: {
-        type: "object",
-        properties: {
-          number: {
-            type: "integer",
-            minimum: 1,
-            description: "Номер ПР або РН (наприклад, 2 для ПР-2)",
-          },
-        },
-        required: ["number"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "disciplines_by_topic",
-      description: "Шукає дисципліни та теми, де згадується конкретне ключове слово",
-      parameters: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description: "Ключове слово або фраза для пошуку",
-          },
-        },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "sum_practical_hours",
-      description: "Підраховує сумарні практичні години (денна форма) по спеціальності",
-      parameters: {
-        type: "object",
-        properties: {},
-      },
-    },
-  },
-];
+    results,
+    topics: sortedTopics,
+  };
+
+  return { item };
+}
+
+function toToolContent(payload: Record<string, unknown>): string {
+  return JSON.stringify(payload, (_key, val) => (val === undefined ? null : val));
+}
 
 function safeParseArguments(raw: string | null | undefined): Record<string, unknown> {
   if (!raw) return {};
@@ -310,110 +348,225 @@ function parseQuery(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function toToolContent(payload: Record<string, unknown>): string {
-  return JSON.stringify(payload, (_key, val) => (val === undefined ? null : val));
+function toCompletionTool(tool: ChatTool): ChatCompletionTool {
+  const parameters: Record<string, any> = {};
+  for (const [key, schema] of Object.entries(tool.parameters)) {
+    parameters[key] = schema.minimum !== undefined
+      ? { type: schema.type, minimum: schema.minimum, description: schema.description }
+      : { type: schema.type, description: schema.description };
+  }
+
+  return {
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: {
+        type: "object",
+        properties: parameters,
+        required: tool.required,
+      } as any,
+    },
+  };
 }
 
-async function handleToolCall(
-  name: string,
-  rawArgs: Record<string, unknown>,
-  specialtyId: number,
-): Promise<ToolExecutionResult> {
-  switch (name) {
-    case "disciplines_by_sk": {
-      const number = parsePositiveInt(rawArgs.number);
+const TOOL_REGISTRY: Record<string, ChatTool> = {
+  disciplines_by_sk: {
+    name: "disciplines_by_sk",
+    description: "Повертає дисципліни, що покривають конкретну спеціальну компетентність (СК-№)",
+    parameters: {
+      number: { type: "integer", minimum: 1, description: "Номер СК (наприклад, 5 для СК-5)" },
+    },
+    required: ["number"],
+    execute: async (args, specialtyId) => {
+      const number = parsePositiveInt(args.number);
       if (!number) {
         return {
+          result: { action: "clarify" },
           content: toToolContent({ status: "error", action: "disciplines_by_sk", message: "Відсутній номер СК" }),
-          data: { action: "clarify" },
         };
       }
       const { items, resultName } = await disciplinesBySk(specialtyId, number);
       return {
+        result: { action: "disciplines_by_sk", items },
         content: toToolContent({
           status: items.length > 0 ? "ok" : "empty",
           action: "disciplines_by_sk",
           label: resultName ? `СК-${number} (${resultName})` : `СК-${number}`,
           items,
         }),
-        data: { action: "disciplines_by_sk", items },
       };
-    }
-
-    case "disciplines_by_zk": {
-      const number = parsePositiveInt(rawArgs.number);
+    },
+  },
+  disciplines_by_zk: {
+    name: "disciplines_by_zk",
+    description: "Повертає дисципліни, що покривають конкретну загальну компетентність (ЗК-№)",
+    parameters: {
+      number: { type: "integer", minimum: 1, description: "Номер ЗК (наприклад, 3 для ЗК-3)" },
+    },
+    required: ["number"],
+    execute: async (args, specialtyId) => {
+      const number = parsePositiveInt(args.number);
       if (!number) {
         return {
+          result: { action: "clarify" },
           content: toToolContent({ status: "error", action: "disciplines_by_zk", message: "Відсутній номер ЗК" }),
-          data: { action: "clarify" },
         };
       }
       const { items, resultName } = await disciplinesByZk(specialtyId, number);
       return {
+        result: { action: "disciplines_by_zk", items },
         content: toToolContent({
           status: items.length > 0 ? "ok" : "empty",
           action: "disciplines_by_zk",
           label: resultName ? `ЗК-${number} (${resultName})` : `ЗК-${number}`,
           items,
         }),
-        data: { action: "disciplines_by_zk", items },
       };
-    }
-
-    case "disciplines_by_pr": {
-      const number = parsePositiveInt(rawArgs.number);
+    },
+  },
+  disciplines_by_pr: {
+    name: "disciplines_by_pr",
+    description: "Повертає дисципліни, що покривають результати навчання/ПР (РН/ПР-№)",
+    parameters: {
+      number: { type: "integer", minimum: 1, description: "Номер ПР або РН (наприклад, 2 для ПР-2)" },
+    },
+    required: ["number"],
+    execute: async (args, specialtyId) => {
+      const number = parsePositiveInt(args.number);
       if (!number) {
         return {
+          result: { action: "clarify" },
           content: toToolContent({ status: "error", action: "disciplines_by_pr", message: "Відсутній номер ПР/РН" }),
-          data: { action: "clarify" },
         };
       }
       const { items, resultName } = await disciplinesByPr(specialtyId, number);
       return {
+        result: { action: "disciplines_by_pr", items },
         content: toToolContent({
           status: items.length > 0 ? "ok" : "empty",
           action: "disciplines_by_pr",
           label: resultName ? `ПР-${number} (${resultName})` : `ПР-${number}`,
           items,
         }),
-        data: { action: "disciplines_by_pr", items },
       };
-    }
-
-    case "disciplines_by_topic": {
-      const query = parseQuery(rawArgs.query);
+    },
+  },
+  disciplines_by_topic: {
+    name: "disciplines_by_topic",
+    description: "Шукає дисципліни та теми, де згадується конкретне ключове слово",
+    parameters: {
+      query: { type: "string", description: "Ключове слово або фраза для пошуку" },
+    },
+    required: ["query"],
+    execute: async (args, specialtyId) => {
+      const query = parseQuery(args.query);
       if (!query) {
         return {
+          result: { action: "clarify" },
           content: toToolContent({ status: "error", action: "disciplines_by_topic", message: "Відсутня тема" }),
-          data: { action: "clarify" },
         };
       }
       const { items } = await disciplinesByTopic(specialtyId, query);
       return {
+        result: { action: "disciplines_by_topic", items },
         content: toToolContent({
           status: items.length > 0 ? "ok" : "empty",
           action: "disciplines_by_topic",
           query,
           items,
         }),
-        data: { action: "disciplines_by_topic", items },
       };
-    }
-
-    case "sum_practical_hours": {
+    },
+  },
+  sum_practical_hours: {
+    name: "sum_practical_hours",
+    description: "Підраховує сумарні практичні години (денна форма) по спеціальності",
+    parameters: {},
+    required: [],
+    execute: async (_args, specialtyId) => {
       const result = await sumPracticalHours(specialtyId);
       return {
+        result: { action: "sum_practical_hours", ...result },
         content: toToolContent({ status: "ok", action: "sum_practical_hours", ...result }),
-        data: { action: "sum_practical_hours", ...result },
       };
-    }
-
-    default:
+    },
+  },
+  discipline_details: {
+    name: "discipline_details",
+    description: "Повертає повну інформацію про дисципліну: опис, кредити, години, семестри, всі пов'язані результати (ЗК, СК, РН) та теми",
+    parameters: {
+      query: { type: "string", description: "Назва дисципліни або номер ОК для пошуку" },
+    },
+    required: ["query"],
+    execute: async (args, specialtyId) => {
+      const query = parseQuery(args.query);
+      if (!query) {
+        return {
+          result: { action: "clarify" },
+          content: toToolContent({ status: "error", action: "discipline_details", message: "Відсутня назва дисципліни" }),
+        };
+      }
+      const { item } = await disciplineDetails(specialtyId, query);
+      if (!item) {
+        return {
+          result: { action: "discipline_details", item: null },
+          content: toToolContent({ status: "empty", action: "discipline_details", query }),
+        };
+      }
       return {
-        content: toToolContent({ status: "error", action: "clarify", message: `Невідомий інструмент: ${name}` }),
-        data: { action: "clarify" },
+        result: { action: "discipline_details", item },
+        content: toToolContent({ status: "ok", action: "discipline_details", item }),
       };
+    },
+  },
+  list_disciplines: {
+    name: "list_disciplines",
+    description: "Повертає список усіх дисциплін з базовою інформацією: номер ОК, назва, кредити, години та форма контролю",
+    parameters: {},
+    required: [],
+    execute: async (_args, specialtyId) => {
+      const { items } = await listDisciplines(specialtyId);
+      return {
+        result: { action: "list_disciplines", items },
+        content: toToolContent({ status: "ok", action: "list_disciplines", items }),
+      };
+    },
+  },
+};
+
+const CHAT_COMPLETION_TOOLS: ChatCompletionTool[] = Object.values(TOOL_REGISTRY).map(toCompletionTool);
+
+const SYSTEM_PROMPT =
+  "Ти асистент, що аналізує навчальні плани. " +
+  "Використовуй надані інструменти для пошуку інформації та відповідай українською. " +
+  "Перед фінальною відповіддю ОБОВ'ЯЗКОВО виконай усі необхідні виклики інструментів. " +
+  "Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані.";
+
+async function handleToolCall(
+  name: string,
+  rawArgs: Record<string, unknown>,
+  specialtyId: number,
+): Promise<ToolExecutionResult> {
+  const tool = TOOL_REGISTRY[name];
+
+  if (!tool) {
+    return {
+      content: toToolContent({ status: "error", action: "clarify", message: `Невідомий інструмент: ${name}` }),
+      data: { action: "clarify" },
+      toolName: name,
+      arguments: rawArgs,
+    };
   }
+
+  const { result, content } = await tool.execute(rawArgs, specialtyId);
+
+  return {
+    content,
+    data: result,
+    toolName: name,
+    arguments: rawArgs,
+  };
 }
 
 function extractAssistantText(message: ChatCompletionMessage | undefined): string {
@@ -446,6 +599,7 @@ export async function runChatToolsConversation(options: {
   ];
 
   let latestData: ChatToolData = { action: "clarify" };
+  const toolHistory: ToolHistoryEntry[] = [];
   const maxSteps = options.maxSteps ?? 6;
 
   for (let step = 0; step < maxSteps; step++) {
@@ -474,6 +628,12 @@ export async function runChatToolsConversation(options: {
         const toolResult = await handleToolCall(call.function.name, safeParseArguments(call.function.arguments), options.specialtyId);
         latestData = toolResult.data;
 
+        toolHistory.push({
+          toolName: toolResult.toolName,
+          arguments: toolResult.arguments,
+          result: toolResult.data,
+        });
+
         messages.push({
           role: "tool",
           tool_call_id: call.id,
@@ -487,6 +647,7 @@ export async function runChatToolsConversation(options: {
     return {
       reply: reply || "Вибачте, не вдалося згенерувати відповідь.",
       data: latestData,
+      toolHistory,
     };
   }
 
