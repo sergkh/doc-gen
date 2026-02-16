@@ -223,44 +223,19 @@ export default function ChatPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-mono text-2xl">Чат</h1>
-          <p className="text-amber-100 font-mono text-sm">
-            Питання по навчальному плану (тільки в межах обраної спеціальності).
-          </p>
-        </div>
-
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono flex flex-col gap-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-amber-200">Спеціальність</span>
-              <select
-                value={specialtyId}
-                onChange={(e) => setSpecialtyId(e.target.value)}
-                className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
-              >
-                {specialties.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.code} {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-xs text-amber-200">OpenAI API key</span>
-              <input
-                value={apiKey}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
-                placeholder="sk-..."
-                className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
-              />
-            </label>
-          </div>
-
-          <div className="text-xs text-amber-200">
-            Обрано: {selectedSpecialty ? `${selectedSpecialty.code} ${selectedSpecialty.name}` : "—"}
-          </div>
+        <div className="flex justify-between items-center">
+          <h1 className="font-mono">Чат</h1>
+          <select
+              value={specialtyId}
+              onChange={(e) => setSpecialtyId(e.target.value)}
+              className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
+            >
+              {specialties.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.code} {s.name}
+                </option>
+              ))}
+            </select>
         </div>
 
         <div

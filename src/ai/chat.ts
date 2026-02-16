@@ -373,7 +373,7 @@ function toCompletionTool(tool: ChatTool): ChatCompletionTool {
 const TOOL_REGISTRY: Record<string, ChatTool> = {
   disciplines_by_sk: {
     name: "disciplines_by_sk",
-    description: "Повертає дисципліни, що покривають конкретну спеціальну компетентність (СК-№)",
+    description: "Повертає дисципліни, що покривають конкретну спеціальну компетентність (СК-5)",
     parameters: {
       number: { type: "integer", minimum: 1, description: "Номер СК (наприклад, 5 для СК-5)" },
     },
