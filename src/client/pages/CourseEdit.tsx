@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName } from "../courses";
+import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName, formatDisciplineCode } from "../courses";
+
+function extractRawCourseName(displayName: string): string {
+  return displayName.replace(/^(ОК\d+(?:\.\d+)?|ВК\d+(?:\.\d+)?)\s+/i, "").trim();
+}
 import { loadAllTeachers } from "../teachers";
 import { loadAllResults } from "../results";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
@@ -25,7 +29,9 @@ export default function CourseEdit() {
   const [teachers, setTeachers] = useState([] as Teacher[]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
-  const [allCoursesList, setAllCoursesList] = useState<ShortCourseInfo[]>([]);
+  type CourseWithOk = ShortCourseInfo & { okNo: string | null; displayName: string };
+
+  const [allCoursesList, setAllCoursesList] = useState<CourseWithOk[]>([]);
   const [dependencyInputs, setDependencyInputs] = useState<Record<DependencyField, string>>({
     prerequisites: "",
     postrequisites: ""
@@ -43,7 +49,9 @@ export default function CourseEdit() {
         setAllCoursesList(courses.map(course => ({
           id: course.id,
           name: course.name,
-          teacher: course.teacher || ""
+          teacher: course.teacher || "",
+          okNo: course.data.ok_no ?? null,
+          displayName: formatDisciplineCode(course.data.ok_no) + " " + course.name
         })));
       })
       .catch(console.error);
@@ -110,7 +118,7 @@ export default function CourseEdit() {
   const dependencyCourseOptions = useMemo(() => {
     const excludeName = item ? normalizeCourseName(item.name) : null;
     const seen = new Set<string>();
-    const deduped: ShortCourseInfo[] = [];
+    const deduped: CourseWithOk[] = [];
 
     allCoursesList.forEach(course => {
       const name = course.name?.trim();
@@ -122,7 +130,19 @@ export default function CourseEdit() {
       deduped.push(course);
     });
 
-    return deduped.sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    return deduped.sort((a, b) => {
+      const codeA = a.okNo;
+      const codeB = b.okNo;
+      if (codeA === codeB) return a.name.localeCompare(b.name, "uk");
+      if (codeA === null) return 1;
+      if (codeB === null) return -1;
+      const isOkA = /^\d{1,2}$/.test(codeA);
+      const isOkB = /^\d{1,2}$/.test(codeB);
+      if (isOkA && isOkB) return Number(codeA) - Number(codeB);
+      if (isOkA && !isOkB) return -1;
+      if (!isOkA && isOkB) return 1;
+      return codeA.localeCompare(codeB);
+    });
   }, [allCoursesList, item?.name]);
 
   const handleAddDependency = (field: DependencyField) => {
@@ -130,7 +150,7 @@ export default function CourseEdit() {
     const value = dependencyInputs[field].trim();
     if (!value) return;
 
-    const normalizedNew = normalizeCourseName(value);
+    const normalizedNew = normalizeCourseName(extractRawCourseName(value));
     const current = item.data[field] || [];
     const alreadyExists = current.some(existing => normalizeCourseName(existing) === normalizedNew);
 
@@ -139,7 +159,7 @@ export default function CourseEdit() {
       return;
     }
 
-    updateData({ [field]: [...current, value] });
+    updateData({ [field]: [...current, extractRawCourseName(value)] });
     setDependencyInputs(prev => ({ ...prev, [field]: "" }));
   };
 
@@ -207,9 +227,9 @@ export default function CourseEdit() {
             {dependencyCourseOptions.map(course => (
               <option
                 key={`${field}-${course.id}`}
-                value={course.name}
+                value={course.displayName}
               >
-                {course.name}
+                {course.displayName}
               </option>
             ))}
           </datalist>

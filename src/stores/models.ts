@@ -25,6 +25,7 @@ export type CourseSemesters = {
 export type CourseData = {
   ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting 
   optional: boolean,
+  type?: "lesson" | "practice",
   control_type: "exam" | "credit" | "both",
   hours: number,
   credits: number,
