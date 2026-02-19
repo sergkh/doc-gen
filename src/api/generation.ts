@@ -31,6 +31,10 @@ function wordResp(file: ArrayBuffer, name: string = "result.docx"): Response {
   });
 }
 
+function jsonError(message: string, status: number = 400): Response {
+  return Response.json({ error: message }, { status });
+}
+
 async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string, parameters?: Record<string, any>) {
   try {
     job.status = "generating";
@@ -72,21 +76,26 @@ const generationApi = {
   "/api/courses/:courseId/generate/:templateId": {
     async POST(req: BunRequest) {
       const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };
-      const body = await req.json().catch(() => ({})) as { apiKey?: string; parameters?: Record<string, any> };
+      let body;
+      try {
+        body = await req.json() as { apiKey?: string; parameters?: Record<string, any> };
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
       
       const course = await courses.get(courseId);
       if (!course) {
-        return new Response("Course not found", { status: 404 });
+        return jsonError("Дисципліну не знайдено", 404);
       }
 
       const template = await templates.get(templateId);
       if (!template) {
-        return new Response("Template not found", { status: 404 });
+        return jsonError("Шаблон не знайдено", 404);
       }
 
       const topics = await courseTopics.all(courseId);
       if (topics.length === 0) {
-        return new Response("No topics found", { status: 404 });
+        return jsonError("У дисципліни немає тем", 404);
       }
 
       const jobId = generateJobId();
@@ -101,8 +110,7 @@ const generationApi = {
       };
       jobs.set(jobId, job);
 
-      // Start generation in background
-      runGenerationJob(job, course, template, body.apiKey, body.parameters).catch((error) => {
+      runGenerationJob(job, course, template, body?.apiKey, body?.parameters).catch((error) => {
         job.status = "error";
         job.error = error instanceof Error ? error.message : "Unknown error";
       });
@@ -113,67 +121,95 @@ const generationApi = {
   "/api/courses/:courseId/run-prompt": {
     async POST(req: BunRequest) {
       const { courseId } = req.params as { courseId: number };
-      const rawBody = await req.json().catch(() => ({})) as { prompt: Prompt; apiKey?: string };
+      let rawBody;
+      try {
+        rawBody = await req.json() as { prompt: Prompt; apiKey?: string };
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
 
-      const { prompt, apiKey } = rawBody;
+      const { prompt, apiKey } = rawBody || {};
 
-      if (!prompt.field?.trim() || !prompt.system_prompt?.trim() || !prompt.prompt?.trim()) {
-        return new Response("Prompt is missing required fields", { status: 400 });
+      if (!prompt?.field?.trim() || !prompt?.system_prompt?.trim() || !prompt?.prompt?.trim()) {
+        return jsonError("Промпт не містить обов'язкових полів (field, system_prompt, prompt)", 400);
       }
 
       const course = await courses.get(courseId);
       if (!course) {
-        return new Response("Course not found", { status: 404 });
+        return jsonError("Дисципліну не знайдено", 404);
       }
 
       const topics = await courseTopics.all(courseId);
       if (topics.length === 0) {
-        return new Response("No topics found", { status: 404 });
+        return jsonError("У дисципліни немає тем", 404);
       }
 
-      const results = await runCoursePrompts([prompt], course, topics, apiKey ?? null, true);
-
-      return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
+      try {
+        const results = await runCoursePrompts([prompt], course, topics, apiKey ?? null, true);
+        return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Невідома помилка при виконанні промпту";
+        console.error("Run course prompt error:", error);
+        return jsonError(message, 500);
+      }
     }
   },
   "/api/courses/:courseId/topics/:topicId/run-prompt": {
     async POST(req: BunRequest) {
       const { courseId, topicId } = req.params as { courseId: number, topicId: number };
-      const rawBody = await req.json().catch(() => ({})) as { prompt: Prompt; apiKey?: string };
+      let rawBody;
+      try {
+        rawBody = await req.json() as { prompt: Prompt; apiKey?: string };
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
 
-      const { prompt, apiKey } = rawBody;
+      const { prompt, apiKey } = rawBody || {};
 
-      if (!prompt.field?.trim() || !prompt.system_prompt?.trim() || !prompt.prompt?.trim()) {
-        return new Response("Prompt is missing required fields", { status: 400 });
+      if (!prompt?.field?.trim() || !prompt?.system_prompt?.trim() || !prompt?.prompt?.trim()) {
+        return jsonError("Промпт не містить обов'язкових полів (field, system_prompt, prompt)", 400);
       }
 
       const course = await courses.get(courseId);
-      if (!course) return new Response("Course not found", { status: 404 });
+      if (!course) {
+        return jsonError("Дисципліну не знайдено", 404);
+      }
 
       const topic = await courseTopics.get(topicId);
-      if (!topic) return new Response("Topic not found", { status: 404 });
+      if (!topic) {
+        return jsonError("Тему не знайдено", 404);
+      }
 
       console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
 
-      const results = await runTopicPrompts([prompt], course, topic, apiKey ?? null, true);
-
-      console.log(`Prompt results for topic ${topic.name}:`, results);
-
-      return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
+      try {
+        const results = await runTopicPrompts([prompt], course, topic, apiKey ?? null, true);
+        console.log(`Prompt results for topic ${topic.name}:`, results);
+        return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Невідома помилка при виконанні промпту";
+        console.error("Run topic prompt error:", error);
+        return jsonError(message, 500);
+      }
     }
   },
   "/api/courses/:courseId/save-prompt-result": {
     async POST(req: BunRequest) {
       const { courseId } = req.params as { courseId: number };
-      const body = await req.json() as { field: string; item: any };
+      let body;
+      try {
+        body = await req.json() as { field: string; item: any };
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
 
-      if (!body.field?.trim()) {
-        return new Response("Field is required", { status: 400 });
+      if (!body?.field?.trim()) {
+        return jsonError("Поле field є обов'язковим", 400);
       }
 
       const course = await courses.get(courseId);
       if (!course) {
-        return new Response("Course not found", { status: 404 });
+        return jsonError("Дисципліну не знайдено", 404);
       }
 
       const generated = {
@@ -189,15 +225,20 @@ const generationApi = {
   "/api/courses/:courseId/topics/:topicId/save-prompt-result": {
     async POST(req: BunRequest) {
       const { courseId, topicId } = req.params as { courseId: number, topicId: number };
-      const body = await req.json() as { field: string; item: any };
+      let body;
+      try {
+        body = await req.json() as { field: string; item: any };
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
 
-      if (!body.field?.trim()) {
-        return new Response("Field is required", { status: 400 });
+      if (!body?.field?.trim()) {
+        return jsonError("Поле field є обов'язковим", 400);
       }
 
       const topic = await courseTopics.get(topicId);
       if (!topic) {
-        return new Response("Topic not found", { status: 404 });
+        return jsonError("Тему не знайдено", 404);
       }
 
       const generated = {
@@ -216,7 +257,7 @@ const generationApi = {
       const job = jobs.get(jobId);
       
       if (!job) {
-        return new Response("Job not found", { status: 404 });
+        return jsonError("Завдання не знайдено", 404);
       }
 
       return Response.json({
@@ -234,11 +275,11 @@ const generationApi = {
       const job = jobs.get(jobId);
       
       if (!job) {
-        return new Response("Job not found", { status: 404 });
+        return jsonError("Завдання не знайдено", 404);
       }
 
       if (job.status !== "completed" || !job.result || !job.filename) {
-        return new Response("Job not completed", { status: 400 });
+        return jsonError("Завдання ще не завершено", 400);
       }
 
       jobs.delete(jobId);

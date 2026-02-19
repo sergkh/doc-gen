@@ -127,8 +127,8 @@ export function runTopicPrompts(
     courseDescription: course.data.description ?? "",
     name: topic.name,
     lection: topic.lection || topic.name,
-    subtopics: topic.generated?.subtopics || state['subtopics']?.items.join(", "),
-    course: course.generated // course generated data
+    subtopics: topic.generated?.subtopics ?? state['subtopics']?.items.join(", ") ?? '',
+    course: course.generated || {} // course generated data
   }));
 }
 

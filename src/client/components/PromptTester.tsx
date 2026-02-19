@@ -14,6 +14,29 @@ interface PromptTesterProps {
   userPrompt: string;
 }
 
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  const text = await response.text();
+  
+  if (!text) return fallback;
+  
+  try {
+    const json = JSON.parse(text);
+    if (json.error) return json.error;
+    if (json.message) return json.message;
+    return text;
+  } catch {
+    if (text.startsWith("<!DOCTYPE") || text.startsWith("<html")) {
+      const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+      if (titleMatch) return titleMatch[1];
+      return fallback;
+    }
+    if (text.length > 200) {
+      return text.slice(0, 200) + "...";
+    }
+    return text;
+  }
+}
+
 function formatResult({ item }: PromptResult): string {
   if (typeof item === "string") {
     return item;
@@ -135,8 +158,8 @@ export default function PromptTester({
     fetch(`/api/courses/${courseId}/topics`)
       .then(async (response) => {
         if (!response.ok) {
-          const message = await response.text();
-          throw new Error(message || "Не вдалося завантажити теми");
+          const message = await extractErrorMessage(response, "Не вдалося завантажити теми");
+          throw new Error(message);
         }
         return await response.json() as CourseTopic[];
       })
@@ -231,8 +254,8 @@ export default function PromptTester({
       });
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "Не вдалося протестувати промпт");
+        const message = await extractErrorMessage(response, "Не вдалося протестувати промпт");
+        throw new Error(message);
       }
 
       const data = await response.json() as PromptResult;
@@ -283,8 +306,8 @@ export default function PromptTester({
       });
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "Не вдалося зберегти результат");
+        const message = await extractErrorMessage(response, "Не вдалося зберегти результат");
+        throw new Error(message);
       }
 
       setSaveSuccess(true);
