@@ -174,3 +174,19 @@ export async function deleteCourse(id: number): Promise<void> {
     throw new Error(`Помилка видалення дисципліни: ${res.status}`);
   }
 }
+
+export async function autofillCourseResults(courseId: number, type: "ЗК" | "СК" | "ПР"): Promise<{ id: number; reason: string }[]> {
+  const res = await fetch(`/api/courses/${courseId}/results/autofill`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ type })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка автозаповнення результатів: ${res.status}`);
+  }
+
+  return await res.json();
+}

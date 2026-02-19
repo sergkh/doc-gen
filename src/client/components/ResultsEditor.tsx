@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import type { CourseResult } from "@/stores/models";
 
 interface ResultsEditorProps {
@@ -8,6 +8,8 @@ interface ResultsEditorProps {
   availableResults: CourseResult[];
   onAdd: (resultId: string) => void;
   onRemove: (resultId: number) => void;
+  onAutofill?: () => void;
+  autofillLoading?: boolean;
 }
 
 export default function ResultsEditor({
@@ -15,11 +17,27 @@ export default function ResultsEditor({
   selectedResults,
   availableResults,
   onAdd,
-  onRemove
+  onRemove,
+  onAutofill,
+  autofillLoading
 }: ResultsEditorProps) {
   return (
     <div className="col-span-2">
-      <label className="block text-amber-50 font-bold mb-2">{label}:</label>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-amber-50 font-bold">{label}:</label>
+        {onAutofill && (
+          <button
+            type="button"
+            onClick={onAutofill}
+            disabled={autofillLoading}
+            className="flex items-center gap-2 text-amber-50 hover:text-amber-200 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-3 py-1 rounded transition-colors text-sm"
+            title="Автозаповнення за допомогою AI"
+          >
+            <FontAwesomeIcon icon={faWandMagicSparkles} />
+            {autofillLoading ? "Завантаження..." : "AI"}
+          </button>
+        )}
+      </div>
       <div className="flex flex-col gap-2">
         {selectedResults.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">

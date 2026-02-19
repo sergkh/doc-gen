@@ -5,7 +5,7 @@ import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPi
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { Course, Specialty } from "@/stores/models";
-import { loadAllCourses, deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadCoursesBySpecialty } from "../courses";
+import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadCoursesBySpecialty } from "../courses";
 import { loadAllSpecialties } from "../specialties";
 
 export default function CoursesList() {

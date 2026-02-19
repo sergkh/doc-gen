@@ -1,11 +1,12 @@
 import { parseSylabusOrProgram } from "@/docx/parse";
-import { courses, courseTopics, teachers } from "@/stores/db";
+import { courses, courseTopics, teachers, courseResults } from "@/stores/db";
 import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
 import { dropEmpty } from "@/client/util/util";
 import { verifyCourse } from "@/docx/verification";
+import { autofillCourseResults } from "@/ai/autofill";
 
 function mergeCourseData(original: Course, parsed: Course & ParsedData): Course {
   const generated = original.generated ?? parsed.generated ?? {} as GeneratedCourseData;
@@ -344,6 +345,52 @@ const coursesApi = {
       } catch (error) {
         console.error("Error reordering topics:", error);
         return new Response(`Error reordering topics: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+      }
+    }
+  },
+  "/api/courses/:id/results/autofill": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const courseId = Number(id);
+      
+      const body = await req.json() as { type: string };
+      const resultType = body.type;
+
+      if (!resultType || !["ЗК", "СК", "ПР"].includes(resultType)) {
+        return new Response("Invalid result type. Expected 'ЗК', 'СК', or 'ПР'", { status: 400 });
+      }
+
+      console.log(`Autofilling ${resultType} results for course ID:`, courseId);
+
+      try {
+        const course = await courses.get(courseId);
+        if (!course) {
+          return new Response("Course not found", { status: 404 });
+        }
+
+        const results = await courseResults.bySpecialty(course.specialty_id);
+        const filteredResults = results.filter(r => r.type === resultType);
+
+        if (filteredResults.length === 0) {
+          return Response.json([]);
+        }
+
+        const topics = await courseTopics.all(courseId);
+        const topicNames = topics.map(t => t.name);
+
+        const matchedResults = await autofillCourseResults(
+          filteredResults,
+          course.name,
+          course.data.description || "",
+          topicNames,
+          "gpt-4o-mini",
+          null
+        );
+
+        return Response.json(matchedResults);
+      } catch (error) {
+        console.error("Error autofilling results:", error);
+        return new Response(`Error autofilling results: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
       }
     }
   }

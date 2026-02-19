@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
-import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName, formatDisciplineCode } from "../courses";
+import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName, formatDisciplineCode, autofillCourseResults } from "../courses";
 
 function extractRawCourseName(displayName: string): string {
   return displayName.replace(/^(ОК\d+(?:\.\d+)?|ВК\d+(?:\.\d+)?)\s+/i, "").trim();
@@ -21,6 +21,8 @@ const RESULT_TYPES = {
   "РН": "Результати навчання"
 };
 
+type ResultType = "ЗК" | "СК" | "ПР";
+
 type DependencyField = "prerequisites" | "postrequisites";
 
 export default function CourseEdit() {
@@ -31,6 +33,11 @@ export default function CourseEdit() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
+  const [autofillLoading, setAutofillLoading] = useState<Record<ResultType, boolean>>({
+    "ЗК": false,
+    "СК": false,
+    "ПР": false
+  });
   type CourseWithOk = ShortCourseInfo & { okNo: string | null; displayName: string };
 
   const [allCoursesList, setAllCoursesList] = useState<CourseWithOk[]>([]);
@@ -102,6 +109,28 @@ export default function CourseEdit() {
     if (!item) return;
     const newResults = item.data.results.filter(id => id !== resultId);
     updateData({ results: newResults });
+  };
+
+  const handleAutofillResults = async (type: ResultType) => {
+    if (!item || item.id < 0) return;
+    
+    setAutofillLoading(prev => ({ ...prev, [type]: true }));
+    
+    try {
+      const matchedResults = await autofillCourseResults(item.id, type);
+      
+      const newResultIds = matchedResults
+        .map(r => r.id)
+        .filter(id => !item.data.results.includes(id));
+      
+      if (newResultIds.length > 0) {
+        updateData({ results: [...item.data.results, ...newResultIds] });
+      }
+    } catch (error) {
+      console.error("Error autofilling results:", error);
+    } finally {
+      setAutofillLoading(prev => ({ ...prev, [type]: false }));
+    }
   };
 
   // Get available results for each type, excluding already selected ones
@@ -477,6 +506,8 @@ export default function CourseEdit() {
                 availableResults={getAvailableResultsForType(type)}
                 onAdd={handleAddResult}
                 onRemove={handleRemoveResult}
+                onAutofill={item?.id && item.id > 0 ? () => handleAutofillResults(type === "РН" ? "ПР" : type) : undefined}
+                autofillLoading={autofillLoading[type === "РН" ? "ПР" : type]}
               />
             ))}
             {renderDependencyEditor("prerequisites", "Пререквізити")}
