@@ -1,3 +1,4 @@
+import type { BunRequest } from "bun";
 import type {
   ChatCompletionContentPart,
   ChatCompletionMessage,
@@ -10,6 +11,71 @@ import type { Course, CourseResult, CourseTopic } from "@/stores/models";
 
 export const CHAT_MODEL = "gpt-4o-mini";
 
+export type DisciplineContext = {
+  courseId: number;
+  courseName: string;
+  okNo: string | null;
+} | null;
+
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+type SessionData = {
+  context: DisciplineContext;
+  history: ChatMessage[];
+};
+
+type SessionStore = Map<string, SessionData>;
+
+const sessionStore: SessionStore = new Map();
+const MAX_HISTORY_LENGTH = 20;
+
+function getOrInitSession(sessionId: string): SessionData {
+  let session = sessionStore.get(sessionId);
+  if (!session) {
+    session = { context: null, history: [] };
+    sessionStore.set(sessionId, session);
+  }
+  return session;
+}
+
+export function getSessionContext(sessionId: string): DisciplineContext {
+  return getOrInitSession(sessionId).context;
+}
+
+export function setSessionContext(sessionId: string, context: DisciplineContext): void {
+  getOrInitSession(sessionId).context = context;
+}
+
+export function clearSessionContext(sessionId: string): void {
+  const session = sessionStore.get(sessionId);
+  if (session) {
+    session.context = null;
+  }
+}
+
+export function getSessionHistory(sessionId: string): ChatMessage[] {
+  return getOrInitSession(sessionId).history;
+}
+
+export function addToSessionHistory(sessionId: string, role: "user" | "assistant", content: string): void {
+  const session = getOrInitSession(sessionId);
+  session.history.push({ role, content });
+  
+  if (session.history.length > MAX_HISTORY_LENGTH) {
+    session.history = session.history.slice(-MAX_HISTORY_LENGTH);
+  }
+}
+
+export function clearSessionHistory(sessionId: string): void {
+  const session = sessionStore.get(sessionId);
+  if (session) {
+    session.history = [];
+  }
+}
+
 export type ChatAction =
   | "disciplines_by_sk"
   | "disciplines_by_zk"
@@ -18,6 +84,10 @@ export type ChatAction =
   | "sum_practical_hours"
   | "discipline_details"
   | "list_disciplines"
+  | "set_discipline_context"
+  | "get_discipline_context"
+  | "clear_discipline_context"
+  | "save_discipline_topics"
   | "clarify";
 
 export type DisciplineItem = {
@@ -60,7 +130,11 @@ export type ChatToolData =
   | { action: "disciplines_by_topic"; items: TopicMatchItem[] }
   | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: Array<DisciplineItem & { practicalHours: number }> }
   | { action: "discipline_details"; item: DisciplineDetailsItem | null }
-  | { action: "list_disciplines"; items: DisciplineBasicInfo[] };
+  | { action: "list_disciplines"; items: DisciplineBasicInfo[] }
+  | { action: "set_discipline_context"; context: DisciplineContext }
+  | { action: "get_discipline_context"; context: DisciplineContext }
+  | { action: "clear_discipline_context" }
+  | { action: "save_discipline_topics"; status: "ok" | "error"; message: string; addedTopics: string[] };
 
 export type ToolHistoryEntry = {
   toolName: string;
@@ -72,6 +146,7 @@ export type ChatToolConversationResult = {
   reply: string;
   data: ChatToolData;
   toolHistory: ToolHistoryEntry[];
+  context: DisciplineContext;
 };
 
 type ToolExecutionResult = {
@@ -92,7 +167,7 @@ interface ChatTool {
   description: string;
   parameters: Record<string, ToolParameterSchema>;
   required: string[];
-  execute: (args: Record<string, unknown>, specialtyId: number) => Promise<{ result: ChatToolData; content: string }>;
+  execute: (args: Record<string, unknown>, specialtyId: number, sessionId: string) => Promise<{ result: ChatToolData; content: string }>;
 }
 
 function normalizeText(value: string): string {
@@ -378,7 +453,7 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       number: { type: "integer", minimum: 1, description: "Номер СК (наприклад, 5 для СК-5)" },
     },
     required: ["number"],
-    execute: async (args, specialtyId) => {
+    execute: async (args, specialtyId, _sessionId) => {
       const number = parsePositiveInt(args.number);
       if (!number) {
         return {
@@ -405,7 +480,7 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       number: { type: "integer", minimum: 1, description: "Номер ЗК (наприклад, 3 для ЗК-3)" },
     },
     required: ["number"],
-    execute: async (args, specialtyId) => {
+    execute: async (args, specialtyId, _sessionId) => {
       const number = parsePositiveInt(args.number);
       if (!number) {
         return {
@@ -432,7 +507,7 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       number: { type: "integer", minimum: 1, description: "Номер ПР або РН (наприклад, 2 для ПР-2)" },
     },
     required: ["number"],
-    execute: async (args, specialtyId) => {
+    execute: async (args, specialtyId, _sessionId) => {
       const number = parsePositiveInt(args.number);
       if (!number) {
         return {
@@ -459,7 +534,7 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       query: { type: "string", description: "Ключове слово або фраза для пошуку" },
     },
     required: ["query"],
-    execute: async (args, specialtyId) => {
+    execute: async (args, specialtyId, _sessionId) => {
       const query = parseQuery(args.query);
       if (!query) {
         return {
@@ -499,7 +574,7 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       query: { type: "string", description: "Назва дисципліни або номер ОК для пошуку" },
     },
     required: ["query"],
-    execute: async (args, specialtyId) => {
+    execute: async (args, specialtyId, _sessionId) => {
       const query = parseQuery(args.query);
       if (!query) {
         return {
@@ -533,6 +608,210 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       };
     },
   },
+  set_discipline_context: {
+    name: "set_discipline_context",
+    description: "Встановлює контекст поточної дисципліни для подальших операцій. Після виклику цього інструменту інші інструменти (збереження тем, перегляд деталей) працюватимуть з цією дисципліною.",
+    parameters: {
+      query: { type: "string", description: "Назва дисципліни або номер ОК (наприклад: ОК12, Хмарні технології)" },
+    },
+    required: ["query"],
+    execute: async (args, specialtyId, sessionId) => {
+      const query = parseQuery(args.query);
+      if (!query) {
+        return {
+          result: { action: "clarify" },
+          content: toToolContent({ status: "error", action: "set_discipline_context", message: "Відсутня назва дисципліни" }),
+        };
+      }
+
+      const normalizedQuery = normalizeText(query);
+      const coursesList = await listCoursesBySpecialty(specialtyId);
+
+      let matchedCourse: Course | null = null;
+      for (const course of coursesList) {
+        const courseName = normalizeText(course.name);
+        const courseOkNo = normalizeText(course.data?.ok_no ?? "");
+        if (courseName === normalizedQuery || courseOkNo === normalizedQuery || courseName.includes(normalizedQuery)) {
+          matchedCourse = course;
+          break;
+        }
+      }
+
+      if (!matchedCourse) {
+        return {
+          result: { action: "set_discipline_context", context: null },
+          content: toToolContent({ status: "error", action: "set_discipline_context", message: "Дисципліну не знайдено", query }),
+        };
+      }
+
+      const context: DisciplineContext = {
+        courseId: matchedCourse.id,
+        courseName: matchedCourse.name,
+        okNo: matchedCourse.data?.ok_no ?? null,
+      };
+
+      setSessionContext(sessionId, context);
+
+      return {
+        result: { action: "set_discipline_context", context },
+        content: toToolContent({
+          status: "ok",
+          action: "set_discipline_context",
+          message: `Встановлено контекст: ${context.okNo ? `ОК${context.okNo} ` : ""}${context.courseName}`,
+          context,
+        }),
+      };
+    },
+  },
+  get_discipline_context: {
+    name: "get_discipline_context",
+    description: "Повертає поточний контекст дисципліни, якщо він встановлений",
+    parameters: {},
+    required: [],
+    execute: async (_args, _specialtyId, sessionId) => {
+      const context = getSessionContext(sessionId);
+      return {
+        result: { action: "get_discipline_context", context },
+        content: toToolContent({
+          status: context ? "ok" : "empty",
+          action: "get_discipline_context",
+          context,
+          message: context
+            ? `Поточна дисципліна: ${context.okNo ? `ОК${context.okNo} ` : ""}${context.courseName}`
+            : "Контекст не встановлено",
+        }),
+      };
+    },
+  },
+  clear_discipline_context: {
+    name: "clear_discipline_context",
+    description: "Очищує контекст поточної дисципліни та історію чату",
+    parameters: {},
+    required: [],
+    execute: async (_args, _specialtyId, sessionId) => {
+      clearSessionContext(sessionId);
+      clearSessionHistory(sessionId);
+      return {
+        result: { action: "clear_discipline_context" },
+        content: toToolContent({ status: "ok", action: "clear_discipline_context", message: "Контекст та історію очищено" }),
+      };
+    },
+  },
+  save_discipline_topics: {
+    name: "save_discipline_topics",
+    description: "Зберігає теми для дисципліни. Якщо встановлено контекст дисципліни (через set_discipline_context), використовує його. Інакше шукає дисципліну за назвою.",
+    parameters: {
+      topics: { type: "string", description: "JSON масив назв тем для збереження, напр.: [\"Тема 1\", \"Тема 2\"]" },
+      query: { type: "string", description: "Назва дисципліни (необов'язково, якщо контекст встановлено)" },
+    },
+    required: ["topics"],
+    execute: async (args, specialtyId, sessionId) => {
+      let topicsArg = args.topics;
+      let courseQuery = args.query as string | undefined;
+
+      if (typeof topicsArg === "string") {
+        try {
+          topicsArg = JSON.parse(topicsArg);
+        } catch {
+          return {
+            result: { action: "save_discipline_topics", status: "error", message: "Некоректний формат тем", addedTopics: [] },
+            content: toToolContent({ status: "error", action: "save_discipline_topics", message: "Теми мають бути у форматі JSON масиву" }),
+          };
+        }
+      }
+
+      if (!Array.isArray(topicsArg) || topicsArg.length === 0) {
+        return {
+          result: { action: "save_discipline_topics", status: "error", message: "Порожній список тем", addedTopics: [] },
+          content: toToolContent({ status: "error", action: "save_discipline_topics", message: "Відсутні теми для збереження" }),
+        };
+      }
+
+      const topicNames = topicsArg.map((t: unknown) => String(t)).filter((t: string) => t.trim());
+
+      let context = getSessionContext(sessionId);
+
+      if (!context && courseQuery) {
+        const normalizedQuery = normalizeText(courseQuery);
+        const coursesList = await listCoursesBySpecialty(specialtyId);
+
+        for (const course of coursesList) {
+          const courseName = normalizeText(course.name);
+          const courseOkNo = normalizeText(course.data?.ok_no ?? "");
+          if (courseName === normalizedQuery || courseOkNo === normalizedQuery || courseName.includes(normalizedQuery)) {
+            context = {
+              courseId: course.id,
+              courseName: course.name,
+              okNo: course.data?.ok_no ?? null,
+            };
+            break;
+          }
+        }
+      }
+
+      if (!context) {
+        return {
+          result: { action: "save_discipline_topics", status: "error", message: "Контекст не встановлено", addedTopics: [] },
+          content: toToolContent({
+            status: "error",
+            action: "save_discipline_topics",
+            message: "Спочатку встановіть контекст дисципліни через set_discipline_context або вкажіть назву дисципліни",
+          }),
+        };
+      }
+
+      const existingTopics = await courseTopics.byCourseIds([context.courseId]);
+      const existingNames = new Set(existingTopics.map(t => normalizeText(t.name)));
+
+      const nextIndex = existingTopics.length > 0
+        ? Math.max(...existingTopics.map(t => t.index)) + 1
+        : 1;
+
+      const addedTopics: string[] = [];
+      let currentIndex = nextIndex;
+
+      for (const topicName of topicNames) {
+        const normalizedName = normalizeText(topicName);
+        if (existingNames.has(normalizedName)) {
+          continue;
+        }
+
+        const newTopic: CourseTopic = {
+          id: 0,
+          course_id: context.courseId,
+          index: currentIndex++,
+          name: topicName.trim(),
+          lection: "",
+          data: {
+            attestation: 1,
+            fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
+            inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 },
+          },
+          generated: {},
+        };
+
+        await courseTopics.add(newTopic);
+        addedTopics.push(topicName);
+        existingNames.add(normalizedName);
+      }
+
+      const status = addedTopics.length > 0 ? "ok" : "error";
+      const message = addedTopics.length > 0
+        ? `Додано теми: ${addedTopics.join(", ")}`
+        : "Всі вказані теми вже існують або не знайдено";
+
+      return {
+        result: { action: "save_discipline_topics", status, message, addedTopics },
+        content: toToolContent({
+          status,
+          action: "save_discipline_topics",
+          message,
+          addedTopics,
+          context,
+        }),
+      };
+    },
+  },
 };
 
 const CHAT_COMPLETION_TOOLS: ChatCompletionTool[] = Object.values(TOOL_REGISTRY).map(toCompletionTool);
@@ -541,12 +820,15 @@ const SYSTEM_PROMPT =
   "Ти асистент, що аналізує навчальні плани. " +
   "Використовуй надані інструменти для пошуку інформації та відповідай українською. " +
   "Перед фінальною відповіддю ОБОВ'ЯЗКОВО виконай усі необхідні виклики інструментів. " +
-  "Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані.";
+  "Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані. " +
+  "Ти також можеш працювати з темами дисциплін: спочатку встанови контекст дисципліни (set_discipline_context), " +
+  "а потім додавай теми (save_discipline_topics).";
 
 async function handleToolCall(
   name: string,
   rawArgs: Record<string, unknown>,
   specialtyId: number,
+  sessionId: string,
 ): Promise<ToolExecutionResult> {
   const tool = TOOL_REGISTRY[name];
 
@@ -559,7 +841,7 @@ async function handleToolCall(
     };
   }
 
-  const { result, content } = await tool.execute(rawArgs, specialtyId);
+  const { result, content } = await tool.execute(rawArgs, specialtyId, sessionId);
 
   return {
     content,
@@ -588,13 +870,17 @@ function extractAssistantText(message: ChatCompletionMessage | undefined): strin
 
 export async function runChatToolsConversation(options: {
   specialtyId: number;
+  sessionId: string;
   message: string;
   apiKey: string | null;
   maxSteps?: number;
 }): Promise<ChatToolConversationResult> {
   const client = createOpenAIClient(options.apiKey);
+  const sessionHistory = getSessionHistory(options.sessionId);
+  
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
+    ...sessionHistory.map(msg => ({ role: msg.role, content: msg.content })),
     { role: "user", content: options.message },
   ];
 
@@ -625,7 +911,7 @@ export async function runChatToolsConversation(options: {
       for (const call of toolCalls) {
         if (call.type !== "function" || !call.function) continue;
 
-        const toolResult = await handleToolCall(call.function.name, safeParseArguments(call.function.arguments), options.specialtyId);
+        const toolResult = await handleToolCall(call.function.name, safeParseArguments(call.function.arguments), options.specialtyId, options.sessionId);
         latestData = toolResult.data;
 
         toolHistory.push({
@@ -644,10 +930,16 @@ export async function runChatToolsConversation(options: {
     }
 
     const reply = extractAssistantText(assistantMessage);
+    
+    addToSessionHistory(options.sessionId, "user", options.message);
+    addToSessionHistory(options.sessionId, "assistant", reply);
+    
+    const context = getSessionContext(options.sessionId);
     return {
       reply: reply || "Вибачте, не вдалося згенерувати відповідь.",
       data: latestData,
       toolHistory,
+      context,
     };
   }
 

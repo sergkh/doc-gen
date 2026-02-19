@@ -44,6 +44,20 @@ export async function loadAllCourses() {
   return courses;
 }
 
+export async function loadCoursesBySpecialty(specialtyId: number) {
+  const res = await fetch(`/api/courses?specialtyId=${specialtyId}`)
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
+  }
+
+  const courses = await res.json() as Course[];
+
+  courses.sort((a, b) => compareOks(a.data.ok_no, b.data.ok_no));
+
+  return courses;
+}
+
 export async function loadAllCoursesWithTopics() {
   const res = await fetch(`/api/courses?topics=true`)
 

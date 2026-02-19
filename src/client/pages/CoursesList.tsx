@@ -4,18 +4,37 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPie } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import type { Course } from "@/stores/models";
-import { loadAllCourses, deleteCourse, formatDisciplineCode, uploadMultipleCourses } from "../courses";
+import type { Course, Specialty } from "@/stores/models";
+import { loadAllCourses, deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadCoursesBySpecialty } from "../courses";
+import { loadAllSpecialties } from "../specialties";
 
 export default function CoursesList() {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<Course[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number>(1);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    loadAllCourses().then(setItems).catch(console.error);
+    loadAllSpecialties()
+      .then((data) => {
+        setSpecialties(data);
+        const firstSpecialty = data[0];
+        if (firstSpecialty) {
+          setSelectedSpecialtyId(firstSpecialty.id);
+        }
+      })
+      .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (selectedSpecialtyId) {
+      loadCoursesBySpecialty(selectedSpecialtyId)
+        .then(setItems)
+        .catch(console.error);
+    }
+  }, [selectedSpecialtyId]);
 
   const handleFileUpload = async (files: File[]) => {
     setIsUploading(true);
@@ -45,8 +64,7 @@ export default function CoursesList() {
     try {
       const results = await uploadPromise;
       if (results.length > 0) {
-        // Reload courses after upload
-        const updatedCourses = await loadAllCourses();
+        const updatedCourses = await loadCoursesBySpecialty(selectedSpecialtyId);
         setItems(updatedCourses);
       }
     } catch (error) {
@@ -137,6 +155,18 @@ export default function CoursesList() {
              <FontAwesomeIcon icon={faChartPie} />
            </button>
            </div>
+
+          <select
+            className="bg-zinc-900 border-2 border-amber-50 text-amber-50 font-mono px-3 py-1 rounded outline-none focus:text-white"
+            value={selectedSpecialtyId}
+            onChange={(e) => setSelectedSpecialtyId(Number(e.target.value))}
+          >
+            {specialties.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.code} {s.name}
+              </option>
+            ))}
+          </select>
 
           <button
             onClick={() => navigate("/courses/new")}

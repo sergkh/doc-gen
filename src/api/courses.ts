@@ -91,8 +91,15 @@ const coursesApi = {
       async GET(req: BunRequest) {
         const brief = new URL(req.url).searchParams.get("brief") === "true";
         const topics = new URL(req.url).searchParams.get("topics") === "true";
-        console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}`);
-        const loadedCourses = brief ? await courses.brief() : await courses.all();
+        const specialtyId = new URL(req.url).searchParams.get("specialtyId");
+        console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}. specialtyId: ${specialtyId || "all"}`);
+        
+        let loadedCourses: Course[];
+        if (specialtyId) {
+          loadedCourses = await courses.bySpecialty(Number(specialtyId));
+        } else {
+          loadedCourses = brief ? await courses.brief() as unknown as Course[] : await courses.all();
+        }
         
         // not nice, but works for now
         if (topics) {
