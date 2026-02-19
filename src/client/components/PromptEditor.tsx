@@ -4,13 +4,7 @@ import { faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { Prompt } from "@/stores/models";
 import PromptTester from "./PromptTester";
-
-const AVAILABLE_MODELS = [
-  "gpt-4o",
-  "gpt-5-2025-08-07",
-  "gpt-5-mini-2025-08-07",
-  "gpt-4.1-2025-04-14"
-];
+import { AVAILABLE_MODELS } from "@/ai/models";
 
 const AVAILABLE_FORMATS: Array<{ value: Prompt["format"]; label: string }> = [
   { value: "text", label: "Текст" },
@@ -133,8 +127,8 @@ export default function PromptEditor({
           onChange={(e) => setModel(e.target.value)}
         >
           {AVAILABLE_MODELS.map((m) => (
-            <option key={m} value={m} className="bg-zinc-800 text-amber-50">
-              {m}
+            <option key={m.id} value={m.id} className="bg-zinc-800 text-amber-50">
+              {m.name}
             </option>
           ))}
         </select>

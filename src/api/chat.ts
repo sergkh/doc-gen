@@ -1,6 +1,9 @@
 import type { BunRequest } from "bun";
 import type { ChatToolData, DisciplineContext } from "@/ai/chat";
 import { runChatToolsConversation } from "@/ai/chat";
+import { AVAILABLE_MODELS } from "@/ai/models";
+
+const DEFAULT_MODEL = "gpt-4o-mini";
 
 const CLARIFICATION_MESSAGE =
   "Я можу: (1) знайти дисципліни за СК (наприклад: СК-5), " +
@@ -26,11 +29,13 @@ const chatApi = {
           specialtyId?: number;
           message?: string;
           apiKey?: string;
+          model?: string;
         };
 
         const specialtyId = Number(body?.specialtyId);
         const message = body?.message?.toString() ?? "";
         const apiKey = body?.apiKey?.toString() || null;
+        const model = body?.model && AVAILABLE_MODELS.some(m => m.id === body.model) ? body.model : DEFAULT_MODEL;
         const sessionId = getOrCreateSessionId(req);
 
         if (!Number.isFinite(specialtyId) || specialtyId <= 0) {
@@ -43,7 +48,7 @@ const chatApi = {
 
         let conversation;
         try {
-          conversation = await runChatToolsConversation({ specialtyId, sessionId, message, apiKey });
+          conversation = await runChatToolsConversation({ specialtyId, sessionId, message, apiKey, model });
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error);
           if (msg.toLowerCase().includes("api key")) {

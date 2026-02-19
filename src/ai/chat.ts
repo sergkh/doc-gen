@@ -1,4 +1,3 @@
-import type { BunRequest } from "bun";
 import type {
   ChatCompletionContentPart,
   ChatCompletionMessage,
@@ -914,9 +913,11 @@ export async function runChatToolsConversation(options: {
   sessionId: string;
   message: string;
   apiKey: string | null;
+  model?: string;
   maxSteps?: number;
 }): Promise<ChatToolConversationResult> {
   const client = createOpenAIClient(options.apiKey);
+  const model = options.model || CHAT_MODEL;
   const sessionHistory = getSessionHistory(options.sessionId);
   
   const messages: ChatCompletionMessageParam[] = [
@@ -931,7 +932,7 @@ export async function runChatToolsConversation(options: {
 
   for (let step = 0; step < maxSteps; step++) {
     const completion = await client.chat.completions.create({
-      model: CHAT_MODEL,
+      model: model,
       temperature: 0,
       tool_choice: "auto",
       tools: CHAT_COMPLETION_TOOLS,

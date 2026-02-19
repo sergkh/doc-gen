@@ -3,6 +3,9 @@ import toast from "react-hot-toast";
 import type { Specialty } from "@/stores/models";
 import { loadAllSpecialties } from "../specialties";
 import { formatDisciplineCode } from "../courses";
+import { AVAILABLE_MODELS } from "../../ai/models";
+
+const DEFAULT_MODEL = "gpt-4o-mini";
 
 type ChatAction =
   | "disciplines_by_sk"
@@ -119,6 +122,7 @@ export default function ChatPage() {
   const [expandedToolHistory, setExpandedToolHistory] = useState<Record<string, boolean>>({});
   const [sessionId, setSessionId] = useState<string>("");
   const [disciplineContext, setDisciplineContext] = useState<DisciplineContext>(null);
+  const [model, setModel] = useState<string>(DEFAULT_MODEL);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -199,6 +203,7 @@ export default function ChatPage() {
           specialtyId: Number(specialtyId),
           message: trimmed,
           apiKey: apiKey || undefined,
+          model,
         }),
       });
 
@@ -270,6 +275,17 @@ export default function ChatPage() {
                 Дисципліна: {disciplineContext.okNo ? `ОК${disciplineContext.okNo} ` : ""}{disciplineContext.courseName}
               </div>
             )}
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
+            >
+              {AVAILABLE_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
             <select
               value={specialtyId}
               onChange={(e) => setSpecialtyId(e.target.value)}
