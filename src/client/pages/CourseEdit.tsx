@@ -1,4 +1,4 @@
-import type { Course, Teacher, ShortCourseInfo, CourseResult } from "@/stores/models";
+import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "@/stores/models";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,6 +10,7 @@ function extractRawCourseName(displayName: string): string {
 }
 import { loadAllTeachers } from "../teachers";
 import { loadAllResults } from "../results";
+import { loadAllSpecialties } from "../specialties";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
 import AttestationsEditor from "../components/AttestationsEditor";
 import ResultsEditor from "../components/ResultsEditor";
@@ -27,6 +28,7 @@ export default function CourseEdit() {
   const navigate = useNavigate();
   const [item, setItem] = useState<Course | null>(null);
   const [teachers, setTeachers] = useState([] as Teacher[]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
   type CourseWithOk = ShortCourseInfo & { okNo: string | null; displayName: string };
@@ -41,6 +43,7 @@ export default function CourseEdit() {
   useEffect(() => { 
     loadAllTeachers().then(setTeachers).catch(console.error); 
     loadAllResults().then(setAllResults).catch(console.error);
+    loadAllSpecialties().then(setSpecialties).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -300,7 +303,7 @@ export default function CourseEdit() {
 
   const isValid = useMemo(() => {
     if (!item) return false;
-    return item.name.trim() !== "" && item.data.credits > 0 && item.data.hours > 0 && item.data.specialty.trim() !== "";
+    return item.name.trim() !== "" && item.data.credits > 0 && item.data.hours > 0 && item.specialty_id > 0;
   }, [item]);
 
   if (!item) {
@@ -383,16 +386,21 @@ export default function CourseEdit() {
                />
              </div>
              <div>
-               <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
-
-               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                 value={item.data.specialty} onChange={(e) => updateData({specialty: e.target.value})} />
-             </div>
-             <div>
-               <label className="block text-amber-50 font-bold mb-2">Напрям:</label>
-               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                 value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
-             </div>
+                <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
+                <select
+                  className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                  value={item.specialty_id}
+                  onChange={(e) => update({ specialty_id: Number(e.target.value) })}
+                >
+                  <option value="">-- Виберіть спеціальність --</option>
+                  { specialties.map(s => <option key={s.id} value={s.id}>{s.code} {s.name}</option>) }
+                </select>
+              </div>
+              <div>
+                <label className="block text-amber-50 font-bold mb-2">Напрям:</label>
+                <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
+                  value={item.data.area} onChange={(e) => updateData({area: e.target.value})} />
+              </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
