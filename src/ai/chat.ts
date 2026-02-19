@@ -174,6 +174,12 @@ function normalizeText(value: string): string {
   return value.toLowerCase().trim().replaceAll("'", "ʼ");
 }
 
+function extractOkNumber(value: string): string | null {
+  const normalized = value.toLowerCase().trim();
+  const match = normalized.match(/^(ок|вк)?(\d+(?:\.\d+)?)$/);
+  return match && match[2] ? match[2] : null;
+}
+
 function compareOkNo(codeA: string | null, codeB: string | null): number {
   if (codeA === codeB) return 0;
   if (codeA === null) return -1;
@@ -250,6 +256,7 @@ export async function disciplinesByTopic(
   query: string,
 ): Promise<{ items: TopicMatchItem[] }> {
   const normalizedQuery = normalizeText(query);
+  const okNumber = extractOkNumber(query);
 
   const coursesList = await listCoursesBySpecialty(specialtyId);
   const topics = await listTopicsByCourses(coursesList);
@@ -264,7 +271,8 @@ export async function disciplinesByTopic(
   const items: TopicMatchItem[] = [];
 
   for (const course of coursesList) {
-    const courseText = normalizeText([course.name, course.data?.description ?? ""].join("\n"));
+    const courseName = normalizeText(course.name);
+    const courseOkNo = normalizeText(course.data?.ok_no ?? "");
 
     const matchedTopics: string[] = [];
     const courseTopicsList = topicsByCourseId.get(course.id) ?? [];
@@ -276,7 +284,12 @@ export async function disciplinesByTopic(
       }
     }
 
-    const matchesCourse = courseText.includes(normalizedQuery);
+    let matchesCourse = false;
+    if (okNumber && courseOkNo === okNumber) {
+      matchesCourse = true;
+    } else if (courseName === normalizedQuery || courseName.includes(normalizedQuery)) {
+      matchesCourse = true;
+    }
 
     if (matchesCourse || matchedTopics.length > 0) {
       items.push({
@@ -340,13 +353,24 @@ export async function disciplineDetails(
   query: string,
 ): Promise<{ item: DisciplineDetailsItem | null }> {
   const normalizedQuery = normalizeText(query);
+  const okNumber = extractOkNumber(query);
   const coursesList = await listCoursesBySpecialty(specialtyId);
 
   let discipline: Course | null = null;
 
   for (const course of coursesList) {
-    const courseText = normalizeText([course.name, course.data?.ok_no ?? ""].join("\n"));
-    if (courseText === normalizedQuery) {
+    const courseName = normalizeText(course.name);
+    const courseOkNo = normalizeText(course.data?.ok_no ?? "");
+
+    if (okNumber && courseOkNo === okNumber) {
+      discipline = course;
+      break;
+    }
+    if (courseName === normalizedQuery) {
+      discipline = course;
+      break;
+    }
+    if (courseName.includes(normalizedQuery)) {
       discipline = course;
       break;
     }
@@ -370,10 +394,11 @@ export async function disciplineDetails(
   const topics = await courseTopics.byCourseIds([discipline.id]);
   const sortedTopics = topics
     .map((t) => ({
+      index: t.index,
       name: t.name,
       lection: t.lection,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    .sort((a, b) => a.index - b.index);
 
   const semesters = discipline.data?.attestations?.map((a) => a.semester) ?? [];
   const uniqueSemesters = [...new Set(semesters)].sort((a, b) => a - b);
@@ -625,13 +650,19 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
       }
 
       const normalizedQuery = normalizeText(query);
+      const okNumber = extractOkNumber(query);
       const coursesList = await listCoursesBySpecialty(specialtyId);
 
       let matchedCourse: Course | null = null;
       for (const course of coursesList) {
         const courseName = normalizeText(course.name);
         const courseOkNo = normalizeText(course.data?.ok_no ?? "");
-        if (courseName === normalizedQuery || courseOkNo === normalizedQuery || courseName.includes(normalizedQuery)) {
+
+        if (okNumber && courseOkNo === okNumber) {
+          matchedCourse = course;
+          break;
+        }
+        if (courseName === normalizedQuery || courseName.includes(normalizedQuery)) {
           matchedCourse = course;
           break;
         }
@@ -733,12 +764,22 @@ const TOOL_REGISTRY: Record<string, ChatTool> = {
 
       if (!context && courseQuery) {
         const normalizedQuery = normalizeText(courseQuery);
+        const okNumber = extractOkNumber(courseQuery);
         const coursesList = await listCoursesBySpecialty(specialtyId);
 
         for (const course of coursesList) {
           const courseName = normalizeText(course.name);
           const courseOkNo = normalizeText(course.data?.ok_no ?? "");
-          if (courseName === normalizedQuery || courseOkNo === normalizedQuery || courseName.includes(normalizedQuery)) {
+
+          if (okNumber && courseOkNo === okNumber) {
+            context = {
+              courseId: course.id,
+              courseName: course.name,
+              okNo: course.data?.ok_no ?? null,
+            };
+            break;
+          }
+          if (courseName === normalizedQuery || courseName.includes(normalizedQuery)) {
             context = {
               courseId: course.id,
               courseName: course.name,
