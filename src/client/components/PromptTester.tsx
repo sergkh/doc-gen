@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronUp, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faSpinner, faSave } from "@fortawesome/free-solid-svg-icons";
 import type { Prompt, KeyValue, CourseTopic, PromptResult } from "@/stores/models";
 import { loadAllCoursesBrief } from "@/client/courses";
 
@@ -52,6 +52,8 @@ export default function PromptTester({
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<PromptResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem("openai_api_key");
@@ -61,6 +63,7 @@ export default function PromptTester({
   useEffect(() => {
     setTestResult(null);
     setTestError(null);
+    setSaveSuccess(false);
   }, [prompt]);
 
   const courseOptions = useMemo(() => {
@@ -213,6 +216,7 @@ export default function PromptTester({
     setIsTesting(true);
     setTestError(null);
     setTestResult(null);
+    setSaveSuccess(false);
 
     try {
       const response = await fetch(endpoint, {
@@ -247,6 +251,49 @@ export default function PromptTester({
     if (!field.trim() || !systemPrompt.trim() || !userPrompt.trim()) return false;
     return true;
   }, [isTesting, selectedCourseId, selectedTopicId, promptType, field, systemPrompt, userPrompt]);
+
+  const handleSaveResult = async () => {
+    if (!testResult || !selectedCourseId) return;
+
+    const courseId = Number.parseInt(selectedCourseId, 10);
+    if (Number.isNaN(courseId)) return;
+
+    let endpoint = `/api/courses/${courseId}/save-prompt-result`;
+
+    if (promptType === "topic") {
+      if (!selectedTopicId) return;
+      const topicId = Number.parseInt(selectedTopicId, 10);
+      if (Number.isNaN(topicId)) return;
+      endpoint = `/api/courses/${courseId}/topics/${topicId}/save-prompt-result`;
+    }
+
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          field: testResult.field,
+          item: testResult.item,
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Не вдалося зберегти результат");
+      }
+
+      setSaveSuccess(true);
+    } catch (error) {
+      setTestError(error instanceof Error ? error.message : "Сталася невідома помилка при збереженні");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="border-t border-amber-50/20 pt-3">
@@ -344,6 +391,26 @@ export default function PromptTester({
 
           {testResult && (
             <div className="bg-zinc-900 border border-amber-50/30 rounded-lg p-3 text-left">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-amber-50 font-bold text-sm">Результат</div>
+                <button
+                  type="button"
+                  onClick={handleSaveResult}
+                  disabled={isSaving || saveSuccess}
+                  className={`flex items-center gap-2 px-3 py-1 rounded text-sm font-semibold transition-colors ${
+                    saveSuccess
+                      ? "text-green-600 cursor-default"
+                      : "text-amber-50 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                  }`}
+                  title={saveSuccess ? "Збережено" : "Зберегти результат до дисципліни/теми"}
+                >
+                  <FontAwesomeIcon icon={isSaving ? faSpinner : faSave } />
+                </button>
+              </div>
+              <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto mb-4">
+                {formatResult(testResult)}
+              </pre>
+
               <div className="text-amber-50 font-bold text-sm mb-2">Системний промпт</div>
               <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto">
                 {testResult.system_prompt || "Немає"}
@@ -352,11 +419,6 @@ export default function PromptTester({
               <div className="text-amber-50 font-bold text-sm mb-2">Промпт</div>
               <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto">
                 {testResult.prompt || "Немає"}
-              </pre>
-
-              <div className="text-amber-50 font-bold text-sm mb-2">Результат</div>
-              <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto">
-                {formatResult(testResult)}
               </pre>
             </div>
           )}

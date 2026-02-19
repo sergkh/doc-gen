@@ -1,7 +1,6 @@
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
 import { courses, courseTopics } from "@/stores/db.ts";
 import { createOpenAIClient, retryWithBackoff } from "./common";
-import { formatPrompt } from "@/client/util/util";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
 
@@ -11,6 +10,20 @@ function deepEqual(a: any, b: any): boolean {
   } catch (e) {
     return false;
   }
+}
+
+export function formatPrompt(template: string, data: Record<string, any>): string {
+  if (!template) return template;
+
+  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
+    const path = key.trim().split('.'); // JSON path    
+
+    return path.reduce((o: Record<string, any>, fld: string) => {
+      const v = o[fld];
+      if (v === undefined) throw new Error(`Missing dependency: ${key.trim()}`);
+      return v;
+    }, data);
+  });
 }
 
 function packIntoObject(items: PromptResult[]): Record<string, any> {
@@ -114,7 +127,8 @@ export function runTopicPrompts(
     courseDescription: course.data.description ?? "",
     name: topic.name,
     lection: topic.lection || topic.name,
-    subtopics: topic.generated?.subtopics || state['subtopics'].items.join(", ")
+    subtopics: topic.generated?.subtopics || state['subtopics']?.items.join(", "),
+    course: course.generated // course generated data
   }));
 }
 

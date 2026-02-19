@@ -162,6 +162,54 @@ const generationApi = {
       return Response.json(results[0] ?? { error: "Failed to generate a prompt" });
     }
   },
+  "/api/courses/:courseId/save-prompt-result": {
+    async POST(req: BunRequest) {
+      const { courseId } = req.params as { courseId: number };
+      const body = await req.json() as { field: string; item: any };
+
+      if (!body.field?.trim()) {
+        return new Response("Field is required", { status: 400 });
+      }
+
+      const course = await courses.get(courseId);
+      if (!course) {
+        return new Response("Course not found", { status: 404 });
+      }
+
+      const generated = {
+        ...(course.generated || {}),
+        [body.field]: body.item
+      };
+
+      await courses.update({ ...course, generated });
+
+      return Response.json({ success: true, field: body.field });
+    }
+  },
+  "/api/courses/:courseId/topics/:topicId/save-prompt-result": {
+    async POST(req: BunRequest) {
+      const { courseId, topicId } = req.params as { courseId: number, topicId: number };
+      const body = await req.json() as { field: string; item: any };
+
+      if (!body.field?.trim()) {
+        return new Response("Field is required", { status: 400 });
+      }
+
+      const topic = await courseTopics.get(topicId);
+      if (!topic) {
+        return new Response("Topic not found", { status: 404 });
+      }
+
+      const generated = {
+        ...(topic.generated || {}),
+        [body.field]: body.item
+      };
+
+      await courseTopics.update({ ...topic, generated });
+
+      return Response.json({ success: true, field: body.field });
+    }
+  },
   "/api/jobs/:jobId": {
     async GET(req: BunRequest) {
       const { jobId } = req.params as { jobId: string };

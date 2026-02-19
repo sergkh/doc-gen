@@ -2,7 +2,7 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faPlus, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName, formatDisciplineCode, autofillCourseResults } from "../courses";
 
 function extractRawCourseName(displayName: string): string {
@@ -349,7 +349,22 @@ export default function CourseEdit() {
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="font-mono">Редагувати курс</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="font-mono">Редагувати курс</h1>
+            <div className="flex items-start justify-end gap-2">
+              {item?.id && (
+                <Link
+                  to={`/courses/${item.id}/generated`}
+                  className="inline-flex items-center text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                  aria-label="Редагувати згенеровані дані курсу"
+                  title="Редагувати згенеровані дані курсу"
+                >
+                  <FontAwesomeIcon icon={faEdit} />
+                  <span className="text-sm">Згенеровані дані</span>
+                </Link>
+              )}
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={handleSave}
@@ -373,24 +388,11 @@ export default function CourseEdit() {
 
         <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">          
-            <div>
+            <div className="col-span-2">
               <label className="block text-amber-50 font-bold mb-2">Назва:</label>
               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
                 value={item.name} onChange={(e) => update({name: e.target.value})} />
-            </div>
-            <div className="flex items-start justify-end gap-2">
-              {item?.id && (
-                <Link
-                  to={`/courses/${item.id}/generated`}
-                  className="inline-flex items-center gap-2 text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                  aria-label="Редагувати згенеровані дані курсу"
-                  title="Редагувати згенеровані дані курсу"
-                >
-                  <FontAwesomeIcon icon={faEdit} />
-                  <span className="text-sm">Згенеровані дані</span>
-                </Link>
-              )}
-            </div>
+            </div>            
             <div>
               <label className="block text-amber-50 font-bold mb-2">Кредити:</label>
               <input className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
