@@ -1,6 +1,6 @@
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
 import { courses, courseTopics } from "@/stores/db.ts";
-import { createOpenAIClient, retryWithBackoff } from "./common";
+import { createOpenAIClient, fixAItext, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
 import { formatPrompt } from "./prompt";
@@ -87,7 +87,7 @@ export async function runPrompts(
           });
         });
 
-        item = (response.output_parsed as { data: any }).data;
+        item = fixAItext((response.output_parsed as { data: any }).data);
 
         console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(item)}`);
       }

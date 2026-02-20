@@ -1,3 +1,4 @@
+import { text } from "node_modules/cheerio/dist/esm/api/manipulation";
 import OpenAI from "openai";
 
 export function createOpenAIClient(apiKey?: string | null): OpenAI {
@@ -62,4 +63,27 @@ export async function retryWithBackoff<T>(
   }
 
   throw lastError || new Error('Unknown error occurred during retry');
+}
+
+function fixAiStr(text: string): string {
+  return text.replaceAll('—', '–');
+}
+
+// Fixes AI text replacing common AI markings
+export function fixAItext<T>(data: T): T {
+  if (typeof data === 'string') {
+    return fixAiStr(data) as T;
+  } else if (Array.isArray(data)) {
+    return data.map(item => fixAItext(item)) as T;
+  } else if (typeof data === 'object' && data !== null) {
+    const result: any = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = fixAItext((data as any)[key]);
+      }
+    }
+    return result as T;
+  }
+  
+  return data;
 }
