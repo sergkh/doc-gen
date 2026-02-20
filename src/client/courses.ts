@@ -45,7 +45,9 @@ export async function loadAllCourses() {
 }
 
 export async function loadCoursesBySpecialty(specialtyId: number) {
-  const res = await fetch(`/api/courses?specialtyId=${specialtyId}`)
+  const url = `/api/courses?specialtyId=${specialtyId}`;
+
+  const res = await fetch(url)
 
   if (!res.ok) {
     throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
@@ -58,8 +60,8 @@ export async function loadCoursesBySpecialty(specialtyId: number) {
   return courses;
 }
 
-export async function loadAllCoursesWithTopics() {
-  const res = await fetch(`/api/courses?topics=true`)
+export async function loadAllCoursesWithTopics(specialtyId: number) {
+  const res = await fetch(`/api/courses?specialtyId=${specialtyId}&topics=true`)
 
   if (!res.ok) {
     throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
@@ -175,7 +177,7 @@ export async function deleteCourse(id: number): Promise<void> {
   }
 }
 
-export async function autofillCourseResults(courseId: number, type: "ЗК" | "СК" | "ПР"): Promise<{ id: number; reason: string }[]> {
+export async function autofillCourseResults(courseId: number, type: "ЗК" | "СК" | "РН"): Promise<{ id: number; reason: string }[]> {
   const res = await fetch(`/api/courses/${courseId}/results/autofill`, {
     method: "POST",
     headers: {

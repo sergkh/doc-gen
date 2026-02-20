@@ -250,7 +250,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     const {prerequisites, postrequisites} = await parsePreAndPostRequisites(description);
 
-    const results = await parseSylabusOrProgramResults(text);
+    const results = await parseSylabusOrProgramResults(text, specInfo.specialtyId);
     warnings.push(...results.warnings);
 
     // Parse topics from "ПЛАН ВИВЧЕННЯ НАВЧАЛЬНОЇ ДИСЦИПЛІНИ"
@@ -400,7 +400,7 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     const prerequisites: string[] = [];
     const postrequisites: string[] = [];
 
-    const results = await parseSylabusOrProgramResults(text);
+    const results = await parseSylabusOrProgramResults(text, specInfo.specialtyId);
     warnings.push(...results.warnings);
 
     const programPart = text.substring(
@@ -604,8 +604,8 @@ export async function file2text(filepath: string): Promise<string> {
 }
 
 
-async function parseSylabusOrProgramResults(text: string): Promise<{ ids: number[], warnings: string[] }> {
-  const allResults = await courseResults.all();
+async function parseSylabusOrProgramResults(text: string, specialty_id: number | null): Promise<{ ids: number[], warnings: string[] }> {
+  const allResults = specialty_id ? await courseResults.bySpecialty(specialty_id) : [];
   const warnings: string[] = [];
     
   const ids = Array.from(text.matchAll(/(ЗК|СК|РН|ПРН|ПР)\s?(\d+)\*?\.?\s(.*)[\.\n]/g)).map(m => {

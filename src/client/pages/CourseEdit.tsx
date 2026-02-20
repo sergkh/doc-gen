@@ -21,7 +21,7 @@ const RESULT_TYPES = {
   "РН": "Результати навчання"
 };
 
-type ResultType = "ЗК" | "СК" | "ПР";
+type ResultType = "ЗК" | "СК" | "РН";
 
 type DependencyField = "prerequisites" | "postrequisites";
 
@@ -36,7 +36,7 @@ export default function CourseEdit() {
   const [autofillLoading, setAutofillLoading] = useState<Record<ResultType, boolean>>({
     "ЗК": false,
     "СК": false,
-    "ПР": false
+    "РН": false
   });
   type CourseWithOk = ShortCourseInfo & { okNo: string | null; displayName: string };
 
@@ -508,8 +508,8 @@ export default function CourseEdit() {
                 availableResults={getAvailableResultsForType(type)}
                 onAdd={handleAddResult}
                 onRemove={handleRemoveResult}
-                onAutofill={item?.id && item.id > 0 ? () => handleAutofillResults(type === "РН" ? "ПР" : type) : undefined}
-                autofillLoading={autofillLoading[type === "РН" ? "ПР" : type]}
+                onAutofill={item?.id && item.id > 0 ? () => handleAutofillResults(type) : undefined}
+                autofillLoading={autofillLoading[type]}
               />
             ))}
             {renderDependencyEditor("prerequisites", "Пререквізити")}

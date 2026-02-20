@@ -123,7 +123,7 @@ export default function CoursesList() {
           <div className="flex items-start">
           <h1 className="font-mono px-2">Дисципліни</h1>
            <button
-             onClick={() => navigate("/results/matrix")}
+             onClick={() => navigate(`/results/matrix`)}
              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
              aria-label="Переглянути матрицю результатів"
              title="Матриця результатів"
@@ -131,7 +131,7 @@ export default function CoursesList() {
              <FontAwesomeIcon icon={faTableCells} />
            </button>
             <button
-             onClick={() => navigate("/courses/results")}
+             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/results`)}
              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
              aria-label="Переглянути дисципліни з результатами"
              title="Дисципліни з результатами"
@@ -139,7 +139,7 @@ export default function CoursesList() {
              <FontAwesomeIcon icon={faListCheck} />
            </button>
            <button
-             onClick={() => navigate("/courses/graph")}
+             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/graph`)}
              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
              aria-label="Переглянути граф залежностей дисциплін"
              title="Граф залежностей"
@@ -147,7 +147,7 @@ export default function CoursesList() {
              <FontAwesomeIcon icon={faSitemap} />
            </button>
            <button
-             onClick={() => navigate("/courses/summary")}
+             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/summary`)}
              className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
              aria-label="Переглянути зведення годин"
              title="Зведення годин"

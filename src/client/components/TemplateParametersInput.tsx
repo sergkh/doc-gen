@@ -3,7 +3,7 @@ import type { TemplateParameter } from "@/stores/models";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckDouble, faTrash } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
-import { formatPrompt } from "../util/util";
+import { formatPrompt } from "@/ai/prompt";
 
 interface TemplateParametersInputProps {
   parameters: TemplateParameter[];

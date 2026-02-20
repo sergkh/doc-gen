@@ -81,7 +81,23 @@ export default function PromptTester({
   useEffect(() => {
     const savedApiKey = localStorage.getItem("openai_api_key");
     if (savedApiKey) setTestApiKey(savedApiKey);
+    const savedCourseId = localStorage.getItem("prompt_tester_course_id");
+    if (savedCourseId) setSelectedCourseId(savedCourseId);
+    const savedTopicId = localStorage.getItem("prompt_tester_topic_id");
+    if (savedTopicId) setSelectedTopicId(savedTopicId);
   }, []);
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      localStorage.setItem("prompt_tester_course_id", selectedCourseId);
+    }
+  }, [selectedCourseId]);
+
+  useEffect(() => {
+    if (selectedTopicId) {
+      localStorage.setItem("prompt_tester_topic_id", selectedTopicId);
+    }
+  }, [selectedTopicId]);
 
   useEffect(() => {
     setTestResult(null);

@@ -198,20 +198,20 @@ export function App() {
            element={<GeneratorPage />}
          />
           <Route path="/courses" element={<CoursesList />} />
-          <Route path="/courses/summary" element={<CoursesSummary />} />
-          <Route path="/courses/results" element={<CoursesWithResults />} />
-          <Route path="/courses/graph" element={<CourseGraph />} />
+          <Route path="/specialties/:specialtyId/courses/summary" element={<CoursesSummary />} />
+          <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
+          <Route path="/specialties/:specialtyId/courses/graph" element={<CourseGraph />} />
 
-         <Route path="/courses/:id" element={<CourseEdit />} />
-         <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
-         <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
-         <Route path="/teachers" element={<TeachersList />} />
-         <Route path="/teachers/:id" element={<TeacherEdit />} />
-         <Route path="/specialties" element={<SpecialtiesList />} />
-         <Route path="/specialties/:id" element={<SpecialtyEdit />} />
-         <Route path="/results/matrix" element={<ResultsMatrix />} />
-         <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
-         <Route path="/results/:id" element={<ResultEdit />} />
+          <Route path="/courses/:id" element={<CourseEdit />} />
+          <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
+          <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
+          <Route path="/teachers" element={<TeachersList />} />
+          <Route path="/teachers/:id" element={<TeacherEdit />} />
+          <Route path="/specialties" element={<SpecialtiesList />} />
+          <Route path="/specialties/:id" element={<SpecialtyEdit />} />
+          <Route path="/results/matrix" element={<ResultsMatrix />} />
+          <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
+          <Route path="/results/:id" element={<ResultEdit />} />
           <Route path="/templates" element={<TemplatesList />} />
           <Route path="/templates/:id" element={<TemplateEdit />} />
           <Route path="/chat" element={<ChatPage />} />

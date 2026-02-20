@@ -3,6 +3,7 @@ import { courses, courseTopics } from "@/stores/db.ts";
 import { createOpenAIClient, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
+import { formatPrompt } from "./prompt";
 
 function deepEqual(a: any, b: any): boolean {
   try {
@@ -10,20 +11,6 @@ function deepEqual(a: any, b: any): boolean {
   } catch (e) {
     return false;
   }
-}
-
-export function formatPrompt(template: string, data: Record<string, any>): string {
-  if (!template) return template;
-
-  return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
-    const path = key.trim().split('.'); // JSON path    
-
-    return path.reduce((o: Record<string, any>, fld: string) => {
-      const v = o[fld];
-      if (v === undefined) throw new Error(`Missing dependency: ${key.trim()}`);
-      return v;
-    }, data);
-  });
 }
 
 function packIntoObject(items: PromptResult[]): Record<string, any> {
@@ -66,49 +53,56 @@ export async function runPrompts(
   const promptsToRun = prompts.filter(p => p.type === type);
 
   for (const prompt of promptsToRun) {
-    const systemPrompt = formatPrompt(prompt.system_prompt, contextProvider(results));
-    const formattedPrompt = formatPrompt(prompt.prompt, contextProvider(results));
+    try {
+      const systemPrompt = formatPrompt(prompt.system_prompt, contextProvider(state));
+      const formattedPrompt = formatPrompt(prompt.prompt, contextProvider(state));
 
-    let item: any | null = forceRecreate ? null : state[prompt.field] ?? null;
+      let item: any | null = forceRecreate ? null : state[prompt.field] ?? null;
 
-    if (item === null || (Array.isArray(item) && item.length === 0)) {
+      if (item === null || (Array.isArray(item) && item.length === 0)) {
 
-      console.log(`Running ${type} prompt ${prompt.field}`);
+        console.log(`Running ${type} prompt ${prompt.field}`);
 
-      const objFormat = z.object({
-        data: zodPromptFormat(prompt.format),
-      });      
+        const objFormat = z.object({
+          data: zodPromptFormat(prompt.format),
+        });      
 
-      const response = await retryWithBackoff(async () => {
-        return await client.responses.parse({
-          model: prompt.model,
-          input: [
-            {
-              role: "system",
-              content: systemPrompt
-            },
-            {
-              role: "user",
-              content: formattedPrompt
+        const response = await retryWithBackoff(async () => {
+          return await client.responses.parse({
+            model: prompt.model,
+            input: [
+              {
+                role: "system",
+                content: systemPrompt
+              },
+              {
+                role: "user",
+                content: formattedPrompt
+              }
+            ],
+            text: {
+              format: zodTextFormat(objFormat, "data"),
             }
-          ],
-          text: {
-            format: zodTextFormat(objFormat, "data"),
-          }
+          });
         });
-      });
 
-      item = (response.output_parsed as { data: any }).data;
+        item = (response.output_parsed as { data: any }).data;
 
-      console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(item)}`);
+        console.log(`Generating ${type} prompt ${prompt.field}:\nsystem> ${systemPrompt}\nuser> ${formattedPrompt}\n${prompt.model}>${JSON.stringify(item)}`);
+      }
+      
+      results.push({
+        field: prompt.field,
+        system_prompt: systemPrompt,
+        prompt: formattedPrompt,
+        item
+      } as PromptResult);
+
+      state[prompt.field] = item;
+    } catch(e) {
+      console.log(`Error running ${type} prompt ${prompt.field}. state: `, state, e);
+      throw e;
     }
-    
-    results.push({
-      field: prompt.field,
-      system_prompt: systemPrompt,
-      prompt: formattedPrompt,
-      item
-    } as PromptResult); 
   }
 
   return results;
@@ -118,17 +112,20 @@ export function runTopicPrompts(
   prompts: Prompt[],
   course: Course,
   topic: CourseTopic,
+  allTopics: CourseTopic[],
   apiKey: string | null,
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {
   return runPrompts(prompts, topic.generated || {}, "topic",  forceRecreate, apiKey, (state) => ({
+    ...topic.generated ?? {},
     ...state,
     courseName: course.name,
     courseDescription: course.data.description ?? "",
     name: topic.name,
     lection: topic.lection || topic.name,
+    topics: allTopics.map(t => t.name).join(", "),
     subtopics: topic.generated?.subtopics ?? state['subtopics']?.items.join(", ") ?? '',
-    course: course.generated || {} // course generated data
+    course: course
   }));
 }
 
@@ -140,11 +137,13 @@ export function runCoursePrompts(
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {  
   return runPrompts(prompts, course.generated || {}, "course", forceRecreate, apiKey, (state) => ({
+    ...course.generated ?? {},
     ...state,
     courseName: course.name,
     courseDescription: course.data.description ?? "",
     topics: courseTopics.map(t => t.name).join(", "),
-    subtopics: courseTopics.flatMap(t => t.generated?.subtopics || []).join(", ")
+    subtopics: courseTopics.flatMap(t => t.generated?.subtopics || []).join(", "),
+    course: course
   }));
 }
 
@@ -160,7 +159,7 @@ export async function generateCourseInfo(
   
   // do not parallelize as it might be rate limited by the OpenAI API
   for (const topic of topics) {
-    const prompts = packIntoObject(await runTopicPrompts(template.prompts, course, topic, key));
+    const prompts = packIntoObject(await runTopicPrompts(template.prompts, course, topic, topics, key));
 
     const updated = {
       ...topic,

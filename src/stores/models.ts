@@ -2,7 +2,7 @@ export type CourseResult = {
   id: number,
   no: number,
   specialty_id: number | null,
-  type: string,
+  type: "ЗК" | "СК" | "РН" | "ІК",
   name: string
 }
 
@@ -23,7 +23,8 @@ export type CourseSemesters = {
 }
 
 export type CourseData = {
-  ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting 
+  ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting
+  practice?: boolean, 
   optional: boolean,
   type?: "lesson" | "practice",
   control_type: "exam" | "credit" | "both",

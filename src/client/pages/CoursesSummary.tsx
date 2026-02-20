@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Course, CourseTopic } from "@/stores/models";
-import { formatDisciplineCode, loadAllCoursesWithTopics } from "../courses";
+import { formatDisciplineCode, loadAllCoursesWithTopics, loadCoursesBySpecialty } from "../courses";
+import { useParams } from "react-router-dom";
 
 type CourseWithTopics = Course & { topics: CourseTopic[] };
 
@@ -42,16 +43,23 @@ const calculateCourseHours = (course: CourseWithTopics): CourseHoursSummary => {
 };
 
 export default function CoursesSummary() {
+  const { specialtyId } = useParams<{ specialtyId: string }>()
   const [courses, setCourses] = useState<CourseWithTopics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!specialtyId) {
+      setError("Не вказано спеціальність");
+      setIsLoading(false);
+      return;
+    }
+
     const fetchCourses = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await loadAllCoursesWithTopics();
+        const data = await loadAllCoursesWithTopics(Number(specialtyId));
         setCourses(data);
       } catch (err) {
         console.error("Failed to load courses summary:", err);
@@ -62,7 +70,7 @@ export default function CoursesSummary() {
     };
 
     fetchCourses();
-  }, []);
+  }, [specialtyId]);
 
   const summary = useMemo(() => {
     const perCourse = courses.map(calculateCourseHours);

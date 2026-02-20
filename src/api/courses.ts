@@ -356,11 +356,9 @@ const coursesApi = {
       const body = await req.json() as { type: string };
       const resultType = body.type;
 
-      if (!resultType || !["ЗК", "СК", "ПР"].includes(resultType)) {
-        return new Response("Invalid result type. Expected 'ЗК', 'СК', or 'ПР'", { status: 400 });
-      }
-
-      console.log(`Autofilling ${resultType} results for course ID:`, courseId);
+      if (!resultType || !["ЗК", "СК", "РН"].includes(resultType)) {
+        return new Response("Invalid result type. Expected 'ЗК', 'СК', or 'РН'", { status: 400 });
+      }     
 
       try {
         const course = await courses.get(courseId);
@@ -378,12 +376,14 @@ const coursesApi = {
         const topics = await courseTopics.all(courseId);
         const topicNames = topics.map(t => t.name);
 
+        console.log(`Autofilling ${resultType} from (${filteredResults.length}) results for course ID:`, courseId);
+
         const matchedResults = await autofillCourseResults(
           filteredResults,
           course.name,
           course.data.description || "",
           topicNames,
-          "gpt-4o-mini",
+          "gpt-4o",
           null
         );
 

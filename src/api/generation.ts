@@ -1,6 +1,6 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, courseTopics, specialties, templates } from "@/stores/db";
-import type { Course, Prompt, Template } from "@/stores/models";
+import type { Course, GeneratedCourseData, GeneratedTopicData, Prompt, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
 import { runCoursePrompts, runTopicPrompts } from "@/ai/generator";
@@ -180,10 +180,12 @@ const generationApi = {
         return jsonError("Тему не знайдено", 404);
       }
 
+      const allTopics = await courseTopics.all(courseId);
+
       console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
 
       try {
-        const results = await runTopicPrompts([prompt], course, topic, apiKey ?? null, true);
+        const results = await runTopicPrompts([prompt], course, topic, allTopics, apiKey ?? null, true);
         console.log(`Prompt results for topic ${topic.name}:`, results);
         return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
       } catch (error) {
@@ -215,7 +217,9 @@ const generationApi = {
       const generated = {
         ...(course.generated || {}),
         [body.field]: body.item
-      };
+      } as GeneratedCourseData;
+
+      console.log(`Saving prompt result for course: ${course.name}, field: ${body.field}, item:`, body.item);
 
       await courses.update({ ...course, generated });
 
@@ -241,7 +245,9 @@ const generationApi = {
         return jsonError("Тему не знайдено", 404);
       }
 
-      const generated = {
+      console.log(`Saving prompt result for topic: ${topic.name} / course: ${courseId}, field: ${body.field}, item:`, body.item);
+
+      const generated: GeneratedTopicData = {
         ...(topic.generated || {}),
         [body.field]: body.item
       };

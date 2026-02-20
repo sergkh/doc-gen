@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { describe, it, expect } from "bun:test";
-import { parseSpecialtyAndArea } from "./parse";
 import { parseOPPResults, parseOPP } from "./opp-results";
 
 describe("parseOPPResults", () => {
@@ -167,78 +166,6 @@ describe("parseOPPResults", () => {
       const рн3 = рнResults.find(r => r.no === 3);
       expect(рн3).toBeDefined();
       expect(рн3?.name).toContain("Використовувати знання закономірностей");
-    });
-  });
-
-  describe("parseSpecialtyAndArea", () => {
-    it("should parse specialty and area from program text", () => {
-      const text = `
-РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
-Інтелектуальний аналіз даних
-Рівень вищої освіти Перший (бакалаврський)
-Галузь знань 12 Інформаційні технології
-Спеціальність 122 «Комп’ютерні науки» 
-Освітньо-професійна програма Комп’ютерні науки
-  `;
-      const [specialty, area] = parseSpecialtyAndArea(text);
-      expect(specialty).toBe("122 – Комп’ютерні науки");
-      expect(area).toBe("12 – Інформаційні технології");
-    });
-
-    it("should parse specialty and area from program text with F", () => {
-      const text = `
-РОБОЧА ПРОГРАМА НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
-Інтелектуальний аналіз даних
-Рівень вищої освіти Перший (бакалаврський)
-Галузь знань F Інформаційні технології
-Спеціальність F3 Комп’ютерні науки
-Освітньо-професійна програма Комп’ютерні науки
-  `;
-      const [specialty, area] = parseSpecialtyAndArea(text);
-      expect(specialty).toBe("F3 – Комп’ютерні науки");
-      expect(area).toBe("F – Інформаційні технології");
-    });
-
-    it("should parse specialty and area from sylabus text", () => {
-      const text = `
-СИЛАБУС 
-НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
-«ІНТЕЛЕКТУАЛЬНИЙ АНАЛІЗ ДАНИХ»
-Рівень вищої освіти: Перший (бакалаврський)
-Спеціальність: 122 Комп’ютерні науки
-Рік навчання:   4-й,  семестр  7-й
-Кількість кредитів ECTS:   3 кредити
-  `;
-      const [specialty, area] = parseSpecialtyAndArea(text);
-      expect(specialty).toBe("122 – Комп’ютерні науки");
-      expect(area).toBe("12 – Інформаційні технології");
-    });
-
-    it("should parse specialty and area from sylabus text with F", () => {
-      const text = `
-СИЛАБУС 
-НАВЧАЛЬНОЇ ДИСЦИПЛІНИ
-«ІНТЕЛЕКТУАЛЬНИЙ АНАЛІЗ ДАНИХ»
-Рівень вищої освіти: Перший (бакалаврський)
-Спеціальність: F3 Комп’ютерні науки
-Рік навчання:   4-й,  семестр  7-й
-Кількість кредитів ECTS:   3 кредити
-  `;
-      const [specialty, area] = parseSpecialtyAndArea(text);
-      expect(specialty).toBe("122 – Комп’ютерні науки");
-      expect(area).toBe("12 – Інформаційні технології");
-    });
-
-    it("should parse specialty and area from program text with 12/F types", () => {
-      const text = `
-Рівень вищої освіти Перший (бакалаврський)
-Галузь знань 12 Інформаційні технології  / F Інформаційні технології
-Спеціальність 122 «Комп’ютерні науки» / F3 «Комп’ютерні науки» 
-Освітньо-професійна програма Комп’ютерні науки
-  `;
-      const [specialty, area] = parseSpecialtyAndArea(text);
-      expect(specialty).toBe("12 Інформаційні технології  / F Інформаційні технології");
-      expect(area).toBe("12 Інформаційні технології / F Інформаційні технології");
     });
   });
 

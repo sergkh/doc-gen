@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Tooltip } from 'react-tooltip';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen, faSearch, faExclamationTriangle, faChevronDown, faChevronUp, faCheck } from "@fortawesome/free-solid-svg-icons";
-import type { Course, CourseResult, CourseTopic } from "@/stores/models";
-import { formatDisciplineCode, loadAllCoursesWithTopics, normalizeCourseName } from "../courses";
-import { loadAllResults } from "../results";
-import { text } from "node_modules/cheerio/dist/esm/api/manipulation";
+import type { Course, CourseResult, CourseTopic, Specialty } from "@/stores/models";
+import { formatDisciplineCode, loadAllCoursesWithTopics, loadCoursesBySpecialty, normalizeCourseName } from "../courses";
+import { loadResultsBySpecialty } from "../results";
+import { loadSpecialty } from "../specialties";
 
 const RESULT_TYPES = {
   "ЗК": "Загальні компетентності",
@@ -105,22 +105,35 @@ function validatePostPreRequisites(courses: (Course & { topics: CourseTopic[] })
 
 export default function CoursesWithResults() {
   const navigate = useNavigate();
+  const { specialtyId } = useParams<{ specialtyId: string }>();
 
   const [courses, setCourses] = useState<(Course & ExtendedCourse)[]>([]);
   const [results, setResults] = useState<CourseResult[]>([]);
+  const [specialty, setSpecialty] = useState<Specialty | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState("");
   const [expandedWarnings, setExpandedWarnings] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
+    if (!specialtyId) {
+      setError("Не вказано спеціальність");
+      setIsLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        setError(null);        
-        const [coursesData, resultsData] = await Promise.all([ loadAllCoursesWithTopics(), loadAllResults()]);
-        setCourses(validatePostPreRequisites(coursesData));
+        setError(null);
+        const [coursesData, resultsData, specialtyData] = await Promise.all([
+          loadAllCoursesWithTopics(Number(specialtyId)),
+          loadResultsBySpecialty(Number(specialtyId)),
+          loadSpecialty(specialtyId)
+        ]);
+        setCourses(validatePostPreRequisites(coursesData as (Course & { topics: CourseTopic[] })[]));
         setResults(resultsData);
+        setSpecialty(specialtyData);
       } catch (err) {
         console.error("Error loading data:", err);
         setError("Не вдалося завантажити дані");
@@ -128,9 +141,9 @@ export default function CoursesWithResults() {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
-  }, []);
+  }, [specialtyId]);
 
   // Create a map of result IDs to result objects for quick lookup
   const resultIdMap = useMemo(() => {
@@ -165,10 +178,10 @@ export default function CoursesWithResults() {
         <div className="mt-8 mx-auto w-full text-left">
           <div className="text-red-500 font-mono">{error}</div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => navigate("/specialties")}
             className="mt-4 bg-zinc-900 border-2 border-amber-50 rounded-xl px-4 py-2 text-amber-50 font-mono hover:bg-zinc-800 transition-colors"
           >
-            Спробувати ще раз
+            Повернутися до спеціальностей
           </button>
         </div>
       </div>
@@ -179,12 +192,17 @@ export default function CoursesWithResults() {
     <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
       <Tooltip id="my-tooltip" />
       <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
-         <div className="flex justify-between items-center">
-           <div className="flex-1">
-             <h1 className="font-mono text-2xl">Дисципліни з результатами</h1>
-           </div>
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
+              <h1 className="font-mono text-2xl">Дисципліни з результатами</h1>
+              {specialty && (
+                <div className="text-amber-200 font-mono text-sm mt-1">
+                  {specialty.code} – {specialty.name}
+                </div>
+              )}
+            </div>
  
-           <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 max-w-md">
             <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-200" />
             <input
               type="text"
