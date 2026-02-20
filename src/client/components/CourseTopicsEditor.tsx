@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { Reorder, useDragControls } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
+import { generateCourseTopics, type AIGeneratedTopic } from "../courses";
 
 interface CourseTopicsEditorProps {
   courseId: number;
@@ -230,6 +231,8 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [topicSrsHours, setTopicSrsHours] = useState<number>(0);
   const [topicInabscentiaSrsHours, setTopicInabscentiaSrsHours] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
+  const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
   useEffect(() => {
     if (courseId) {
@@ -269,7 +272,7 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
           srs_hours: 0
         }
       },
-      generated: null
+      generated: {}
     });
     setTopicName("");
     setTopicSubtopics("");
@@ -677,17 +680,132 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     }
   };
 
+  const handleGenerateTopics = async () => {
+    setAiTopicsLoading(true);
+    try {
+      const topics = await generateCourseTopics(courseId);
+      setGeneratedTopics(topics);
+    } catch (error) {
+      console.error("Error generating topics:", error);
+      alert("Не вдалося згенерувати теми");
+    } finally {
+      setAiTopicsLoading(false);
+    }
+  };
+
+  const handleAddGeneratedTopic = async (generatedTopic: AIGeneratedTopic) => {
+    try {
+      const newIndex = topics.length + 1;
+      const topicData: CourseTopic = {
+        id: 0,
+        course_id: courseId,
+        index: newIndex,
+        name: generatedTopic.name,
+        lection: "",
+        data: {
+          attestation: 1,
+          fulltime: {
+            hours: 2,
+            practical_hours: 0,
+            srs_hours: 0
+          },
+          inabscentia: {
+            hours: 0,
+            practical_hours: 0,
+            srs_hours: 0
+          }
+        },
+        generated: {
+          subtopics: generatedTopic.subtopics,
+          keywords: [],
+          topics: [],
+          referats: [],
+          quiz: [],
+          keyQuestions: []
+        }
+      };
+
+      const response = await fetch(`/api/courses/${courseId}/topics`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(topicData),
+      });
+
+      if (response.ok) {
+        await fetchTopics(courseId);
+        setGeneratedTopics(prev => prev?.filter(t => t.name !== generatedTopic.name) || null);
+      } else {
+        throw new Error("Failed to add topic");
+      }
+    } catch (error) {
+      console.error("Error adding generated topic:", error);
+      alert("Не вдалося додати тему");
+    }
+  };
+
+  const handleAddAllGeneratedTopics = async () => {
+    if (!generatedTopics || generatedTopics.length === 0) return;
+
+    for (const generatedTopic of generatedTopics) {
+      await handleAddGeneratedTopic(generatedTopic);
+    }
+  };
+
   return (
     <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-amber-50 font-bold text-lg">Теми курсу:</h2>
-        <button
-          onClick={handleAddTopic}
-          className="text-amber-50 hover:text-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
-        >
-          <FontAwesomeIcon icon={faPlus} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleGenerateTopics}
+            disabled={aiTopicsLoading}
+            className="text-amber-50 hover:text-amber-200 disabled:opacity-50 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-opacity"
+            title="Згенерувати теми за допомогою AI"
+          >
+            <FontAwesomeIcon icon={faWandMagicSparkles} spin={aiTopicsLoading} />
+          </button>
+          <button
+            onClick={handleAddTopic}
+            className="text-amber-50 hover:text-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
+        </div>
       </div>
+
+      {generatedTopics && generatedTopics.length > 0 && (
+        <div className="bg-zinc-800 border border-amber-200 rounded-lg p-3 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-amber-200 font-bold text-sm">Згенеровані теми:</h3>
+            <button
+              onClick={handleAddAllGeneratedTopics}
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-bold"
+            >
+              Додати всі
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {generatedTopics.map((topic, index) => (
+              <div key={index} className="flex items-start justify-between gap-2 bg-zinc-900 rounded p-2">
+                <div className="flex-1">
+                  <div className="text-amber-50 font-bold text-sm">{topic.name}</div>
+                  {topic.subtopics.length > 0 && (
+                    <div className="text-amber-50 opacity-60 text-xs mt-1">
+                      {topic.subtopics.join(", ")}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleAddGeneratedTopic(topic)}
+                  className="bg-amber-500 hover:bg-amber-400 text-black px-2 py-0.5 rounded text-xs font-bold shrink-0"
+                >
+                  Додати
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {topics.length === 0 && !editingTopic ? (
         <div className="text-amber-50 opacity-60">Немає тем</div>

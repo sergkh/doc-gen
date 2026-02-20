@@ -55,3 +55,55 @@ ${results.map(r => `[${r.id}] ${r.no}. ${r.name}`).join("\n")}
 
   return response?.matchedResults ?? [];
 }
+
+const generatedTopicsSchema = z.object({
+  topics: z.array(z.object({
+    name: z.string(),
+    subtopics: z.array(z.string())
+  }))
+});
+
+export type GeneratedTopic = {
+  name: string,
+  subtopics: string[]
+};
+
+export async function generateCourseTopics(
+  disciplineName: string,
+  description: string,
+  specialtyName: string,
+  credits: number,
+  model: string = "gpt-4o-mini",
+  apiKey: string | null = null
+): Promise<GeneratedTopic[]> {
+  const systemPrompt = `Ти - експерт з розробки освітніх програм для університетських дисциплін.
+Твоя задача - створити список тем для навчальної дисципліни.
+
+Правила:
+1. Кількість тем має відповідати кількості кредитів (приблизно 3-4 теми на 1 кредит)
+2. Кожна тема має мати 2-4 підтеми
+3. Теми мають охоплювати весь зміст дисципліни
+4. Теми мають бути логічно пов'язані між собою
+5. Враховуй спеціальність, для якої читається дисципліна
+6. Назви тем мають бути короткими та інформативними`;
+
+  const text = `Дисципліна: ${disciplineName}
+
+Опис: ${description}
+
+Спеціальність: ${specialtyName}
+
+Кількість кредитів: ${credits}
+
+Згенеруй список тем та підтем для цієї дисципліни.`;
+
+  const response = await extractInformationAI(
+    systemPrompt,
+    text,
+    generatedTopicsSchema,
+    model,
+    apiKey
+  );
+
+  return response?.topics ?? [];
+}

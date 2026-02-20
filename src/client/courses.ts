@@ -192,3 +192,20 @@ export async function autofillCourseResults(courseId: number, type: "ЗК" | "С
 
   return await res.json();
 }
+
+export type AIGeneratedTopic = {
+  name: string;
+  subtopics: string[];
+};
+
+export async function generateCourseTopics(courseId: number): Promise<AIGeneratedTopic[]> {
+  const res = await fetch(`/api/courses/${courseId}/topics/generate`, {
+    method: "POST"
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка генерації тем: ${res.status}`);
+  }
+
+  return await res.json();
+}
