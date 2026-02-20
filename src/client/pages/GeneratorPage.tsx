@@ -27,6 +27,8 @@ interface SavedJob {
 
 const STORAGE_KEY = "generationJob";
 const API_KEY_STORAGE_KEY = "openai_api_key";
+const SELECTED_COURSE_KEY = "generator_selectedCourse";
+const SELECTED_TEMPLATE_KEY = "generator_selectedTemplate";
 
 export default function GeneratorPage() {
   const navigate = useNavigate();
@@ -129,6 +131,16 @@ export default function GeneratorPage() {
         ]);
         setCourses(allCourses);
         setTemplates(allTemplates);
+
+        const savedCourseId = localStorage.getItem(SELECTED_COURSE_KEY);
+        const savedTemplateId = localStorage.getItem(SELECTED_TEMPLATE_KEY);
+
+        if (savedCourseId && allCourses.some(c => c.id.toString() === savedCourseId)) {
+          setSelectedCourseId(savedCourseId);
+        }
+        if (savedTemplateId && allTemplates.some(t => t.id.toString() === savedTemplateId)) {
+          setSelectedTemplateId(savedTemplateId);
+        }
       } catch (error) {
         console.error("Failed to load data:", error);
         toast.error("Помилка завантаження даних");
@@ -206,6 +218,18 @@ export default function GeneratorPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      localStorage.setItem(SELECTED_COURSE_KEY, selectedCourseId);
+    }
+  }, [selectedCourseId]);
+
+  useEffect(() => {
+    if (selectedTemplateId) {
+      localStorage.setItem(SELECTED_TEMPLATE_KEY, selectedTemplateId);
+    }
+  }, [selectedTemplateId]);
 
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);

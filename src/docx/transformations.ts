@@ -103,12 +103,12 @@ export async function loadFullCourseInfo(
   // update course specialty and area strings
   if (course.data.specialty_mode === 'both') {
     course.data.specialty = `${specialty.old_code} ${specialty.old_name} / ${specialty.code} ${specialty.name}`;  
-  }else if (course.data.specialty_mode === 'old_only') {
+  }else if (course.data.specialty_mode === 'old_only' && specialty.old_code && specialty.old_name) {
     course.data.specialty = `${specialty.old_code} ${specialty.old_name}`;  
   } else {
     course.data.specialty = `${specialty.code} ${specialty.name}`;
   }
-  
+
   course.data.area = `${specialty.area_code} ${specialty.area}`;
   
   // Generate course info - this is the slowest part (as might use AI)

@@ -49,15 +49,16 @@ export async function runPrompts(
 ): Promise<PromptResult[]> {
   const client = createOpenAIClient(apiKey);
   const results: PromptResult[] = [];
+  const localState = {...state};
 
   const promptsToRun = prompts.filter(p => p.type === type);
 
   for (const prompt of promptsToRun) {
     try {
-      const systemPrompt = formatPrompt(prompt.system_prompt, contextProvider(state));
-      const formattedPrompt = formatPrompt(prompt.prompt, contextProvider(state));
+      const systemPrompt = formatPrompt(prompt.system_prompt, contextProvider(localState));
+      const formattedPrompt = formatPrompt(prompt.prompt, contextProvider(localState));
 
-      let item: any | null = forceRecreate ? null : state[prompt.field] ?? null;
+      let item: any | null = forceRecreate ? null : localState[prompt.field] ?? null;
 
       if (item === null || (Array.isArray(item) && item.length === 0)) {
 
@@ -98,9 +99,9 @@ export async function runPrompts(
         item
       } as PromptResult);
 
-      state[prompt.field] = item;
+      localState[prompt.field] = item;
     } catch(e) {
-      console.log(`Error running ${type} prompt ${prompt.field}. state: `, state, e);
+      console.log(`Error running ${type} prompt ${prompt.field}. state: `, localState, e);
       throw e;
     }
   }
@@ -116,7 +117,7 @@ export function runTopicPrompts(
   apiKey: string | null,
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {
-  return runPrompts(prompts, topic.generated || {}, "topic",  forceRecreate, apiKey, (state) => ({
+  return runPrompts(prompts, topic.generated ?? {}, "topic", forceRecreate, apiKey, (state) => ({
     ...topic.generated ?? {},
     ...state,
     courseName: course.name,
@@ -136,7 +137,7 @@ export function runCoursePrompts(
   apiKey: string | null,
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {  
-  return runPrompts(prompts, course.generated || {}, "course", forceRecreate, apiKey, (state) => ({
+  return runPrompts(prompts, course.generated ?? {}, "course", forceRecreate, apiKey, (state) => ({
     ...course.generated ?? {},
     ...state,
     courseName: course.name,
@@ -172,6 +173,7 @@ export async function generateCourseInfo(
     progress((updatedTopics.length + 1) / topics.length * 100);
     
     if (!deepEqual(updated, topic)) {
+      console.log(`\n\n\nSaving updated topic with generated fields ${Object.keys(updated.generated).join(", ")}\n\n\n`);
       await courseTopics.update(updated);  
     }
 
