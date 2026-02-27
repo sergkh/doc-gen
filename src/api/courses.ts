@@ -224,9 +224,9 @@ const coursesApi = {
                     ...dbTeacher, 
                     // Syllabus has full teacher name, while program has only short one, so update it
                     name: dbTeacher.name.length < course.parsed_teacher.name.length ? course.parsed_teacher.name : dbTeacher.name,
-                    position: course.parsed_teacher.position || dbTeacher.position,
-                    email: course.parsed_teacher.email || dbTeacher.email,
-                    academic_title: course.parsed_teacher.academic_title || dbTeacher.academic_title
+                    position: course.parsed_teacher.position ?? dbTeacher.position,
+                    email: course.parsed_teacher.email ?? dbTeacher.email,
+                    academic_title: course.parsed_teacher.academic_title ?? dbTeacher.academic_title
                   };
                   await teachers.update(updatedTeacher);                  
                 }

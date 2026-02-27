@@ -1,14 +1,14 @@
 import mammoth from 'mammoth';
 import fs from 'fs/promises';
 import { z } from "zod";
-import type { Course, CourseSemesters, CourseTopic, ParsedData, Teacher } from '@/stores/models';
+import type { AcademicTitle, Course, CourseSemesters, CourseTopic, ParsedData, Teacher, TeacherPosition } from '@/stores/models';
 import { PDFParse } from 'pdf-parse';
 import path from 'path';
 import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
-import { dropDot, genericNormalize, noQuotes, normalizeWhitespaces } from '@/parsing/utils';
+import { dropDot, genericNormalize  } from '@/parsing/utils';
 
 // Methods to parse syllabuses and programs from .docx and .pdf files
 
@@ -42,6 +42,16 @@ function normalizeLiterature(text: string): string[] {
 
 function filterAbsent(...arr: number[]): number[] {
   return arr.filter(n => isFinite(n) && n > 0);
+}
+
+function parsePosition(titlePosition: string): TeacherPosition | null {
+  if (titlePosition.includes('доц')) return 'доцент';
+  return null;
+}
+
+function parseAcademicTitle(titlePosition: string): AcademicTitle | null {
+  if (titlePosition.includes('к.пед.н.')) return 'кандидат педагогічних наук';
+  return null;
 }
 
 const prepostRequisitesPrompt = `
@@ -225,7 +235,7 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const srsHours = srsMatch?.[2] ? parseInt(srsMatch[2], 10) : 0;
 
     // Extract year and semester
-    const yearSemesterMatch = text.match(/Рік навчання:\s*(\d+)-й[,\s]*семестр\s*(\d+)-й/i);
+    const yearSemesterMatch = text.match(/Рік навчання:\s{0,3}(\d+)\s{0,3}-й\s{0,3}[,\s]*семестр\s*(\d+)\s{0,3}-\s{0,3}й/i);
     const studyYear = yearSemesterMatch?.[1] ? parseInt(yearSemesterMatch[1], 10) : 1;
     const semester = yearSemesterMatch?.[2] ? parseInt(yearSemesterMatch[2], 10) : 1;
 
@@ -247,17 +257,25 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     // stupid, but works: take last 3 words (sometimes there's more than one space, so filter empty)
     const lecturerName = lecturer.split(' ').filter(n => n.length > 0).slice(-3).join(' ');
+
+    const titlePosition = lecturer.substring(0, lecturer.length - lecturerName.length).trim();
+    const position = parsePosition(titlePosition);
+    const academic_title = parseAcademicTitle(titlePosition);
     
     const emailMatch = text.match(/e-mail[\)]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     const email = emailMatch?.[1]?.trim() || null;
 
     // TODO: might not always work
-    let teacher = await teachers.findByName(lecturerName);    
-    
-    if (!teacher) {
-      // Create new teacher
-      teacher = { id: -1, name: lecturerName, email, position: null, academic_title: null, alt_names: [] } as Teacher;
-    }
+    let existingTeacher = await teachers.findByName(lecturerName);    
+
+    const teacher = { 
+      id: existingTeacher?.id ?? -1, 
+      name: lecturerName,
+      email, 
+      position,
+      academic_title,
+      alt_names: existingTeacher?.alt_names ?? [] 
+    } as Teacher;
 
     const descrStart = Math.max(0, text.search(/ОПИС (НАВЧАЛЬНОЇ )?ДИСЦИПЛІНИ/i));
     const descrEnd   = Math.min(descrStart + 3000, ...filterAbsent(text.search(/Призначення (навчальної )?дисципліни/i), text.search(/Мета вивчення/i)));
