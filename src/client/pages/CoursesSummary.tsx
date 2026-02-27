@@ -11,9 +11,11 @@ type CourseHoursSummary = {
   name: string;
   lectures: number;
   practicals: number;
+  srs: number;
   total: number;
   lecturesPercent: number;
   practicalsPercent: number;
+  srsPercent: number;
 };
 
 const formatHours = (value: number): string =>
@@ -26,9 +28,11 @@ const calculateCourseHours = (course: CourseWithTopics): CourseHoursSummary => {
 
   const lectures = topics.reduce((sum, topic) => sum + (topic.data?.fulltime?.hours ?? 0), 0);
   const practicals = topics.reduce((sum, topic) => sum + (topic.data?.fulltime?.practical_hours ?? 0), 0);
-  const total = lectures + practicals;
+  const srs = topics.reduce((sum, topic) => sum + (topic.data?.fulltime?.srs_hours ?? 0), 0);
+  const total = lectures + practicals + srs;
   const lecturesPercent = total > 0 ? (lectures / total) * 100 : 0;
   const practicalsPercent = total > 0 ? (practicals / total) * 100 : 0;
+  const srsPercent = total > 0 ? (srs / total) * 100 : 0;
 
   return {
     id: course.id,
@@ -36,9 +40,11 @@ const calculateCourseHours = (course: CourseWithTopics): CourseHoursSummary => {
     name: course.name,
     lectures,
     practicals,
+    srs,
     total,
     lecturesPercent,
     practicalsPercent,
+    srsPercent,
   };
 };
 
@@ -76,17 +82,21 @@ export default function CoursesSummary() {
     const perCourse = courses.map(calculateCourseHours);
     const totalLectures = perCourse.reduce((sum, item) => sum + item.lectures, 0);
     const totalPracticals = perCourse.reduce((sum, item) => sum + item.practicals, 0);
-    const totalHours = totalLectures + totalPracticals;
+    const totalSrs = perCourse.reduce((sum, item) => sum + item.srs, 0);
+    const totalHours = totalLectures + totalPracticals + totalSrs;
     const lecturesShare = totalHours > 0 ? (totalLectures / totalHours) * 100 : 0;
     const practicalsShare = totalHours > 0 ? (totalPracticals / totalHours) * 100 : 0;
+    const srsShare = totalHours > 0 ? (totalSrs / totalHours) * 100 : 0;
 
     return {
       perCourse,
       totalLectures,
       totalPracticals,
+      totalSrs,
       totalHours,
       lecturesShare,
       practicalsShare,
+      srsShare,
     };
   }, [courses]);
 
@@ -132,11 +142,11 @@ export default function CoursesSummary() {
         <div className="flex flex-col gap-2">
           <h1 className="font-mono text-2xl">Зведення за годинами дисциплін</h1>
           <p className="text-amber-100 font-mono text-sm">
-            Підсумовані лекційні та практичні години для всіх дисциплін (денна форма навчання).
+            Підсумовані лекційні, практичні та самостійні години для всіх дисциплін (денна форма навчання).
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
             <div className="text-sm opacity-70">Кількість дисциплін</div>
             <div className="text-3xl font-bold mt-2">{courses.length}</div>
@@ -167,6 +177,19 @@ export default function CoursesSummary() {
               />
             </div>
           </div>
+          <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-sm opacity-70">Сам. робота</span>
+              <span className="text-sm text-amber-200">{formatPercent(summary.srsShare)}</span>
+            </div>
+            <div className="text-3xl font-bold mt-2">{formatHours(summary.totalSrs)}</div>
+            <div className="w-full h-2 bg-zinc-800 rounded-full mt-3">
+              <div
+                className="h-full bg-amber-600 rounded-full"
+                style={{ width: `${summary.srsShare}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
@@ -184,9 +207,11 @@ export default function CoursesSummary() {
                   <th className="p-2">Назва дисципліни</th>
                   <th className="p-2 text-right">Лекції</th>
                   <th className="p-2 text-right">Практичні</th>
+                  <th className="p-2 text-right">Сам. роб.</th>
                   <th className="p-2 text-right">Разом</th>
-                  <th className="p-2 text-right">% лекцій</th>
-                  <th className="p-2 text-right">% практик</th>
+                  <th className="p-2 text-right">% лек.</th>
+                  <th className="p-2 text-right">% прак.</th>
+                  <th className="p-2 text-right">% СРС</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,9 +221,11 @@ export default function CoursesSummary() {
                     <td className="p-2 align-top">{course.name}</td>
                     <td className="p-2 text-right align-top">{formatHours(course.lectures)}</td>
                     <td className="p-2 text-right align-top">{formatHours(course.practicals)}</td>
+                    <td className="p-2 text-right align-top">{formatHours(course.srs)}</td>
                     <td className="p-2 text-right align-top">{formatHours(course.total)}</td>
                     <td className="p-2 text-right align-top">{formatPercent(course.lecturesPercent)}</td>
                     <td className="p-2 text-right align-top">{formatPercent(course.practicalsPercent)}</td>
+                    <td className="p-2 text-right align-top">{formatPercent(course.srsPercent)}</td>
                   </tr>
                 ))}
               </tbody>

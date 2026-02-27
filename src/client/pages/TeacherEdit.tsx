@@ -1,9 +1,10 @@
-import type { Teacher, TeacherPosition, AcademicTitle, TeacherPublication } from "@/stores/models";
+import type { Teacher, TeacherPosition, AcademicTitle, TeacherPublication, Course } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { loadTeacher, upsertTeacher } from "../teachers";
+import { loadAllCourses } from "../courses";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes, faSyncAlt, faBook, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faTimes, faSyncAlt, faBook, faExternalLinkAlt, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 
 const POSITIONS: TeacherPosition[] = ["аспірант", "асистент", "старший викладач", "доцент", "професор"];
@@ -15,6 +16,7 @@ export default function TeacherEdit() {
   const [item, setItem] = useState<Teacher | null>(null);
   const [altNamesInput, setAltNamesInput] = useState<string>("");
   const [publications, setPublications] = useState<TeacherPublication[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isLoadingPublications, setIsLoadingPublications] = useState(false);
 
   useEffect(() => {
@@ -23,6 +25,22 @@ export default function TeacherEdit() {
       setAltNamesInput(teacher.alt_names?.join(", ") || "");
     }).catch(console.error);
   }, [id]);
+
+  useEffect(() => {
+    if (!item?.id || item.id < 0) return;
+    
+    const fetchCourses = async () => {
+      try {
+        const allCourses = await loadAllCourses();
+        const teacherCourses = allCourses.filter(c => c.teacher_id === item.id);
+        setCourses(teacherCourses);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+      }
+    };
+    
+    fetchCourses();
+  }, [item?.id]);
 
   useEffect(() => {
     if (!item?.id) return;
@@ -53,7 +71,6 @@ export default function TeacherEdit() {
   const handleAltNamesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAltNamesInput(value);
-    // Update the item state with parsed alt_names
     update({ alt_names: value.split(",").map(name => name.trim()).filter(name => name.length > 0) });
   };
 
@@ -193,60 +210,79 @@ export default function TeacherEdit() {
                   placeholder="Прізвище І.Б., Прізвище І. Б., Прізвище Ініціали"
                 />
                </div>
-           </div>
-         </div>
-         
-         {item.id && (
-           <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3 mt-4">
-             <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
-               <FontAwesomeIcon icon={faBook} />
-               Публікації
-             </h2>
-             
-             {isLoadingPublications ? (
-               <div className="text-amber-50/70 text-sm">Завантаження публікацій...</div>
-             ) : publications.length === 0 ? (
-               <div className="text-amber-50/70 text-sm">
-                 Немає публікацій. Натисніть кнопку оновлення, щоб завантажити публікації з репозиторію.
-               </div>
-             ) : (
-               <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-                 {publications.map((pub) => (
-                   <div key={pub.id} className="bg-zinc-800 border border-amber-50/20 rounded-lg p-3 flex flex-col gap-2">
-                     <div className="flex justify-between items-start gap-2">
-                       <div className="flex-1">
-                         <div className="text-amber-50 font-bold text-sm">{pub.title}</div>
-                         <div className="text-amber-50/70 text-xs mt-1">
-                           {pub.year && <span>{pub.year} • </span>}
-                           {pub.publication_type && <span>{pub.publication_type}</span>}
-                           {pub.journal && <span> • {pub.journal}</span>}
-                         </div>
-                         {pub.data?.authors && (
-                           <div className="text-amber-50/60 text-xs mt-1">
-                             Автори: {pub.data.authors.join(", ")}
-                           </div>
-                         )}
-                       </div>
-                       {pub.link && (
-                         <a
-                           href={pub.link}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="text-amber-50 hover:text-amber-300 text-lg"
-                           title="Відкрити публікацію"
-                         >
-                           <FontAwesomeIcon icon={faExternalLinkAlt} />
-                         </a>
-                       )}
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             )}
-           </div>
-         )}
-       </div>
-     </div>
-   );
-}
+          </div>
+        </div>
+        
+        {item.id && courses.length > 0 && (
+          <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3 mt-4">
+            <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
+              <FontAwesomeIcon icon={faGraduationCap} />
+              Дисципліни
+            </h2>
+            <div className="flex flex-col gap-2">
+              {courses.map((course) => (
+                <a
+                  key={course.id}
+                  href={`/courses/${course.id}`}
+                  className="text-amber-50 hover:text-amber-300 text-sm flex items-center gap-2"
+                >
+                  <span>{course.data.ok_no ? `ОК${course.data.ok_no}. ` : ''}{course.name}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
+        {item.id && (
+          <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3 mt-4">
+            <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
+              <FontAwesomeIcon icon={faBook} />
+              Публікації
+            </h2>
+            
+            {isLoadingPublications ? (
+              <div className="text-amber-50/70 text-sm">Завантаження публікацій...</div>
+            ) : publications.length === 0 ? (
+              <div className="text-amber-50/70 text-sm">
+                Немає публікацій. Натисніть кнопку оновлення, щоб завантажити публікації з репозиторію.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
+                {publications.map((pub) => (
+                  <div key={pub.id} className="bg-zinc-800 border border-amber-50/20 rounded-lg p-3 flex flex-col gap-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1">
+                        <div className="text-amber-50 font-bold text-sm">{pub.title}</div>
+                        <div className="text-amber-50/70 text-xs mt-1">
+                          {pub.year && <span>{pub.year} • </span>}
+                          {pub.publication_type && <span>{pub.publication_type}</span>}
+                          {pub.journal && <span> • {pub.journal}</span>}
+                        </div>
+                        {pub.data?.authors && (
+                          <div className="text-amber-50/60 text-xs mt-1">
+                            Автори: {pub.data.authors.join(", ")}
+                          </div>
+                        )}
+                      </div>
+                      {pub.link && (
+                        <a
+                          href={pub.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-50 hover:text-amber-300 text-lg"
+                          title="Відкрити публікацію"
+                        >
+                          <FontAwesomeIcon icon={faExternalLinkAlt} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

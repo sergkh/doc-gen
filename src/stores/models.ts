@@ -22,6 +22,21 @@ export type CourseSemesters = {
   study_year: number
 }
 
+export type HoursStruct = {
+  fulltime: {    
+    hours: number,
+    practical_hours: number,
+    lab_hours: number,
+    srs_hours: number
+  },
+  inabscentia?: {
+    hours: number,
+    practical_hours: number,
+    lab_hours: number,
+    srs_hours: number
+  }
+}
+
 export type CourseData = {
   ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting
   practice?: boolean, 
@@ -29,6 +44,7 @@ export type CourseData = {
   type?: "lesson" | "practice",
   control_type: "exam" | "credit" | "both",
   hours: number,
+  hours_detailed?: HoursStruct,
   credits: number,
   specialty_mode: 'new_only' | 'old_only' | 'both' | 'unknown',
   specialty: string,
@@ -99,19 +115,7 @@ export type GeneratedTopicData = {
   keyQuestions?: string[]
 } & Record<string, any>;
 
-export type CourseTopicData = {
-  attestation: number,
-  fulltime: {    
-    hours: number,
-    practical_hours: number,
-    srs_hours: number
-  },
-  inabscentia: {
-    hours: number,
-    practical_hours: number,
-    srs_hours: number
-  }
-}
+export type CourseTopicData = { attestation: number } & HoursStruct;
 
 export type CourseTopic = {
   id: number,

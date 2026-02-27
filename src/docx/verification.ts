@@ -75,6 +75,14 @@ export function verifyCourse(course: Course & ParsedData): { issues: string[], s
   } else {
     successes.push(`Дисципліна має постреквізити: ${course.data.postrequisites.join(', ')} `);
   }
+
+  if (course.data?.hours_detailed) {
+    if (course.data?.hours_detailed.fulltime.hours > 0 && course.data?.hours_detailed.fulltime.srs_hours / course.data?.hours_detailed.fulltime.hours > 0.666) {
+      issues.push(`Співвідношення годин самостійної роботи до загальної кількості годин перевищує 66.6%`);
+    }
+  } else {
+    issues.push(`Відсутній детальний розподіл годин`);
+  }
   
   // Check 6: Course has topics
   if (course.type === 'program' && (!course.topics || !Array.isArray(course.topics) || course.topics.length === 0)) {

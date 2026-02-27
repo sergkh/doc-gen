@@ -90,11 +90,15 @@ export function fillTopicHours(topic: CourseTopic, table: DocTable | null): Cour
     topic.data.fulltime.hours = parseColumn(topicRow[2]);
     topic.data.fulltime.practical_hours = parseColumn(topicRow[3]);
     topic.data.fulltime.srs_hours = parseColumn(topicRow[6]);
-    
-    topic.data.inabscentia.hours = parseColumn(topicRow[8]);
-    topic.data.inabscentia.practical_hours = parseColumn(topicRow[9]);
-    topic.data.inabscentia.srs_hours = parseColumn(topicRow[12]);
+
+    topic.data.inabscentia = {
+      hours: parseColumn(topicRow[8]),
+      practical_hours: parseColumn(topicRow[9]),
+      srs_hours: parseColumn(topicRow[12]),
+      lab_hours: 0 // not supported yet
+    };
   }
+
   return topic;
 }
 
@@ -208,6 +212,18 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const hoursMatch = text.match(/Загальний обсяг дисципліни\s+(\d+)\s+год/i);
     const hours = hoursMatch?.[1] ? parseInt(hoursMatch[1], 10) : 0;
 
+    const lectionsMatch = text.match(/лекції [–-]\s+(\d+)\s+год/i);
+    const lectionHours = lectionsMatch?.[1] ? parseInt(lectionsMatch[1], 10) : 0;
+
+    const practicalsMatch = text.match(/практичні заняття [–-]\s+(\d+)\s+год/i);
+    const practicalHours = practicalsMatch?.[1] ? parseInt(practicalsMatch[1], 10) : 0;
+
+    const labsMatch = text.match(/лабораторні заняття [–-]\s+(\d+)\s+год/i);
+    const labHours = labsMatch?.[1] ? parseInt(labsMatch[1], 10) : 0;
+
+    const srsMatch = text.match(/самостійна робота (студентів)? [–-]\s+(\d+)\s+год/i);
+    const srsHours = srsMatch?.[2] ? parseInt(srsMatch[2], 10) : 0;
+
     // Extract year and semester
     const yearSemesterMatch = text.match(/Рік навчання:\s*(\d+)-й[,\s]*семестр\s*(\d+)-й/i);
     const studyYear = yearSemesterMatch?.[1] ? parseInt(yearSemesterMatch[1], 10) : 1;
@@ -294,6 +310,14 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
           optional,
           control_type: controlType,
           hours,
+          hours_detailed: {
+            fulltime: {
+              hours: lectionHours,
+              practical_hours: practicalHours,
+              lab_hours: labHours,
+              srs_hours: srsHours
+            }
+          },
           credits,
           specialty: specInfo.specialtyFormatted,
           specialty_mode: specInfo.specialtyMode,
@@ -445,8 +469,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
             lection: '',
             data: {
               attestation: currentAttestation?.number || 1,
-              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
-              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 },              
+              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 },
+              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 },              
             },
             generated: {
               subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)
@@ -480,8 +504,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
             lection: '',
             data: {
               attestation: currentAttestation?.number || 1,
-              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
-              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+              fulltime: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 },
+              inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 }
             },
             generated: { 
               subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s) 
@@ -516,8 +540,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
         lection: '',
         data: {
           attestation: currentAttestation?.number || 1,
-          fulltime: { hours: 0, practical_hours: 0, srs_hours: 0 },
-          inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+          fulltime: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 },
+          inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0, lab_hours: 0 }
         },
         generated: {
           subtopics: currentTopic.subtopics.map(s => s.trim()).map(s => s.endsWith('.') ? s.substring(0, s.length - 1) : s)

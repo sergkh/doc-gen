@@ -227,12 +227,17 @@ export default function CoursesWithResults() {
               return (
                 <div key={course.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
                    <div className="flex justify-between items-start mb-4">
-                     <div className="flex-1">
-                        <div className="font-bold text-lg flex items-center gap-2">
-                          {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
-                          {(course.data.warnings?.length ?? 0) > 0 && (
-                            <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
-                          )}
+                      <div className="flex-1">
+                         <div className="font-bold text-lg flex items-center gap-2">
+                           {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
+                           {(course.data.attestations?.length ?? 0) > 0 && (
+                             <span className="text-amber-400 font-normal text-xs">
+                               ({course.data.attestations?.map(a => a.semester).filter((v, i, a) => a.indexOf(v) === i).sort().join(', ')} семестр)
+                             </span>
+                           )}
+                           {(course.data.warnings?.length ?? 0) > 0 && (
+                             <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
+                           )}
                         </div>
                        <div className="text-sm opacity-80">
                          Викладач: {course.teacher ?? course.teacher_id}
