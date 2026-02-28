@@ -198,8 +198,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     console.log("Parsing syllabus:");
     const warnings: string[] = [];
-    // approx first 800 characters of the text
-    const header = text.substring(0, 800);
+    // approx first 1500 characters of the text
+    const header = text.substring(0, 1500);
 
     const nameMatch = header.match(/«([^»]+)»/);
     const parsedName = (nameMatch?.[1]?.trim() || "");
@@ -214,28 +214,30 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const specInfo = await parseSpecialtyAndArea(header);
     warnings.push(...specInfo.warnings);
 
+    console.log("HEADER:\n", header, "\nEND");
+
     // Extract credits
     const creditsMatch = header.match(/Кількість кредитів ECTS:\s*(\d+)/i);
     const credits = creditsMatch?.[1] ? parseInt(creditsMatch[1], 10) : 0;
 
     // Extract hours
-    const hoursMatch = text.match(/Загальний обсяг дисципліни\s+(\d+)\s+год/i);
+    const hoursMatch = header.match(/Загальний обсяг дисципліни\s+(\d+)\s+год/i);
     const hours = hoursMatch?.[1] ? parseInt(hoursMatch[1], 10) : 0;
-
-    const lectionsMatch = text.match(/лекції [–-]\s+(\d+)\s+год/i);
+    // dunno why but Лл іs needed
+    const lectionsMatch = header.match(/[Лл]екці[їй]\s{0,3}[–-]\s{0,3}(\d+)\s+год/i);
     const lectionHours = lectionsMatch?.[1] ? parseInt(lectionsMatch[1], 10) : 0;
 
-    const practicalsMatch = text.match(/практичні заняття [–-]\s+(\d+)\s+год/i);
+    const practicalsMatch = header.match(/практичні заняття [–-]\s+(\d+)\s+год/i);
     const practicalHours = practicalsMatch?.[1] ? parseInt(practicalsMatch[1], 10) : 0;
 
-    const labsMatch = text.match(/лабораторні заняття [–-]\s+(\d+)\s+год/i);
+    const labsMatch = header.match(/лабораторні заняття [–-]\s+(\d+)\s+год/i);
     const labHours = labsMatch?.[1] ? parseInt(labsMatch[1], 10) : 0;
 
-    const srsMatch = text.match(/самостійна робота (студентів)? [–-]\s+(\d+)\s+год/i);
+    const srsMatch = header.match(/самостійна робота\s{0,3}(студентів)?[–-]\s{0,3}(\d+)\s{0,3}год/i);
     const srsHours = srsMatch?.[2] ? parseInt(srsMatch[2], 10) : 0;
 
     // Extract year and semester
-    const yearSemesterMatch = text.match(/Рік навчання:\s{0,3}(\d+)\s{0,3}-й\s{0,3}[,\s]*семестр\s*(\d+)\s{0,3}-\s{0,3}й/i);
+    const yearSemesterMatch = header.match(/Рік навчання:\s{0,3}(\d+)\s{0,3}-й\s{0,3}[,\s]*семестр\s*(\d+)\s{0,3}-\s{0,3}й/i);
     const studyYear = yearSemesterMatch?.[1] ? parseInt(yearSemesterMatch[1], 10) : 1;
     const semester = yearSemesterMatch?.[2] ? parseInt(yearSemesterMatch[2], 10) : 1;
 
@@ -291,13 +293,16 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
     const docTables = await extractDocTables(filepath);
     const topics = parseSylabusTopics(docTables);
 
-    const literatureText = text.substring(Math.min(...filterAbsent(text.lastIndexOf("РЕКОМЕНДОВАНІ ДЖЕРЕЛА ІНФОРМАЦІЇ"), text.lastIndexOf("ЛІТЕРАТУРА"))));
+    const literatureText = text.substring(
+      Math.min(...filterAbsent(text.lastIndexOf("РЕКОМЕНДОВАНІ ДЖЕРЕЛА ІНФОРМАЦІЇ"), text.lastIndexOf("ЛІТЕРАТУРА"))),
+      text.indexOf('СИСТЕМА ОЦІНЮВАННЯ')
+    );
 
     // Extract main literature
     const mainLitMatch = literatureText.match(/(Основна література|Основні|Основна)\s+([\s\S]*?)(?=Додаткова література|Інтернет|СИСТЕМА|Додаткові)/i);
     const addLitMatch = literatureText.match(/(Додаткова література|Додаткові|Додаткова)\s+([\s\S]*?)(?=Інтернет ресурси|Інформаційні ресурси|СИСТЕМА)/i);
-    const internetMatch = literatureText.match(/(Інформаційні ресурси в Інтернеті|Інтернет ресурси|Інформаційні ресурси)?\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
-    
+    const internetMatch = literatureText.match(/(Інформаційні ресурси в Інтернеті|Інтернет ресурси|Інформаційні ресурси)\s+([\s\S]*?)(?=СИСТЕМА|$)/i);
+
     const literature = {
       main: mainLitMatch?.[2] ? normalizeLiterature(mainLitMatch[2]) : [],
       additional: addLitMatch?.[2] ? normalizeLiterature(addLitMatch[2]) : [],
