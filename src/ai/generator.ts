@@ -156,43 +156,59 @@ export async function generateCourseInfo(
   progress: (progress: number) => void, apiKey?: string
 ): Promise<{ course: Course, topics: CourseTopic[] }> {
   const key = apiKey ?? null;
-  let updatedTopics = [] as CourseTopic[]
   
-  // do not parallelize as it might be rate limited by the OpenAI API
-  for (const topic of topics) {
-    const prompts = packIntoObject(await runTopicPrompts(template.prompts, course, topic, topics, key));
+  let curCourse = {...course};
+  let curTopics = [...topics];
 
-    const updated = {
-      ...topic,
-      generated: {    
-        ...(topic.generated ?? {}),    
-        ...prompts        
-      } as GeneratedTopicData
-    } as CourseTopic
+  // run promtps sequantially disregarding the type 
+  // as some prompts might be dependent on the previous ones
+  // also do not parallelize as it might be rate limited by the OpenAI API
+  for (const prompt of template.prompts) {
 
-    progress((updatedTopics.length + 1) / topics.length * 100);
+    progress((template.prompts.indexOf(prompt) + 1) / template.prompts.length * 100);
     
-    if (!deepEqual(updated, topic)) {
-      console.log(`\n\n\nSaving updated topic with generated fields ${Object.keys(updated.generated).join(", ")}\n\n\n`);
-      await courseTopics.update(updated);  
-    }
+    if (prompt.type == 'course') {
+      const prevCourse = { ...curCourse };  
+      
+      const prompts = packIntoObject(await runCoursePrompts([prompt], curCourse, curTopics, key));
 
-    updatedTopics.push(updated);
+      curCourse = {
+        ...curCourse, 
+        generated: {
+          ...(curCourse.generated ?? {}),
+          ...prompts
+        } as GeneratedCourseData
+      } as Course;
+
+      if (!deepEqual(curCourse, prevCourse)) {
+        console.log(`\n\n\nSaving updated course with generated fields ${Object.keys(curCourse.generated ?? {}).join(", ")}\n\n\n`);
+        await courses.update(curCourse);
+      }
+    } else if (prompt.type == 'topic') {
+      const updatedTopics = [];
+
+      for (const topic of curTopics) {
+        const prompts = packIntoObject(await runTopicPrompts([prompt], curCourse, topic, curTopics, key));
+
+        const updated = {
+          ...topic,
+          generated: {    
+            ...(topic.generated ?? {}),    
+            ...prompts        
+          } as GeneratedTopicData
+        } as CourseTopic
+        
+        if (!deepEqual(updated, topic)) {
+          console.log(`\n\n\nSaving updated topic with generated fields ${Object.keys(updated.generated).join(", ")}\n\n\n`);
+          await courseTopics.update(updated);
+        }
+
+        updatedTopics.push(updated);
+      }
+
+      curTopics = updatedTopics;      
+    } else throw new Error('Unknown prompt type');
   }
 
-  const prompts = packIntoObject(await runCoursePrompts(template.prompts, course, updatedTopics, key));
-
-  const updatedCourse = {
-    ...course, 
-    generated: {
-      ...(course.generated ?? {}),
-      ...prompts
-    } as GeneratedCourseData
-  } as Course;
-
-  if (!deepEqual(updatedCourse, course)) {
-    await courses.update(updatedCourse);
-  }
-  
-  return { course: updatedCourse, topics: updatedTopics };
+  return { course: curCourse, topics: curTopics };
 }
