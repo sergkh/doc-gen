@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
-import { loadAllCoursesBrief } from "../courses";
+import { loadCoursesBySpecialty, formatDisciplineCode } from "../courses";
 import { loadAllTemplates } from "../templates";
-import type { Course, KeyValue, Template } from "@/stores/models";
+import { loadAllSpecialties } from "../specialties";
+import type { Course, Template, Specialty } from "@/stores/models";
 import toast from "react-hot-toast";
 import TemplateParametersInput from "../components/TemplateParametersInput";
 
@@ -32,12 +33,15 @@ const SELECTED_TEMPLATE_KEY = "generator_selectedTemplate";
 
 export default function GeneratorPage() {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<KeyValue[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string>("");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [apiKey, setApiKey] = useState<string>("");
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,19 +129,15 @@ export default function GeneratorPage() {
 
     async function fetchData() {
       try {
-        const [allCourses, allTemplates] = await Promise.all([
-          loadAllCoursesBrief(),
-          loadAllTemplates()
+        const [allTemplates, allSpecialties] = await Promise.all([
+          loadAllTemplates(),
+          loadAllSpecialties()
         ]);
-        setCourses(allCourses);
         setTemplates(allTemplates);
+        setSpecialties(allSpecialties);
 
-        const savedCourseId = localStorage.getItem(SELECTED_COURSE_KEY);
         const savedTemplateId = localStorage.getItem(SELECTED_TEMPLATE_KEY);
 
-        if (savedCourseId && allCourses.some(c => c.id.toString() === savedCourseId)) {
-          setSelectedCourseId(savedCourseId);
-        }
         if (savedTemplateId && allTemplates.some(t => t.id.toString() === savedTemplateId)) {
           setSelectedTemplateId(savedTemplateId);
         }
@@ -150,6 +150,28 @@ export default function GeneratorPage() {
     }
     fetchData();
   }, []);
+
+  // Load courses when specialty is selected
+  useEffect(() => {
+    if (!selectedSpecialtyId) {
+      setCourses([]);
+      return;
+    }
+
+    async function fetchCourses() {
+      setIsLoadingCourses(true);
+      try {
+        const coursesData = await loadCoursesBySpecialty(Number(selectedSpecialtyId));
+        setCourses(coursesData);
+      } catch (error) {
+        console.error("Failed to load courses:", error);
+        toast.error("Помилка завантаження дисциплін");
+      } finally {
+        setIsLoadingCourses(false);
+      }
+    }
+    fetchCourses();
+  }, [selectedSpecialtyId]);
 
   // Resume job from localStorage on mount
   useEffect(() => {
@@ -243,6 +265,11 @@ export default function GeneratorPage() {
   const selectedTemplate = templates.find((t) => t.id.toString() === selectedTemplateId);
   const templateParameters = selectedTemplate?.data?.parameters || [];
 
+  const handleSpecialtyChange = (value: string) => {
+    setSelectedSpecialtyId(value);
+    setSelectedCourseId("");
+  };
+
   const handleGenerate = async (navigateAfterCompletion: boolean = false) => {
     if (!selectedCourseId) {
       toast.error("Будь ласка, оберіть дисципліну");
@@ -324,8 +351,31 @@ export default function GeneratorPage() {
 
         <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
           <div>
-            <label className="block text-amber-50 font-bold mb-2">Дисципліна:</label>
+            <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
             {isLoading ? (
+              <div className="text-amber-50">Завантаження...</div>
+            ) : (
+              <select
+                value={selectedSpecialtyId}
+                onChange={(e) => handleSpecialtyChange(e.target.value)}
+                disabled={isGenerating}
+                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
+              >
+                <option value="">-- Всі спеціальності --</option>
+                {specialties.map((specialty) => (
+                  <option key={specialty.id} value={specialty.id}>
+                    {specialty.code} {specialty.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-amber-50 font-bold mb-2">Дисципліна:</label>
+            {!selectedSpecialtyId ? (
+              <div className="text-amber-50 opacity-70">Спочатку оберіть спеціальність</div>
+            ) : isLoadingCourses ? (
               <div className="text-amber-50">Завантаження...</div>
             ) : (
               <select
@@ -337,7 +387,7 @@ export default function GeneratorPage() {
                 <option value="">-- Оберіть дисципліну --</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
-                    {course.name}
+                    {formatDisciplineCode(course.data.ok_no)} {course.name}
                   </option>
                 ))}
               </select>
