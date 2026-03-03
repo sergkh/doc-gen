@@ -10,7 +10,7 @@ const UPLOADS_COURSES_DIR = join(process.cwd(), 'uploads', 'courses');
 
 const filter: string[] | null = null;
 
-let limit = 1 // Infinity
+let limit = 2 // Infinity
 
 const typesFilter: ('program' | 'syllabus')[] = [ 'syllabus' ]; // 'program', 
 

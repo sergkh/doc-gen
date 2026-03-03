@@ -37,7 +37,7 @@ function validateInitialInfo(initialInfo: CourseInitialInfo | null) {
 }
 
 function normalizeLiterature(text: string): string[] {
-  return text.split(/\n/).map(l => dropDot(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
+  return text.split(/\n/).map(l => genericNormalize(l)).map(l => l.replace(/^\d+\./, '').trim()).filter(l => l && l.length > 10).sort();
 }
 
 function filterAbsent(...arr: number[]): number[] {
@@ -46,11 +46,18 @@ function filterAbsent(...arr: number[]): number[] {
 
 function parsePosition(titlePosition: string): TeacherPosition | null {
   if (titlePosition.includes('доц')) return 'доцент';
+  if (titlePosition.includes('асист')) return 'асистент';
+  if (titlePosition.includes('проф')) return 'професор';
+  if (/ст.?(арший)?\s{1,3}викл(адач)?/i.test(titlePosition)) return 'старший викладач';
   return null;
 }
 
 function parseAcademicTitle(titlePosition: string): AcademicTitle | null {
   if (titlePosition.includes('к.пед.н.')) return 'кандидат педагогічних наук';
+  if (titlePosition.includes('к.e.н.')) return 'кандидат економічних наук';
+  if (titlePosition.includes('к.т.н.')) return 'кандидат технічних наук';
+  if (titlePosition.includes('д.т.н.')) return 'доктор технічних наук';
+  if (titlePosition.includes('д.е.н.')) return 'доктор економічних наук';
   return null;
 }
 
@@ -213,8 +220,6 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
 
     const specInfo = await parseSpecialtyAndArea(header);
     warnings.push(...specInfo.warnings);
-
-    console.log("HEADER:\n", header, "\nEND");
 
     // Extract credits
     const creditsMatch = header.match(/Кількість кредитів ECTS:\s*(\d+)/i);
