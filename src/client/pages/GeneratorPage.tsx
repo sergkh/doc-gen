@@ -30,6 +30,7 @@ const STORAGE_KEY = "generationJob";
 const API_KEY_STORAGE_KEY = "openai_api_key";
 const SELECTED_COURSE_KEY = "generator_selectedCourse";
 const SELECTED_TEMPLATE_KEY = "generator_selectedTemplate";
+const SELECTED_SPECIALTY_KEY = "generator_selectedSpecialty";
 
 export default function GeneratorPage() {
   const navigate = useNavigate();
@@ -137,9 +138,14 @@ export default function GeneratorPage() {
         setSpecialties(allSpecialties);
 
         const savedTemplateId = localStorage.getItem(SELECTED_TEMPLATE_KEY);
+        const savedSpecialtyId = localStorage.getItem(SELECTED_SPECIALTY_KEY);
 
         if (savedTemplateId && allTemplates.some(t => t.id.toString() === savedTemplateId)) {
           setSelectedTemplateId(savedTemplateId);
+        }
+
+        if (savedSpecialtyId && allSpecialties.some(s => s.id.toString() === savedSpecialtyId)) {
+          setSelectedSpecialtyId(savedSpecialtyId);
         }
       } catch (error) {
         console.error("Failed to load data:", error);
@@ -240,6 +246,12 @@ export default function GeneratorPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedSpecialtyId) {
+      localStorage.setItem(SELECTED_SPECIALTY_KEY, selectedSpecialtyId);
+    }
+  }, [selectedSpecialtyId]);
 
   useEffect(() => {
     if (selectedCourseId) {
