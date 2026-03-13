@@ -1,6 +1,6 @@
 import path from "path";
 import { sql } from "bun";
-import type { Course, CourseResult, CourseTopic, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
 
 // Initialize the database connection
 try {
@@ -337,4 +337,17 @@ const specialties = {
   },
 };
 
-export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications };
+const history = {
+  forObject: async (type: DocObjectType, id: number, limit: number = 10): Promise<DocVersionRecord[]> => {
+    return sql`SELECT * FROM doc_version_records WHERE object_type = ${type} AND object_id = ${id} ORDER BY stamp DESC LIMIT ${limit}`;
+  },
+
+  save: async (record: DocVersionRecord) => {
+    return sql`INSERT INTO doc_version_records (object_id, object_type, type, stamp, comment, data) VALUES (
+      ${record.object_id}, ${record.object_type}, ${record.type}, ${record.stamp}, ${record.comment}, ${record.data}
+    ) RETURNING *`;
+  }
+
+};
+
+export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications, history };

@@ -271,3 +271,16 @@ export type TeacherPublication = {
   publication_type: TeacherPublicationType;
   data?: Record<string, any>;
 };
+
+export type DocObjectType = "teacher" | "course" | "specialty" | "template" | "topic";
+
+// Used for document versioning
+export type DocVersionRecord = {
+  id: number;
+  object_id: number;
+  object_type: DocObjectType;
+  type: "snapshot" | "patch";
+  stamp: string;
+  comment: string;
+  data: any;
+};

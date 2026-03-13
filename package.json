@@ -21,6 +21,7 @@
     "docxtemplater": "^3.67.6",
     "handlebars": "^4.7.8",
     "joyride": "^0.1.4",
+    "jsondiffpatch": "^0.7.3",
     "mammoth": "^1.11.0",
     "motion": "^12.25.0",
     "openai": "^6.15.0",

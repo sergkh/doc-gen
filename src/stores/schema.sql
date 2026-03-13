@@ -80,3 +80,16 @@ CREATE TABLE IF NOT EXISTS teacher_publications(
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS doc_version_records(
+  id SERIAL PRIMARY KEY,
+  object_id INTEGER NOT NULL,
+  object_type VARCHAR(64) NOT NULL,
+  type VARCHAR(64) NOT NULL,
+  stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  comment TEXT,
+  data JSONB not null default '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_version_records_object_id ON doc_version_records (object_id);
+CREATE INDEX IF NOT EXISTS idx_doc_version_records_stamp ON doc_version_records (stamp);
