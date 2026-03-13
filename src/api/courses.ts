@@ -134,8 +134,15 @@ const coursesApi = {
     async PUT(req: BunRequest) {
       const { id } = req.params as { id: string };
       const course = await req.json() as Course;
+
+      const oldCourse = await courses.get(Number(id));
+      
+      if (!oldCourse) {
+        return new Response("Course not found", { status: 404 });
+      }
+
       console.log("Updating course with ID:", id, course);
-      await courses.update(course);
+      await courses.update(course, oldCourse, "Updated by user");      
       return Response.json({ success: true });
     },
     async DELETE(req: BunRequest) {
@@ -247,7 +254,7 @@ const coursesApi = {
             
             if (dbCourse) {
               console.log("Existing course found in DB, updating:", dbCourse);
-              await courses.update(updated)
+              await courses.update(updated, dbCourse, `Upload of doc: ${hash}`);
               mergeCourseTopics(dbCourse.id, course.topics);
             } else {
               const id = (await courses.add(updated))[0].id;

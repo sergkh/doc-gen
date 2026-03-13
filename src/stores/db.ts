@@ -1,5 +1,6 @@
 import path from "path";
 import { sql } from "bun";
+import { create } from "jsondiffpatch";
 import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
 
 // Initialize the database connection
@@ -9,6 +10,56 @@ try {
   console.error("Failed to initialize database schema. Check if PostgreSQL connection set using DATABASE_URL env variable\n\n", error);
   process.exit(1);
 }
+
+function drop(obj: Record<string, any>, ...fields: string[]) {
+  const result = { ...obj };
+  for (const field of fields) {
+    delete result[field];
+  }
+  return result;
+}
+
+const history = {
+  _diffpatcher: create(),
+
+  forObject: async (type: DocObjectType, id: number, limit: number = 10): Promise<DocVersionRecord[]> => {
+    return sql`SELECT * FROM doc_version_records WHERE object_type = ${type} AND object_id = ${id} ORDER BY stamp DESC LIMIT ${limit}`;
+  },
+
+  save: async (record: Partial<DocVersionRecord>) => {
+    return sql`INSERT INTO doc_version_records (object_id, object_type, type, stamp, comment, data) VALUES (
+      ${record.object_id}, ${record.object_type}, ${record.type}, ${record.stamp}, ${record.comment}, ${record.data}
+    ) RETURNING *`;
+  },
+
+  saveHistory: async (
+    oldData: { id: number },
+    newData: { id: number },
+    reason: string, 
+    objType: DocObjectType
+  ) => {
+    const type = Math.random() < 0.2 ? 'snapshot' : 'patch';
+    const objId = newData.id;
+
+    const entry: Partial<DocVersionRecord> = { 
+      object_id: objId, 
+      object_type: objType,
+      type,
+      stamp: new Date(),
+      comment: reason,
+      data: (type === 'snapshot') ? 
+        newData : 
+        history._diffpatcher.diff(
+          drop(oldData, 'created_at', 'updated_at'), 
+          drop(newData, 'created_at', 'updated_at')
+        )
+    };
+
+    console.log('Saving history entry:', entry);
+    
+    await history.save(entry);
+  }
+};
 
 const courses = {
   all: async (): Promise<Course[]> => {
@@ -49,7 +100,9 @@ const courses = {
     return await sql`SELECT c.id, c.name, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id IN ${sql(list)}` as ShortCourseInfo[];
   },
 
-  update: async (course: Course) => {
+  update: async (course: Course, oldCourse: Course, reason: string) => {
+    await history.saveHistory(oldCourse, course, reason, "course");
+
     return await sql`UPDATE courses 
       SET name = ${course.name}, 
           teacher_id = ${course.teacher_id}, 
@@ -337,17 +390,5 @@ const specialties = {
   },
 };
 
-const history = {
-  forObject: async (type: DocObjectType, id: number, limit: number = 10): Promise<DocVersionRecord[]> => {
-    return sql`SELECT * FROM doc_version_records WHERE object_type = ${type} AND object_id = ${id} ORDER BY stamp DESC LIMIT ${limit}`;
-  },
-
-  save: async (record: DocVersionRecord) => {
-    return sql`INSERT INTO doc_version_records (object_id, object_type, type, stamp, comment, data) VALUES (
-      ${record.object_id}, ${record.object_type}, ${record.type}, ${record.stamp}, ${record.comment}, ${record.data}
-    ) RETURNING *`;
-  }
-
-};
 
 export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications, history };

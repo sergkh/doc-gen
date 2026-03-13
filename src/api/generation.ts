@@ -221,7 +221,11 @@ const generationApi = {
 
       console.log(`Saving prompt result for course: ${course.name}, field: ${body.field}, item:`, body.item);
 
-      await courses.update({ ...course, generated });
+      await courses.update(
+        { ...course, generated }, 
+        course,
+        `Saved prompt result for field ${body.field}`
+      );
 
       return Response.json({ success: true, field: body.field });
     }

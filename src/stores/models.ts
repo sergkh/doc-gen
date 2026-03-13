@@ -280,7 +280,7 @@ export type DocVersionRecord = {
   object_id: number;
   object_type: DocObjectType;
   type: "snapshot" | "patch";
-  stamp: string;
+  stamp: Date;
   comment: string;
   data: any;
 };
