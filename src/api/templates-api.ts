@@ -1,15 +1,12 @@
-import { templates } from "@/stores/db";
 import type { Template } from "@/stores/models";
-import type { BunRequest, Serve } from "bun";
-import path from "path";
-import { deleteOldFile, saveUploadedFile } from "./utils/files";
-
+import type { BunRequest } from "bun";
+import { templatesService } from "@/services/templates-service";
 
 const templatesApi = {
   "/api/templates": {
     async GET() {
       console.log("Fetching all templates");
-      return Response.json(await templates.all());
+      return Response.json(await templatesService.getAllTemplates());
     },
     async POST(req: BunRequest) {
       try {
@@ -27,18 +24,12 @@ const templatesApi = {
           return new Response("No name provided", { status: 400 });
         }
 
-        // Save the file and get the path
-        const filePath = await saveUploadedFile(file);
-
-        // Parse data if provided
         const data = dataStr ? JSON.parse(dataStr) : undefined;
         const prompts = promptsStr ? JSON.parse(promptsStr) : [];
 
-        // Create template
-        const template = { id: 0, name, file: filePath, data, prompts } as Template;
-        const result = await templates.add(template);
+        const template = await templatesService.createTemplate(file, name, data, prompts);
         
-        return Response.json({ success: true, template: result[0] });
+        return Response.json({ success: true, template });
       } catch (error) {
         console.error("Error creating template:", error);
         return new Response(
@@ -52,7 +43,7 @@ const templatesApi = {
     async GET(req: BunRequest) {
       const { id } = req.params as { id: string };
       console.log("Fetching template with ID:", id);
-      const template = await templates.get(Number(id));
+      const template = await templatesService.getTemplateById(Number(id));
       if (!template) {
         return new Response("Template not found", { status: 404 });
       }
@@ -63,8 +54,7 @@ const templatesApi = {
         const { id } = req.params as { id: string };
         const templateId = Number(id);
 
-        // Get existing template to check if file needs to be deleted
-        const existingTemplate = await templates.get(templateId);
+        const existingTemplate = await templatesService.getTemplateById(templateId);
         if (!existingTemplate) {
           return new Response("Template not found", { status: 404 });
         }
@@ -75,32 +65,11 @@ const templatesApi = {
         const dataStr = formData.get("data") as string | null;
         const promptsStr = formData.get("prompts") as string | null;
 
-        let filePath = existingTemplate.file;
-        
-        if (file) {
-          const oldFilePath = existingTemplate.file;
-          filePath = await saveUploadedFile(file);
-          
-          // Delete old file if it's different from the new one
-          if (oldFilePath !== filePath) {
-            await deleteOldFile(oldFilePath);
-          }
-        }
+        const data = dataStr ? JSON.parse(dataStr) : undefined;
+        const prompts = promptsStr ? JSON.parse(promptsStr) : undefined;
 
-        // Parse data if provided, otherwise keep existing data
-        const data = dataStr ? JSON.parse(dataStr) : existingTemplate.data;
-        const prompts = promptsStr ? JSON.parse(promptsStr) : (existingTemplate.prompts || []);
-
-        const template = {
-          id: templateId,
-          name: name || existingTemplate.name,
-          file: filePath,
-          data,
-          prompts
-        } as Template;
-
-        const result = await templates.update(template);
-        return Response.json({ success: true, template: result[0] });
+        const template = await templatesService.updateTemplate(templateId, file, name, data, prompts);
+        return Response.json({ success: true, template });
       } catch (error) {
         console.error("Error updating template:", error);
         return new Response(
@@ -114,14 +83,8 @@ const templatesApi = {
         const { id } = req.params as { id: string };
         const templateId = Number(id);
 
-        // Get template to delete associated file
-        const template = await templates.get(templateId);
-        if (template) {
-          await deleteOldFile(template.file);
-        }
-
         console.log("Deleting template with ID:", id);
-        await templates.delete(templateId);
+        await templatesService.deleteTemplate(templateId);
         return Response.json({ success: true });
       } catch (error) {
         console.error("Error deleting template:", error);
@@ -138,20 +101,7 @@ const templatesApi = {
         const { id } = req.params as { id: string };
         const templateId = Number(id);
         
-        const template = await templates.get(templateId);
-        if (!template) {
-          return new Response("Template not found", { status: 404 });
-        }
-
-        // Read the file from the file system
-        const fullPath = path.join(process.cwd(), template.file);
-        const file = await Bun.file(fullPath);
-        
-        if (!(await file.exists())) {
-          return new Response("Template file not found", { status: 404 });
-        }
-
-        const arrayBuffer = await file.arrayBuffer();
+        const arrayBuffer = await templatesService.downloadTemplate(templateId);
         
         return new Response(arrayBuffer, {
           headers: {
@@ -171,4 +121,3 @@ const templatesApi = {
 };
 
 export default templatesApi;
-

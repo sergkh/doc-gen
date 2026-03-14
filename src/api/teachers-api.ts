@@ -1,19 +1,17 @@
-import { teachers, teacherPublications } from "@/stores/db";
-import type { Teacher, TeacherPublication } from "@/stores/models";
+import type { Teacher } from "@/stores/models";
 import type { BunRequest } from "bun";
-import { fetchTeacherPublications } from "@/parsing/lit-parser";
+import { teachersService } from "@/services/teachers-service";
 
 const teachersApi = {
   "/api/teachers": {
     async GET() {
       console.log("Fetching all teachers");
-      return Response.json(await teachers.all());
+      return Response.json(await teachersService.getAllTeachers());
     },
     async POST(req: BunRequest) {
       const teacherData = await req.json() as Omit<Teacher, "id">;
       console.log("Adding new teacher", teacherData);
-      const teacher = { ...teacherData, id: 0 } as Teacher;
-      await teachers.add(teacher);
+      await teachersService.createTeacher(teacherData);
       return Response.json({ success: true });
     }
   },
@@ -21,7 +19,7 @@ const teachersApi = {
     async GET(req: BunRequest) {
       const { id } = req.params as { id: string };
       console.log("Fetching teacher with ID:", id);
-      const teacher = await teachers.get(Number(id));
+      const teacher = await teachersService.getTeacherById(Number(id));
       if (!teacher) {
         return new Response("Teacher not found", { status: 404 });
       }
@@ -30,15 +28,14 @@ const teachersApi = {
     async PUT(req: BunRequest) {
       const { id } = req.params as { id: string };
       const teacher = await req.json() as Teacher;
-      teacher.id = Number(id);
       console.log("Updating teacher with ID:", id, teacher);
-      await teachers.update(teacher);
+      await teachersService.updateTeacher(Number(id), teacher);
       return Response.json({ success: true });
     },
     async DELETE(req: BunRequest) {
       const { id } = req.params as { id: string };
       console.log("Deleting teacher with ID:", id);
-      await teachers.delete(Number(id));
+      await teachersService.deleteTeacher(Number(id));
       return Response.json({ success: true });
     }
   },
@@ -48,9 +45,7 @@ const teachersApi = {
       const teacherId = Number(id);
       
       console.log("Fetching publications for teacher with ID:", teacherId);
-      
-      // Get publications for this teacher
-      const publications = await teacherPublications.byTeacher(teacherId);
+      const publications = await teachersService.getTeacherPublications(teacherId);
       
       return Response.json(publications);
     }
@@ -62,27 +57,15 @@ const teachersApi = {
       
       console.log("Refreshing publications for teacher with ID:", teacherId);
       
-      // Get the teacher
-      const teacher = await teachers.get(teacherId);
-      
+      const teacher = await teachersService.getTeacherById(teacherId);
       if (!teacher) {
         return new Response("Teacher not found", { status: 404 });
       }
       
       try {
-        // Fetch publications from external source
-        const publications = await fetchTeacherPublications(teacher);
-        
-        // Clear existing publications for this teacher
-        await teacherPublications.deleteByTeacher(teacherId);
-
-        const addedPublications: TeacherPublication[] = [];
-        for (const pub of publications) {
-          addedPublications.push(await teacherPublications.add(pub));
-        }
-        
-        console.log(`Added ${addedPublications.length} publications for teacher ${teacherId}`);
-        return Response.json({ success: true, count: addedPublications.length });
+        const count = await teachersService.refreshTeacherPublications(teacherId);
+        console.log(`Added ${count} publications for teacher ${teacherId}`);
+        return Response.json({ success: true, count });
       } catch (error) {
         console.error("Error refreshing publications:", error);
         return new Response("Failed to refresh publications", { status: 500 });

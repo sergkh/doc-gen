@@ -390,7 +390,7 @@ const specialties = {
     return result[0] || null;
   },
   
-  add: async (specialty: Specialty) => {
+  add: async (specialty: Omit<Specialty, "id">) => {
     return await sql`INSERT INTO specialties (code, name, old_code, old_name, area_code, area, qualification, data) 
       VALUES (${specialty.code}, ${specialty.name}, ${specialty.old_code}, ${specialty.old_name}, ${specialty.area_code}, ${specialty.area}, ${specialty.qualification}, ${specialty.data}) 
       RETURNING *`;
