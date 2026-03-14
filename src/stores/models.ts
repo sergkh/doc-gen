@@ -90,7 +90,8 @@ export type Course = {
   specialty_id: number,
   teacher?: string,
   data: CourseData,
-  generated: GeneratedCourseData | null  
+  generated: GeneratedCourseData | null,
+  version: number
 };
 
 export type TeacherPosition = "аспірант" | "асистент" | "старший викладач" | "доцент" | "професор";
@@ -279,7 +280,7 @@ export type DocVersionRecord = {
   id: number;
   object_id: number;
   object_type: DocObjectType;
-  type: "snapshot" | "patch";
+  type: "snapshot" | "patch" | "tombstone";
   stamp: Date;
   comment: string;
   data: any;

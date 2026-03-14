@@ -1,9 +1,10 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, courseTopics, specialties, templates } from "@/stores/db";
-import type { Course, GeneratedCourseData, GeneratedTopicData, Prompt, Template } from "@/stores/models";
+import type { Course, GeneratedTopicData, Prompt, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
 import { runCoursePrompts, runTopicPrompts } from "@/ai/generator";
+import { coursesService } from "@/services/courses-service";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -120,7 +121,7 @@ const generationApi = {
   },
   "/api/courses/:courseId/run-prompt": {
     async POST(req: BunRequest) {
-      const { courseId } = req.params as { courseId: number };
+      const { courseId } = req.params as { courseId: string };
       let rawBody;
       try {
         rawBody = await req.json() as { prompt: Prompt; apiKey?: string };
@@ -134,29 +135,13 @@ const generationApi = {
         return jsonError("Промпт не містить обов'язкових полів (field, system_prompt, prompt)", 400);
       }
 
-      const course = await courses.get(courseId);
-      if (!course) {
-        return jsonError("Дисципліну не знайдено", 404);
-      }
-
-      const topics = await courseTopics.all(courseId);
-      if (topics.length === 0) {
-        return jsonError("У дисципліни немає тем", 404);
-      }
-
-      try {
-        const results = await runCoursePrompts([prompt], course, topics, apiKey ?? null, true);
-        return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Невідома помилка при виконанні промпту";
-        console.error("Run course prompt error:", error);
-        return jsonError(message, 500);
-      }
+      const results = await coursesService.runPrompt(Number(courseId), prompt, apiKey);
+      return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
     }
   },
   "/api/courses/:courseId/topics/:topicId/run-prompt": {
     async POST(req: BunRequest) {
-      const { courseId, topicId } = req.params as { courseId: number, topicId: number };
+      const { courseId, topicId } = req.params as { courseId: string, topicId: string };
       let rawBody;
       try {
         rawBody = await req.json() as { prompt: Prompt; apiKey?: string };
@@ -170,17 +155,17 @@ const generationApi = {
         return jsonError("Промпт не містить обов'язкових полів (field, system_prompt, prompt)", 400);
       }
 
-      const course = await courses.get(courseId);
+      const course = await coursesService.getCourseById(Number(courseId));
       if (!course) {
         return jsonError("Дисципліну не знайдено", 404);
       }
 
-      const topic = await courseTopics.get(topicId);
+      const topic = await courseTopics.get(Number(topicId));
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }
 
-      const allTopics = await courseTopics.all(courseId);
+      const allTopics = await courseTopics.all(Number(courseId));
 
       console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
 
@@ -197,7 +182,7 @@ const generationApi = {
   },
   "/api/courses/:courseId/save-prompt-result": {
     async POST(req: BunRequest) {
-      const { courseId } = req.params as { courseId: number };
+      const { courseId } = req.params as { courseId: string };
       let body;
       try {
         body = await req.json() as { field: string; item: any };
@@ -209,30 +194,14 @@ const generationApi = {
         return jsonError("Поле field є обов'язковим", 400);
       }
 
-      const course = await courses.get(courseId);
-      if (!course) {
-        return jsonError("Дисципліну не знайдено", 404);
-      }
-
-      const generated = {
-        ...(course.generated || {}),
-        [body.field]: body.item
-      } as GeneratedCourseData;
-
-      console.log(`Saving prompt result for course: ${course.name}, field: ${body.field}, item:`, body.item);
-
-      await courses.update(
-        { ...course, generated }, 
-        course,
-        `Saved prompt result for field ${body.field}`
-      );
+      await coursesService.savePromptResult(Number(courseId), body.field, body.item);
 
       return Response.json({ success: true, field: body.field });
     }
   },
   "/api/courses/:courseId/topics/:topicId/save-prompt-result": {
     async POST(req: BunRequest) {
-      const { courseId, topicId } = req.params as { courseId: number, topicId: number };
+      const { courseId, topicId } = req.params as { courseId: string, topicId: string };
       let body;
       try {
         body = await req.json() as { field: string; item: any };
@@ -244,7 +213,7 @@ const generationApi = {
         return jsonError("Поле field є обов'язковим", 400);
       }
 
-      const topic = await courseTopics.get(topicId);
+      const topic = await courseTopics.get(Number(topicId));
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }

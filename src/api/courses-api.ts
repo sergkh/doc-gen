@@ -4,88 +4,8 @@ import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/sto
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
-import { dropEmpty } from "@/client/util/util";
-import { verifyCourse } from "@/docx/verification";
 import { autofillCourseResults, generateCourseTopics } from "@/ai/autofill";
-
-function mergeCourseData(original: Course, parsed: Course & ParsedData): Course {
-  const generated = original.generated ?? parsed.generated ?? {} as GeneratedCourseData;
-  // IF course is lacking subtopics but we just parsed them – add them to the generated data
-  if (parsed.generated?.subtopics && (generated.subtopics?.length ?? 0) === 0) {
-    generated.subtopics = parsed.generated.subtopics;
-  };
-
-  const data = {
-    ...original.data,
-    ...dropEmpty(parsed.data, { 
-      blacklist: ['prerequisites', 'postrequisites'] // those might become empty
-    })
-  }
-
-  return {
-    ...original,
-    teacher_id: parsed.teacher_id || original.teacher_id,
-    specialty_id: parsed.specialty_id || original.specialty_id,
-    teacher: parsed.teacher || original.teacher,
-    generated,
-    data
-  } as Course;
-}
-
-async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) {
-  if (parsedTopics.length === 0) return ;
-  const existingTopics = await courseTopics.all(courseId);
-  const existingTopicsMap = new Map(existingTopics.map(t => [t.index, t]));
-
-  if (existingTopics.length === 0) {
-    // No existing topics, just add all parsed
-    await Promise.all(
-      parsedTopics
-        .map(c => Object.assign(c, { course_id: courseId }))
-        .map(c => courseTopics.add(c))
-    );
-    return;
-  } else {    
-    // implement merging of topics based on name matching
-    for (const parsedTopic of parsedTopics) {
-      const existingTopic = existingTopicsMap.get(parsedTopic.index);
-      if (existingTopic) {
-        // Update existing topic with parsed data
-        await courseTopics.update(mergeCourseTopic(existingTopic, parsedTopic));
-      } else {
-        // Add new topic
-        await courseTopics.add(Object.assign(parsedTopic, { course_id: courseId }));
-      }
-    }
-  }
-}
-
-function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
-  // pick whatever is not 0
-  const mergedData = {
-    attestation: parsed.data?.attestation ?? existing.data?.attestation,
-    fulltime: {    
-      hours: parsed.data?.fulltime?.hours ?? existing.data?.fulltime?.hours,
-      practical_hours: parsed.data?.fulltime?.practical_hours ?? existing.data?.fulltime?.practical_hours,
-      srs_hours: parsed.data?.fulltime?.srs_hours ?? existing.data?.fulltime?.srs_hours,
-    },
-    inabscentia: {
-      hours: parsed.data?.inabscentia?.hours ?? existing.data?.inabscentia?.hours,
-      practical_hours: parsed.data?.inabscentia?.practical_hours ?? existing.data?.inabscentia?.practical_hours,
-      srs_hours: parsed.data?.inabscentia?.srs_hours ?? existing.data?.inabscentia?.srs_hours
-    }
-  }
-
-  return {
-    id: existing.id,
-    course_id: existing.course_id,
-    index: existing.index,
-    name: parsed.name ?? existing.name,
-    lection: parsed.lection ?? existing.lection,
-    data: mergedData,
-    generated: existing.generated
-  } as CourseTopic;
-}
+import { coursesService } from "@/services/courses-service";
 
 const coursesApi = {
   "/api/courses": {
@@ -93,31 +13,16 @@ const coursesApi = {
         const brief = new URL(req.url).searchParams.get("brief") === "true";
         const topics = new URL(req.url).searchParams.get("topics") === "true";
         const specialtyId = new URL(req.url).searchParams.get("specialtyId");
+
         console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}. specialtyId: ${specialtyId || "all"}`);
         
-        let loadedCourses: Course[];
-        if (specialtyId) {
-          loadedCourses = await courses.bySpecialty(Number(specialtyId));
-        } else {
-          loadedCourses = brief ? await courses.brief() as unknown as Course[] : await courses.all();
-        }
-        
-        // not nice, but works for now
-        if (topics) {
-          await Promise.all(
-            loadedCourses.map(async (course) => {
-              const courseTopicsList = await courseTopics.all(course.id);
-              (course as Course & { topics: CourseTopic[] }).topics = courseTopicsList;
-            })
-          );
-        }
+        const loadedCourses = await coursesService.getCourses(specialtyId ? Number(specialtyId) : undefined, brief, topics);
 
         return Response.json(loadedCourses);
       },
       async POST(req: BunRequest) {
         const course = await req.json() as Course;
-        console.log("Adding new course", course);
-        await courses.add(course);
+        await coursesService.createCourse(course);
         return Response.json({ success: true });
       }
   },
@@ -125,7 +30,7 @@ const coursesApi = {
     async GET(req: BunRequest) {
       const { id } = req.params as { id: string };
       console.log("Fetching course with ID:", id);
-      const course = await courses.get(Number(id));
+      const course = await coursesService.getCourseById(Number(id));
       if (!course) {
         return new Response("Course not found", { status: 404 });
       }
@@ -135,30 +40,13 @@ const coursesApi = {
       const { id } = req.params as { id: string };
       const course = await req.json() as Course;
 
-      const oldCourse = await courses.get(Number(id));
-      
-      if (!oldCourse) {
-        return new Response("Course not found", { status: 404 });
-      }
-
-      console.log("Updating course with ID:", id, course);
-      await courses.update(course, oldCourse, "Updated by user");      
-      return Response.json({ success: true });
+      const updatedCourse = await coursesService.updateCourse(Number(id), course, "Updated by user");
+      return Response.json({ success: true, course: updatedCourse });
     },
     async DELETE(req: BunRequest) {
-      try {
-        const { id } = req.params as { id: string };
-        const courseId = Number(id);
-        console.log("Deleting course with ID:", id);
-        await courses.delete(courseId);
-        return Response.json({ success: true });
-      } catch (error) {
-        console.error("Error deleting course:", error);
-        return new Response(
-          `Error deleting course: ${error instanceof Error ? error.message : "Unknown error"}`,
-          { status: 500 }
-        );
-      }
+      const { id } = req.params as { id: string };      
+      await coursesService.deleteCourse(Number(id));      
+      return Response.json({ success: true });
     }
   },
   "/api/courses/parse-docx": {
@@ -201,77 +89,12 @@ const coursesApi = {
             await Bun.write(uploadPath, file);
             console.log("Saving uploaded file to:", uploadPath);
 
-            const course = await parseSylabusOrProgram(uploadPath, true, { okNo });
-            
-            if (!course) {
-              results.push({
-                file: file.name,
-                error: "Не вдалось розібрати файл",
-                success: false
-              });
-              continue;
-            }
-
-            const dbCourse = await courses.findByName(course.name);
-            console.log("Searching by name:", course.name, "Found in DB:", dbCourse);
-
-            if (course.parsed_teacher) {
-              // new teacher 
-              if (course.parsed_teacher.id === -1) {
-                const id = (await teachers.add(course.parsed_teacher))[0].id;
-                course.teacher_id = id;
-              } else if (course.type === "syllabus") {
-                
-                const dbTeacher = await teachers.get(course.parsed_teacher.id);
-
-                if (dbTeacher) {
-                  console.log("Updating existing teacher with parsed syllabus data:", dbTeacher, course.parsed_teacher);
-                  
-                  const updatedTeacher = { 
-                    ...dbTeacher, 
-                    // Syllabus has full teacher name, while program has only short one, so update it
-                    name: dbTeacher.name.length < course.parsed_teacher.name.length ? course.parsed_teacher.name : dbTeacher.name,
-                    position: course.parsed_teacher.position ?? dbTeacher.position,
-                    email: course.parsed_teacher.email ?? dbTeacher.email,
-                    academic_title: course.parsed_teacher.academic_title ?? dbTeacher.academic_title
-                  };
-                  await teachers.update(updatedTeacher);                  
-                }
-                
-                await teachers.update(course.parsed_teacher);
-
-                course.teacher_id = course.parsed_teacher.id;
-              }
-            }
-
-            const { issues } = verifyCourse(course);
-            const warnings = [...course.parse_warnings, ...issues];        
-            course.data.warnings = warnings;
-
-            let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
-          
-            console.log(dbCourse ? "Updating course:" : "Adding new course:", updated);        
-            
-            if (dbCourse) {
-              console.log("Existing course found in DB, updating:", dbCourse);
-              await courses.update(updated, dbCourse, `Upload of doc: ${hash}`);
-              mergeCourseTopics(dbCourse.id, course.topics);
+            const res = coursesService.parseCourseDataUpload(uploadPath, okNo);
+            if (!res) {
+              results.push({file: file.name, error: "Не вдалось розібрати файл", success: false});
             } else {
-              const id = (await courses.add(updated))[0].id;
-              course.id = id;
-
-              await Promise.all(
-                course.topics
-                  .map(c => Object.assign(c, { course_id: course.id }))
-                  .map(c => courseTopics.add(c))
-              )
+              results.push({file: file.name, course: res, success: true});
             }
-
-            results.push({
-              file: file.name,
-              course: { ...course, warnings },
-              success: true
-            });
           } catch (error) {
             console.error("Error processing file " + file.name + ":", error);
             results.push({

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS courses(
   specialty_id INTEGER,
   data JSONB,
   generated JSONB,
+  version INTEGER DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

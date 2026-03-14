@@ -3,7 +3,6 @@ import { courseResults, specialties } from "@/stores/db";
 import type { CourseResult } from "@/stores/models";
 import type { BunRequest } from "bun";
 import path from "path";
-import { id } from "zod/v4/locales";
 import { computeFileHash } from "./utils/files";
 
 

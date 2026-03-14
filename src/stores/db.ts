@@ -2,6 +2,7 @@ import path from "path";
 import { sql } from "bun";
 import { create } from "jsondiffpatch";
 import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
+import { ConcurrentModificationError } from "@/services/errors";
 
 // Initialize the database connection
 try {
@@ -32,13 +33,24 @@ const history = {
     ) RETURNING *`;
   },
 
+  createTombstone: async (type: DocObjectType, entity: { id: number }, reason: string) => {
+    history.save({ 
+      object_id: entity.id,
+      object_type: type,
+      type: 'tombstone',
+      stamp: new Date(),
+      comment: reason,
+      data: entity
+    });
+  },
+
   saveHistory: async (
-    oldData: { id: number },
+    oldData: { id: number } | null,
     newData: { id: number },
     reason: string, 
     objType: DocObjectType
   ) => {
-    const type = Math.random() < 0.2 ? 'snapshot' : 'patch';
+    const type = (Math.random() < 0.2 || oldData === null) ? 'snapshot' : 'patch';
     const objId = newData.id;
 
     const entry: Partial<DocVersionRecord> = { 
@@ -50,13 +62,11 @@ const history = {
       data: (type === 'snapshot') ? 
         newData : 
         history._diffpatcher.diff(
-          drop(oldData, 'created_at', 'updated_at'), 
+          drop(oldData!, 'created_at', 'updated_at'), 
           drop(newData, 'created_at', 'updated_at')
         )
     };
 
-    console.log('Saving history entry:', entry);
-    
     await history.save(entry);
   }
 };
@@ -80,6 +90,15 @@ const courses = {
     ` as Course[];
   },
 
+  bySpecialtyBrief: async (specialtyId: number): Promise<KeyValue[]> => {
+    return await sql`
+      SELECT c.id, c.name
+      FROM courses c
+      WHERE c.specialty_id = ${specialtyId}
+      ORDER BY c.name
+    ` as KeyValue[];
+  },
+
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
       (name, teacher_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.data}, ${c.generated}) RETURNING *`;
@@ -100,16 +119,22 @@ const courses = {
     return await sql`SELECT c.id, c.name, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id IN ${sql(list)}` as ShortCourseInfo[];
   },
 
-  update: async (course: Course, oldCourse: Course, reason: string) => {
-    await history.saveHistory(oldCourse, course, reason, "course");
-
-    return await sql`UPDATE courses 
+  update: async (course: Course) => {
+    const update = await sql`UPDATE courses 
       SET name = ${course.name}, 
           teacher_id = ${course.teacher_id}, 
           data = ${course.data}, 
           generated = ${course.generated},
+          version = ${course.version + 1},
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${course.id}`;
+      WHERE id = ${course.id} AND version = ${course.version}
+      RETURNING id`;
+
+      if (update.length === 0) {
+        throw new ConcurrentModificationError(course.id, course.version);
+      }
+
+      return update;
   },
 
   delete: async (id: number) => {
@@ -138,7 +163,8 @@ const teachers = {
   },
   
    add: async (teacher: Teacher) => {
-    return await sql`INSERT INTO teachers (name, email, position, academic_title, alt_names) VALUES (${teacher.name}, ${teacher.email}, ${teacher.position}, ${teacher.academic_title}, ${teacher.alt_names}) RETURNING *`;
+    return await sql`INSERT INTO teachers (name, email, position, academic_title, alt_names) VALUES (
+      ${teacher.name}, ${teacher.email}, ${teacher.position}, ${teacher.academic_title}, ${teacher.alt_names}) RETURNING *`;
   },
 
    update: async (teacher: Teacher) => {
