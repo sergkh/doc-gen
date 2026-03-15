@@ -144,15 +144,6 @@ export default function TeacherEdit() {
              >
                <FontAwesomeIcon icon={faTimes} />
              </button>
-             {item.id && (
-               <button
-                 onClick={handleRefreshPublications}
-                 className="text-amber-50 hover:text-blue-400 cursor-pointer p-1.5 rounded"
-                 title="Оновити публікації з репозиторію"
-               >
-                 <FontAwesomeIcon icon={faSyncAlt} />
-               </button>
-             )}
            </div>
         </div>
 
@@ -235,10 +226,20 @@ export default function TeacherEdit() {
 
         {item.id && (
           <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3 mt-4">
-            <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
-              <FontAwesomeIcon icon={faBook} />
-              Публікації
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-amber-50 font-bold text-lg flex items-center gap-2">
+                <FontAwesomeIcon icon={faBook} />
+                Публікації
+              </h2>
+
+              <button
+                onClick={handleRefreshPublications}
+                className="text-amber-50 hover:text-blue-400 cursor-pointer p-1.5 rounded"
+                title="Оновити публікації з репозиторію"
+              >
+                <FontAwesomeIcon icon={faSyncAlt} />
+              </button>
+            </div>
             
             {isLoadingPublications ? (
               <div className="text-amber-50/70 text-sm">Завантаження публікацій...</div>

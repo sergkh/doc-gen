@@ -87,28 +87,6 @@ export default function SpecialtiesList() {
           </button>
         </div>
 
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors mb-6 ${
-            isDragActive
-              ? "border-blue-500 bg-blue-500/10"
-              : "border-amber-50 bg-zinc-900"
-          } ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-col items-center gap-3">            
-            {isUploading ? (
-              <p className="text-amber-50 font-mono font-bold">
-                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Завантаження...
-              </p>
-            ) : (
-              <p className="text-amber-50 font-mono font-bold text-lg">
-                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Перетягніть файл OПП в форматі .docx сюди або натисніть для вибору
-              </p>
-            )}
-          </div>
-        </div>
-
         <div className="flex flex-col gap-3">
           {items.length === 0 ? (
             <div className="text-amber-50 font-mono">Немає спеціальностей</div>
@@ -143,6 +121,29 @@ export default function SpecialtiesList() {
             </ul>
           )}
         </div>
+
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors mb-6 ${
+            isDragActive
+              ? "border-blue-500 bg-blue-500/10"
+              : "border-amber-50 bg-zinc-900"
+          } ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center gap-3">            
+            {isUploading ? (
+              <p className="text-amber-50 font-mono font-bold">
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Завантаження...
+              </p>
+            ) : (
+              <p className="text-amber-50 font-mono font-bold text-lg">
+                <FontAwesomeIcon icon={faUpload} className={isDragActive ? "text-blue-500" : "text-amber-50"}/> Перетягніть файл OПП в форматі .docx сюди або натисніть для вибору
+              </p>
+            )}
+          </div>
+        </div>
+        
       </div>
     </div>
   );

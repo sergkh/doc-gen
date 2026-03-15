@@ -51,7 +51,7 @@ export default function TeachersList() {
               {items.map(t => (
                 <li key={t.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
                   <div className="flex-1">
-                    <div className="font-bold">{t.name}</div>
+                    <div className="font-bold cursor-pointer" onClick={() => navigate(`/teachers/${t.id}`)}>{t.name}</div>
                     <div className="text-sm opacity-80">{t.email}</div>
                   </div>
                   <div className="flex gap-2">
