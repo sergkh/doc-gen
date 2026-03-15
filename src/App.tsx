@@ -136,13 +136,6 @@ function Navigation() {
              >
                Спеціальності
              </Link>
-             <Link
-               to="/results"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/results"))}
-             >
-               Результати
-             </Link>
               <Link
                to="/templates"
                onClick={closeMenu}
