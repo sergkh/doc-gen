@@ -1,6 +1,5 @@
 import type { BunRequest } from "bun";
-import type { ChatToolData, DisciplineContext } from "@/ai/chat";
-import { runChatToolsConversation } from "@/ai/chat";
+import { runAgent } from "@/ai/agent";
 import { AVAILABLE_MODELS } from "@/ai/models";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -11,8 +10,6 @@ const CLARIFICATION_MESSAGE =
   "(3) знайти дисципліни за ПР (наприклад: ПР-7), " +
   "(4) знайти дисципліни за темою, (5) підсумувати практичні години, " +
   "(6) встановити контекст дисципліни та додавати теми. Сформулюйте запит трохи точніше.";
-
-const DEFAULT_DATA: ChatToolData = { action: "clarify" };
 
 function getOrCreateSessionId(req: BunRequest): string {
   const existing = req.headers.get("x-session-id");
@@ -46,29 +43,16 @@ const chatApi = {
           return new Response("Missing message", { status: 400 });
         }
 
-        let conversation;
-        try {
-          conversation = await runChatToolsConversation({ specialtyId, sessionId, message, apiKey, model });
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error);
-          if (msg.toLowerCase().includes("api key")) {
-            return new Response("OpenAI API key is required", { status: 400 });
-          }
-          throw error;
-        }
-
-        const reply = conversation.reply?.trim() || CLARIFICATION_MESSAGE;
-        const data = conversation.data ?? DEFAULT_DATA;
-        const toolHistory = conversation.toolHistory ?? [];
-        const context: DisciplineContext = conversation.context;
+        const result = await runAgent({ specialtyId, sessionId, message, apiKey, model });        
 
         const headers = new Headers();
         headers.set("Content-Type", "application/json");
+
         if (!req.headers.has("x-session-id")) {
           headers.set("x-session-id", sessionId);
         }
 
-        return new Response(JSON.stringify({ reply, data, toolHistory, context }), { headers });
+        return new Response(JSON.stringify(result), { headers });
       } catch (error) {
         console.error("Chat API error:", error);
         return new Response(`Chat error: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });

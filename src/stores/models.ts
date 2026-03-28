@@ -1,8 +1,10 @@
+export type ResultType = "ЗК" | "СК" | "РН" | "ІК";
+
 export type CourseResult = {
   id: number,
   no: number,
   specialty_id: number | null,
-  type: "ЗК" | "СК" | "РН" | "ІК",
+  type: ResultType,
   name: string
 }
 

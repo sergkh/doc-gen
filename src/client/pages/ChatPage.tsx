@@ -2,117 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Specialty } from "@/stores/models";
 import { loadAllSpecialties } from "../specialties";
-import { formatDisciplineCode } from "../courses";
-import { AVAILABLE_MODELS } from "../../ai/models";
-
-const DEFAULT_MODEL = "gpt-4o-mini";
-
-type ChatAction =
-  | "disciplines_by_sk"
-  | "disciplines_by_zk"
-  | "disciplines_by_pr"
-  | "disciplines_by_topic"
-  | "sum_practical_hours"
-  | "discipline_details"
-  | "list_disciplines"
-  | "set_discipline_context"
-  | "get_discipline_context"
-  | "clear_discipline_context"
-  | "save_discipline_topics"
-  | "clarify";
-
-type DisciplineContext = {
-  courseId: number;
-  courseName: string;
-  okNo: string | null;
-} | null;
-
-type DisciplineItem = {
-  ok_no: string | null;
-  name: string;
-};
-
-type TopicMatchItem = DisciplineItem & {
-  matchedTopics: string[];
-};
-
-type PracticalHoursBreakdownItem = DisciplineItem & {
-  practicalHours: number;
-};
-
-type DisciplineBasicInfo = DisciplineItem & {
-  credits: number | null;
-  hours: number | null;
-  controlType: string | null;
-};
-
-type DisciplineDetailsItem = {
-  discipline: DisciplineItem & {
-    description: string | null;
-    credits: number | null;
-    hours: number | null;
-    controlType: string | null;
-    semesters: number[];
-    resultIds: number[];
-  };
-  results: Array<{ type: string; no: number; name: string }>;
-  topics: Array<{ name: string; lection: string }>;
-};
-
-type ToolHistoryEntry = {
-  toolName: string;
-  arguments: Record<string, unknown>;
-  result:
-    | { action: "disciplines_by_sk"; items: DisciplineItem[] }
-    | { action: "disciplines_by_zk"; items: DisciplineItem[] }
-    | { action: "disciplines_by_pr"; items: DisciplineItem[] }
-    | { action: "disciplines_by_topic"; items: TopicMatchItem[] }
-    | { action: "sum_practical_hours"; totalPracticalHours: number; byDiscipline: PracticalHoursBreakdownItem[] }
-    | { action: "discipline_details"; item: DisciplineDetailsItem | null }
-    | { action: "list_disciplines"; items: DisciplineBasicInfo[] }
-    | { action: "set_discipline_context"; context: DisciplineContext }
-    | { action: "get_discipline_context"; context: DisciplineContext }
-    | { action: "clear_discipline_context" }
-    | { action: "save_discipline_topics"; status: "ok" | "error"; message: string; addedTopics: string[] }
-    | { action: "clarify" };
-};
-
-type ChatResponse = {
-  reply: string;
-  data: ToolHistoryEntry["result"];
-  toolHistory: ToolHistoryEntry[];
-  context: DisciplineContext;
-};
-
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  data?: ChatResponse["data"];
-  toolHistory?: ToolHistoryEntry[];
-};
+import Markdown from 'react-markdown';
+import { AVAILABLE_MODELS, DEFAULT_AGENT_MODEL, type ChatMessage, type DisciplineContext } from "../../ai/models";
+import { callAgentApi } from "../chat";
 
 const API_KEY_STORAGE_KEY = "openai_api_key";
 
-function formatDisciplineLabel(item: DisciplineItem): string {
-  return `${formatDisciplineCode(item.ok_no)} — ${item.name}`;
-}
-
-type DisciplineListAction = "disciplines_by_sk" | "disciplines_by_zk" | "disciplines_by_pr";
-
-function isDisciplineListAction(action: ChatAction | undefined): action is DisciplineListAction {
-  return action === "disciplines_by_sk" || action === "disciplines_by_zk" || action === "disciplines_by_pr";
-}
-
-function isDisciplineListData(
-  data: ChatResponse["data"] | undefined,
-): data is { action: DisciplineListAction; items: DisciplineItem[] } {
-  return !!data && isDisciplineListAction(data.action);
-}
 
 export default function ChatPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [specialtyId, setSpecialtyId] = useState<string>("");
+  const [specialtyId, setSpecialtyId] = useState<number>();
 
   const [apiKey, setApiKey] = useState<string>("");
   const [message, setMessage] = useState<string>("");
@@ -121,8 +20,8 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [expandedToolHistory, setExpandedToolHistory] = useState<Record<string, boolean>>({});
   const [sessionId, setSessionId] = useState<string>("");
-  const [disciplineContext, setDisciplineContext] = useState<DisciplineContext>(null);
-  const [model, setModel] = useState<string>(DEFAULT_MODEL);
+  const [disciplineContext, setDisciplineContext] = useState<DisciplineContext | null >(null);
+  const [model, setModel] = useState<string>(DEFAULT_AGENT_MODEL);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -144,7 +43,7 @@ export default function ChatPage() {
         const allSpecialties = await loadAllSpecialties();
         setSpecialties(allSpecialties);
         if (allSpecialties.length > 0) {
-          setSpecialtyId(String(allSpecialties[0]?.id ?? ""));
+          setSpecialtyId(allSpecialties[0]!.id);
         }
       } catch (error) {
         console.error("Failed to load specialties:", error);
@@ -166,8 +65,6 @@ export default function ChatPage() {
     if (value) localStorage.setItem(API_KEY_STORAGE_KEY, value);
     else localStorage.removeItem(API_KEY_STORAGE_KEY);
   };
-
-  const selectedSpecialty = useMemo(() => specialties.find((s) => String(s.id) === specialtyId) ?? null, [specialties, specialtyId]);
 
   const send = async () => {
     if (isSending) return;
@@ -191,44 +88,21 @@ export default function ChatPage() {
     setIsSending(true);
 
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (sessionId) {
-        headers["X-Session-Id"] = sessionId;
-      }
+      const data = await callAgentApi(specialtyId, trimmed, sessionId, apiKey, model);
 
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          specialtyId: Number(specialtyId),
-          message: trimmed,
-          apiKey: apiKey || undefined,
-          model,
-        }),
-      });
-
-      const sessionIdHeader = res.headers.get("x-session-id");
+      const sessionIdHeader = data.context.sessionId;
       if (sessionIdHeader && sessionIdHeader !== sessionId) {
         setSessionId(sessionIdHeader);
       }
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-
-      const data = (await res.json()) as ChatResponse;
-
-      if (data.context) {
-        setDisciplineContext(data.context);
+      if (data.context.discipline) {
+        setDisciplineContext(data.context.discipline);
       }
 
       const assistantMsg: ChatMessage = {
         id: `${Date.now()}-a`,
         role: "assistant",
-        text: data.reply,
-        data: data.data,
-        toolHistory: data.toolHistory,
+        text: data.reply
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -270,11 +144,13 @@ export default function ChatPage() {
         <div className="flex justify-between items-center shrink-0">
           <h1 className="font-mono">Чат</h1>
           <div className="flex items-center gap-3">
+            
             {disciplineContext && (
               <div className="text-xs text-amber-200 bg-zinc-800 px-2 py-1 rounded border border-amber-300/30">
                 Дисципліна: {disciplineContext.okNo ? `ОК${disciplineContext.okNo} ` : ""}{disciplineContext.courseName}
               </div>
             )}
+            
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -286,9 +162,10 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
+
             <select
               value={specialtyId}
-              onChange={(e) => setSpecialtyId(e.target.value)}
+              onChange={(e) => setSpecialtyId(Number(e.target.value))}
               className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
             >
               {specialties.map((s) => (
@@ -318,99 +195,17 @@ export default function ChatPage() {
           ) : null}
 
           {messages.map((m) => {
-            const topicData = m.data?.action === "disciplines_by_topic" ? m.data : null;
-            const disciplineData = isDisciplineListData(m.data) ? m.data : null;
-            const practicalData = m.data?.action === "sum_practical_hours" ? m.data : null;
-
             return (
               <div
                 key={m.id}
                 className={
                   m.role === "user"
                     ? "bg-zinc-950 border border-zinc-700 rounded-lg p-3"
-                    : "bg-zinc-950 border border-amber-300/40 rounded-lg p-3"
+                    : "bg-zinc-800 border border-amber-300/40 rounded-lg p-3"
                 }
               >
                 <div className="text-xs opacity-70 mb-1">{m.role === "user" ? "Ви" : "Асистент"}</div>
-                <div className="whitespace-pre-wrap text-sm">{m.text}</div>
-
-                {m.role === "assistant" && topicData ? (
-                  <div className="mt-3 text-sm">
-                    <div className="text-xs text-amber-200 mb-1">Збіги по темах</div>
-                    <div className="flex flex-col gap-2">
-                      {topicData.items.map((item) => (
-                        <div key={`${item.ok_no}-${item.name}`} className="border-t border-zinc-800 pt-2">
-                          <div>{formatDisciplineLabel(item)}</div>
-                          {item.matchedTopics.length > 0 ? (
-                            <div className="text-xs text-amber-200 mt-1">Теми: {item.matchedTopics.join(", ")}</div>
-                          ) : (
-                            <div className="text-xs text-amber-200 mt-1">Збіг у назві/описі дисципліни</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {m.role === "assistant" && disciplineData ? (
-                  <div className="mt-3 text-sm">
-                    <div className="text-xs text-amber-200 mb-1">Дисципліни</div>
-                    <div className="flex flex-col gap-1">
-                      {disciplineData.items.map((item) => (
-                        <div key={`${item.ok_no}-${item.name}`}>{formatDisciplineLabel(item)}</div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {m.role === "assistant" && practicalData ? (
-                  <div className="mt-3 text-sm">
-                    <div className="text-xs text-amber-200 mb-1">Практичні години (денна форма)</div>
-                    <div className="text-amber-50">Разом: {practicalData.totalPracticalHours} год.</div>
-                  </div>
-                ) : null}
-
-                {m.role === "assistant" && m.toolHistory && m.toolHistory.length > 0 ? (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => toggleToolHistory(m.id)}
-                      className="text-xs text-amber-300 hover:text-amber-100 transition-colors flex items-center gap-1"
-                    >
-                      {expandedToolHistory[m.id] ? "▼" : "▶"} Використані інструменти ({m.toolHistory.length})
-                    </button>
-                    {expandedToolHistory[m.id] && (
-                      <div className="mt-2 text-xs bg-zinc-800 border border-zinc-700 rounded-lg p-3">
-                        {m.toolHistory.map((entry, idx) => (
-                          <div key={idx} className="mb-3 last:mb-0">
-                            <div className="font-semibold text-amber-200 mb-1">
-                              {idx + 1}. {entry.toolName}
-                            </div>
-                            {Object.keys(entry.arguments).length > 0 && (
-                              <div className="text-zinc-400 mb-1">
-                                Аргументи: {JSON.stringify(entry.arguments, null, 2)}
-                              </div>
-                            )}
-                            <div className="text-zinc-300">
-                              {entry.result.action === "disciplines_by_sk" || entry.result.action === "disciplines_by_zk" || entry.result.action === "disciplines_by_pr" ? (
-                                `Знайдено ${entry.result.items.length} дисциплін`
-                              ) : entry.result.action === "disciplines_by_topic" ? (
-                                `Знайдено ${entry.result.items.length} дисциплін зі збігами`
-                              ) : entry.result.action === "sum_practical_hours" ? (
-                                `Разом: ${entry.result.totalPracticalHours} практичних годин`
-                              ) : entry.result.action === "discipline_details" ? (
-                                entry.result.item ? `Деталі: ${entry.result.item.discipline.name}` : "Дисципліну не знайдено"
-                              ) : entry.result.action === "list_disciplines" ? (
-                                `Завантажено ${entry.result.items.length} дисциплін`
-                              ) : (
-                                "Невідомий результат"
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+                <div className="whitespace-pre-wrap text-sm"><Markdown>{m.text}</Markdown></div>
               </div>
             );
           })}
@@ -423,7 +218,6 @@ export default function ChatPage() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Напишіть запит..."
             rows={1}
             className="flex-1 bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2 resize-none overflow-hidden"
             style={{ minHeight: "42px", maxHeight: "150px" }}

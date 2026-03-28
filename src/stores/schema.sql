@@ -94,3 +94,15 @@ CREATE TABLE IF NOT EXISTS doc_version_records(
 
 CREATE INDEX IF NOT EXISTS idx_doc_version_records_object_id ON doc_version_records (object_id);
 CREATE INDEX IF NOT EXISTS idx_doc_version_records_stamp ON doc_version_records (stamp);
+
+CREATE TABLE IF NOT EXISTS prompts (
+    id SERIAL PRIMARY KEY,
+    index integer NOT NULL,
+    type character varying(64) NOT NULL,
+    field character varying(512) NOT NULL,
+    system_prompt text NOT NULL,
+    prompt text NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    model character varying(64) DEFAULT 'gpt-4o'::character varying NOT NULL
+);

@@ -20,6 +20,12 @@ function drop(obj: Record<string, any>, ...fields: string[]) {
   return result;
 }
 
+function loggedSql(strings: TemplateStringsArray, ...values: any[]) {
+  console.log("SQL: ", strings.join("?"));
+  console.log("Params: ", values);
+  return sql(strings, ...values);
+}
+
 const history = {
   _diffpatcher: create(),
 
