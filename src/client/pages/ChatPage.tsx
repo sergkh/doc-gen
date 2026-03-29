@@ -85,8 +85,7 @@ function parseWsMessage(
 
 export default function ChatPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [specialtyId, setSpecialtyId] = useState<number>();
-
+  const [specialtyId, setSpecialtyId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -119,9 +118,7 @@ export default function ChatPage() {
         setIsLoading(true);
         const allSpecialties = await loadAllSpecialties();
         setSpecialties(allSpecialties);
-        if (allSpecialties.length > 0) {
-          setSpecialtyId(allSpecialties[0]!.id);
-        }
+        if (allSpecialties.length > 0) setSpecialtyId(String(allSpecialties[0]!.id));
       } catch (error) {
         console.error("Failed to load specialties:", error);
         toast.error("Помилка завантаження спеціальностей");
@@ -134,7 +131,7 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+    viewport.current?.scrollTo({ top: viewport.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -337,13 +334,14 @@ export default function ChatPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left">
-          <div className="text-amber-50 font-mono">Завантаження чату...</div>
-        </div>
-      </div>
+      <Center h={200}>
+        <Loader />
+      </Center>
     );
   }
+
+  const specialtyOptions = specialties.map((s) => ({ value: String(s.id), label: `${s.code} ${s.name}` }));
+  const modelOptions = AVAILABLE_MODELS.map((m) => ({ value: m.id, label: m.name }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 pb-4 text-center relative z-10 h-[calc(100vh-6rem)] flex flex-col overflow-hidden">

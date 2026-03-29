@@ -2,17 +2,15 @@ import "@mantine/core/styles.css";
 import "./index.css";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useState } from "react";
 import {
+  AppShell,
   MantineProvider,
-  Anchor,
-  Box,
   Burger,
-  Collapse,
-  Container,
   Group,
-  Stack,
+  NavLink,
+  Text,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
@@ -32,106 +30,55 @@ import SpecialtyEdit from "./client/pages/SpecialtyEdit";
 import ChatPage from "./client/pages/ChatPage";
 import { theme } from "./theme";
 
-function Navigation() {
-  const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-  };
-
-  const linkStyles = (isActive: boolean) => ({
-    // display: "inline-flex",
-    // alignItems: "center",
-    // borderRadius: "0.5rem",
-    // padding: "0.5rem 1rem",
-    // transition: "all 100ms",
-    // fontFamily: "monospace",
-    // fontWeight: isActive ? 700 : 400,
-    // color: isActive ? "#18181b" : "#fffbeb",
-    // backgroundColor: isActive ? "#fffbeb" : "transparent",
-    // textDecoration: "none",
-  });
-
-  return (
-    <Box component="nav" style={{ borderBottom: "2px solid #fffbeb", marginBottom: "1rem" }}>
-      <Container size="xl" px="md">
-        <Group justify="space-between" py="md" hiddenFrom="md">
-          <Box c="#fffbeb" fw={700} ff="monospace">
-            Меню
-          </Box>
-          <Burger
-            opened={isMenuOpen}
-            onClick={() => setIsMenuOpen((opened) => !opened)}
-            color="#fffbeb"
-            aria-label="Toggle menu"
-          />
-        </Group>
-
-        <Group gap="sm" py="md" visibleFrom="md">
-          <Anchor component={Link} to="/" onClick={closeMenu} style={linkStyles(location.pathname === "/")}>Генератор документів</Anchor>
-          <Anchor component={Link} to="/courses" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/courses"))}>Дисципліни</Anchor>
-          <Anchor component={Link} to="/teachers" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/teachers"))}>Викладачі</Anchor>
-          <Anchor component={Link} to="/specialties" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/specialties"))}>Спеціальності</Anchor>
-          <Anchor component={Link} to="/templates" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/templates"))}>Шаблони</Anchor>
-          <Anchor component={Link} to="/chat" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/chat"))}>Чат</Anchor>
-        </Group>
-
-        <Collapse in={isMenuOpen} hiddenFrom="md">
-          <Stack gap="xs" pb="md">
-            <Anchor component={Link} to="/" onClick={closeMenu} style={linkStyles(location.pathname === "/")}>Генератор документів</Anchor>
-            <Anchor component={Link} to="/courses" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/courses"))}>Дисципліни</Anchor>
-            <Anchor component={Link} to="/teachers" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/teachers"))}>Викладачі</Anchor>
-            <Anchor component={Link} to="/specialties" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/specialties"))}>Спеціальності</Anchor>
-            <Anchor component={Link} to="/results" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/results"))}>Результати</Anchor>
-            <Anchor component={Link} to="/templates" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/templates"))}>Шаблони</Anchor>
-            <Anchor component={Link} to="/chat" onClick={closeMenu} style={linkStyles(location.pathname.startsWith("/chat"))}>Чат</Anchor>
-          </Stack>
-        </Collapse>
-      </Container>
-    </Box>
-  );
-}
+const navItems = [
+  { label: "Генератор документів", to: "/", match: (path: string) => path === "/" },
+  { label: "Дисципліни", to: "/courses", match: (path: string) => path.startsWith("/courses") },
+  { label: "Викладачі", to: "/teachers", match: (path: string) => path.startsWith("/teachers") },
+  { label: "Спеціальності", to: "/specialties", match: (path: string) => path.startsWith("/specialties") },
+  { label: "Результати", to: "/results/matrix", match: (path: string) => path.includes("/results") },
+  { label: "Шаблони", to: "/templates", match: (path: string) => path.startsWith("/templates") },
+  { label: "Чат", to: "/chat", match: (path: string) => path.startsWith("/chat") },
+];
 
 export function App() {
+  const [opened, { toggle, close }] = useDisclosure();
+  const location = useLocation();
+
   return (
     <MantineProvider theme={theme}>
-      <Box w="100%" mih="100vh">
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#18181b',
-              color: '#fffbeb',
-              border: '2px solid #fffbeb',
-              fontFamily: 'monospace',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fffbeb',
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fffbeb',
-              },
-            },
-          }}
-        />
-        <Navigation />
-        <Routes>
-          <Route
-            path="/"
-            element={<GeneratorPage />}
-          />
+      <Toaster position="top-right" />
+      <AppShell
+        header={{ height: 60 }}
+        navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !opened } }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Group h="100%" px="md">
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Text fw={700} size="lg">Doc Gen</Text>
+          </Group>
+        </AppShell.Header>
+
+        <AppShell.Navbar p="md">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              component={Link}
+              to={item.to}
+              label={item.label}
+              active={item.match(location.pathname)}
+              onClick={close}
+            />
+          ))}
+        </AppShell.Navbar>
+
+        <AppShell.Main>
+          <Routes>
+            <Route path="/" element={<GeneratorPage />} />
             <Route path="/courses" element={<CoursesList />} />
             <Route path="/specialties/:specialtyId/courses/summary" element={<CoursesSummary />} />
             <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
             <Route path="/specialties/:specialtyId/courses/graph" element={<CourseGraph />} />
-
             <Route path="/courses/:id" element={<CourseEdit />} />
             <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
             <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
@@ -145,8 +92,9 @@ export function App() {
             <Route path="/templates" element={<TemplatesList />} />
             <Route path="/templates/:id" element={<TemplateEdit />} />
             <Route path="/chat" element={<ChatPage />} />
-        </Routes>
-      </Box>
+          </Routes>
+        </AppShell.Main>
+      </AppShell>
     </MantineProvider>
   );
 }

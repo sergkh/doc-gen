@@ -4,10 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
 import type { Teacher } from "@/stores/models";
 import { loadAllTeachers, deleteTeacher } from "../teachers";
+import { Title, Stack, Group, Paper, Text, ActionIcon, Tooltip, Box } from "@mantine/core";
 
 export default function TeachersList() {
   const navigate = useNavigate();
-
   const [items, setItems] = useState<Teacher[]>([]);
 
   useEffect(() => {
@@ -15,13 +15,10 @@ export default function TeachersList() {
   }, []);
 
   const handleDelete = async (teacher: Teacher) => {
-    if (!confirm(`Ви впевнені, що хочете видалити викладача "${teacher.name}"?`)) {
-      return;
-    }
-
+    if (!confirm(`Ви впевнені, що хочете видалити викладача "${teacher.name}"?`)) return;
     try {
       await deleteTeacher(teacher.id);
-      setItems(items.filter(t => t.id !== teacher.id));
+      setItems(items.filter((t) => t.id !== teacher.id));
     } catch (error) {
       console.error("Error deleting teacher:", error);
       alert("Не вдалося видалити викладача");
@@ -29,56 +26,44 @@ export default function TeachersList() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
-        
-
-        <div className="flex justify-between items-center">
-          <h1 className="font-mono">Викладачі</h1>
-          <button
-            onClick={() => navigate("/teachers/new")}
-            className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
-          >
+    <Stack maw={1200} mx="auto">
+      <Group justify="space-between">
+        <Title order={2}>Викладачі</Title>
+        <Tooltip label="Новий викладач">
+          <ActionIcon variant="default" onClick={() => navigate("/teachers/new")}>
             <FontAwesomeIcon icon={faPlus} />
-          </button>
-        </div>
+          </ActionIcon>
+        </Tooltip>
+      </Group>
 
-        <div className="flex flex-col gap-3">
-          {items.length === 0 ? (
-            <div className="text-amber-50 font-mono">Немає викладачів</div>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {items.map(t => (
-                <li key={t.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-bold">{t.name}</div>
-                    <div className="text-sm opacity-80">{t.email}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => navigate(`/teachers/${t.id}`)} 
-                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                      aria-label="Редагувати викладача"
-                      title="Редагувати викладача"
-                    >
+      <Stack gap="xs">
+        {items.length === 0 ? (
+          <Text c="dimmed">Немає викладачів</Text>
+        ) : (
+          items.map((t) => (
+            <Paper key={t.id} withBorder p="sm">
+              <Group justify="space-between" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={600} truncate>{t.name}</Text>
+                  <Text size="sm" c="dimmed" truncate>{t.email}</Text>
+                </Box>
+                <Group gap="xs" wrap="nowrap">
+                  <Tooltip label="Редагувати">
+                    <ActionIcon variant="subtle" onClick={() => navigate(`/teachers/${t.id}`)}>
                       <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(t)} 
-                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                      aria-label="Видалити викладача"
-                      title="Видалити викладача"
-                    >
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Видалити">
+                    <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(t)}>
                       <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+            </Paper>
+          ))
+        )}
+      </Stack>
+    </Stack>
   );
 }
-

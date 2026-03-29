@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { Stack, Group, Text, TextInput, Select, Badge, ActionIcon, Button, Divider } from "@mantine/core";
 
 export type Attestation = {
-  name: string,
-  semester: number
+  name: string;
+  semester: number;
 };
 
 interface AttestationsEditorProps {
@@ -14,93 +15,79 @@ interface AttestationsEditorProps {
   onRemove: (index: number) => void;
 }
 
+const SEMESTER_OPTIONS = [
+  { value: "1", label: "1 семестр" },
+  { value: "2", label: "2 семестр" },
+];
+
 export default function AttestationsEditor({
   attestations,
   onAdd,
   onUpdateSemester,
-  onRemove
+  onRemove,
 }: AttestationsEditorProps) {
-  const attestationInputRef = useRef<HTMLInputElement>(null);
-  const attestationSemesterRef = useRef<HTMLSelectElement>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [semester, setSemester] = useState<string>("1");
 
   const handleAdd = () => {
-    if (attestationInputRef.current && attestationInputRef.current.value.trim()) {
-      const semester = attestationSemesterRef.current?.value ? Number(attestationSemesterRef.current.value) : 1;
-      onAdd(attestationInputRef.current.value, semester);
-      attestationInputRef.current.value = '';
-      if (attestationSemesterRef.current) {
-        attestationSemesterRef.current.value = '1';
-      }
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-      const semester = attestationSemesterRef.current?.value ? Number(attestationSemesterRef.current.value) : 1;
-      onAdd(e.currentTarget.value, semester);
-      e.currentTarget.value = '';
-      if (attestationSemesterRef.current) {
-        attestationSemesterRef.current.value = '1';
-      }
-    }
+    if (!inputValue.trim()) return;
+    onAdd(inputValue.trim(), Number(semester));
+    setInputValue("");
+    setSemester("1");
   };
 
   return (
-    <div className="col-span-2">
-      <label className="block text-amber-50 font-bold mb-2">Атестації:</label>
-      <div className="flex flex-col gap-2">
-        {attestations.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {attestations.map((attestation, index) => (
-              <div
-                key={index}
-                className="bg-zinc-800 border border-amber-50 rounded-lg px-3 py-1.5 flex items-center gap-2"
-              >
-                <span className="text-amber-50 font-mono text-sm">{attestation.name}</span>
-                <select
-                  value={attestation.semester || 1}
-                  onChange={(e) => onUpdateSemester(index, Number(e.target.value))}
-                  className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white cursor-pointer"
-                >
-                  <option value={1}>1 семестр</option>
-                  <option value={2}>2 семестр</option>
-                </select>
-                <button
-                  onClick={() => onRemove(index)}
-                  className=" text-amber-50 hover:text-red-400 rounded-full w-5 h-5 flex items-center justify-center transition-all duration-200 hover:scale-110 cursor-pointer"
-                  aria-label="Видалити атестацію"
-                >
-                  <FontAwesomeIcon icon={faTimes} size="xs" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input
-            ref={attestationInputRef}
-            type="text"
-            className="flex-1 bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-            placeholder="Назва атестації"
-            onKeyDown={handleKeyDown}
-          />
-          <select
-            ref={attestationSemesterRef}
-            defaultValue="1"
-            className="bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-          >
-            <option value="1">1 семестр</option>
-            <option value="2">2 семестр</option>
-          </select>
-          <button
-            onClick={handleAdd}
-            className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faPlus} /> Додати
-          </button>
-        </div>
-      </div>
-    </div>
+    <Stack gap="xs">
+      <Divider label="Атестації" labelPosition="left" />
+
+      {attestations.length > 0 && (
+        <Group gap="xs" wrap="wrap">
+          {attestations.map((att, index) => (
+            <Badge
+              key={index}
+              variant="outline"
+              rightSection={
+                <ActionIcon size="xs" variant="transparent" onClick={() => onRemove(index)}>×</ActionIcon>
+              }
+            >
+              {att.name}{" "}
+              <Select
+                data={SEMESTER_OPTIONS}
+                value={String(att.semester || 1)}
+                onChange={(v) => v && onUpdateSemester(index, Number(v))}
+                size="xs"
+                w={100}
+                styles={{ input: { border: "none", background: "transparent", padding: 0, fontSize: "inherit", color: "inherit" } }}
+                withCheckIcon={false}
+              />
+            </Badge>
+          ))}
+        </Group>
+      )}
+
+      <Group gap="xs">
+        <TextInput
+          style={{ flex: 1 }}
+          placeholder="Назва атестації"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.currentTarget.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+        />
+        <Select
+          data={SEMESTER_OPTIONS}
+          value={semester}
+          onChange={(v) => v && setSemester(v)}
+          w={140}
+        />
+        <Button
+          variant="default"
+          leftSection={<FontAwesomeIcon icon={faPlus} />}
+          onClick={handleAdd}
+          disabled={!inputValue.trim()}
+        >
+          Додати
+        </Button>
+      </Group>
+    </Stack>
   );
 }
-

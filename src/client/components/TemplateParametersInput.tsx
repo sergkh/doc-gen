@@ -4,6 +4,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckDouble, faTrash } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import { formatPrompt } from "@/ai/prompt";
+import {
+  Stack,
+  Select,
+  TextInput,
+  NumberInput,
+  Switch,
+  Text,
+  Group,
+  ActionIcon,
+  Badge,
+  Divider,
+  SimpleGrid,
+} from "@mantine/core";
 
 interface TemplateParametersInputProps {
   parameters: TemplateParameter[];
@@ -13,69 +26,41 @@ interface TemplateParametersInputProps {
   onChange: (values: Record<string, any>) => void;
 }
 
-function ParamLabel({ param }: { param: TemplateParameter }) {
-  return <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.description ?? param.name}
-            <span className="text-xs font-normal opacity-70 ml-2">({param.name})</span>
-          </label>;
-}
-
 export default function TemplateParametersInput({
   parameters,
   values,
   disabled = false,
   courseId,
-  onChange
+  onChange,
 }: TemplateParametersInputProps) {
   const [optionsCache, setOptionsCache] = useState<
     Record<string, Array<{ id: string | number; name: string; [key: string]: any }>>
   >({});
   const [loadingOptions, setLoadingOptions] = useState<Record<string, boolean>>({});
 
-  // Resolve URL template with courseId substitution
-  const resolveUrl = (url: string): string => {
-    return formatPrompt(url, { courseId: courseId ?? "" });
-  };
+  const resolveUrl = (url: string): string =>
+    formatPrompt(url, { courseId: courseId ?? "" });
 
-  // Fetch options from URL when parameter with optionsUrl is selected
   useEffect(() => {
     const fetchOptions = async () => {
       for (const param of parameters) {
         if (!param.optionsUrl) continue;
-        
         const resolvedUrl = resolveUrl(param.optionsUrl);
-        const cacheKey = resolvedUrl; // Use resolved URL as cache key
-        
-        // Skip if URL requires courseId but it's not available
-        if (param.optionsUrl.includes("{{courseId}}") && courseId === undefined) {
-          continue;
-        }
-        
-        if (!optionsCache[cacheKey] && !loadingOptions[cacheKey]) {
-          setLoadingOptions((prev) => ({ ...prev, [cacheKey]: true }));
+        if (param.optionsUrl.includes("{{courseId}}") && courseId === undefined) continue;
+        if (!optionsCache[resolvedUrl] && !loadingOptions[resolvedUrl]) {
+          setLoadingOptions((prev) => ({ ...prev, [resolvedUrl]: true }));
           try {
             const response = await fetch(resolvedUrl);
             if (response.ok) {
               const data = await response.json();
-              // For object types, preserve full objects; for others, ensure id/name format
               const options = Array.isArray(data)
-                ? data.map((item: any) => {
-                    // If it's already an object with id/name, preserve it fully
-                    if (
-                      typeof item === "object" &&
-                      item !== null &&
-                      (item.id !== undefined || item.name !== undefined)
-                    ) {
-                      return item;
-                    }
-                    // Otherwise, create id/name format
-                    return {
-                      id: item.id ?? item.value ?? item,
-                      name: item.name ?? item.label ?? String(item)
-                    };
-                  })
+                ? data.map((item: any) =>
+                    typeof item === "object" && item !== null && (item.id !== undefined || item.name !== undefined)
+                      ? item
+                      : { id: item.id ?? item.value ?? item, name: item.name ?? item.label ?? String(item) }
+                  )
                 : [];
-              setOptionsCache((prev) => ({ ...prev, [cacheKey]: options }));
+              setOptionsCache((prev) => ({ ...prev, [resolvedUrl]: options }));
             } else {
               toast.error(`Помилка завантаження опцій для ${param.name}`);
             }
@@ -83,115 +68,100 @@ export default function TemplateParametersInput({
             console.error(`Error fetching options for ${param.name}:`, error);
             toast.error(`Помилка завантаження опцій для ${param.name}`);
           } finally {
-            setLoadingOptions((prev) => ({ ...prev, [cacheKey]: false }));
+            setLoadingOptions((prev) => ({ ...prev, [resolvedUrl]: false }));
           }
         }
       }
     };
-
-    if (parameters.length > 0) {
-      fetchOptions();
-    }
+    if (parameters.length > 0) fetchOptions();
   }, [parameters, courseId]);
 
   const updateParameterValue = (paramName: string, value: any) => {
     onChange({ ...values, [paramName]: value });
   };
 
-  const renderParameterInput = (param: TemplateParameter) => {
-    const paramValue =
-      values[param.name] ?? (param.type === "boolean" ? false : param.type === "list" ? [] : "");
+  const getOptions = (param: TemplateParameter) => {
     const resolvedUrl = param.optionsUrl ? resolveUrl(param.optionsUrl) : null;
-    const options = resolvedUrl
+    const raw = resolvedUrl
       ? optionsCache[resolvedUrl] || []
       : param.dictionary
       ? Array.isArray(param.dictionary)
         ? param.dictionary.map((item, idx) => ({ id: idx, name: String(item) }))
         : [{ id: 0, name: String(param.dictionary) }]
       : [];
+    return { options: raw, resolvedUrl };
+  };
+
+  const paramLabel = (param: TemplateParameter) =>
+    `${param.description ?? param.name}${param.description ? ` (${param.name})` : ""}`;
+
+  const renderParameterInput = (param: TemplateParameter) => {
+    const paramValue =
+      values[param.name] ?? (param.type === "boolean" ? false : param.type === "list" ? [] : "");
+    const { options, resolvedUrl } = getOptions(param);
+    const isOptionsLoading = !!(resolvedUrl && loadingOptions[resolvedUrl]);
+    const isCourseIdMissing = !!(param.optionsUrl?.includes("{{courseId}}") && courseId === undefined);
 
     if (param.type === "boolean") {
       return (
-        <div key={param.name}>
-          <ParamLabel param={param} />
-          <select
-            value={paramValue ? "true" : "false"}
-            onChange={(e) => updateParameterValue(param.name, e.target.value === "true")}
-            disabled={disabled}
-            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
-          >
-            <option value="false">Ні</option>
-            <option value="true">Так</option>
-          </select>
-        </div>
+        <Switch
+          key={param.name}
+          label={paramLabel(param)}
+          checked={!!paramValue}
+          onChange={(e) => updateParameterValue(param.name, e.currentTarget.checked)}
+          disabled={disabled}
+        />
       );
     }
 
     if (param.type === "object") {
       return (
-        <div key={param.name}>
-          <ParamLabel param={param} />
-          <select
-            value={paramValue?.id ? String(paramValue.id) : ""}
-            onChange={(e) => {
-              if (e.target.value) {
-                const option = options.find((opt) => String(opt.id) === e.target.value);
-                updateParameterValue(param.name, option || undefined);
-              } else {
-                updateParameterValue(param.name, undefined);
-              }
-            }}
-            disabled={disabled || loadingOptions[resolvedUrl || ""] || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
-          >
-            <option value="">-- Оберіть --</option>
-            {options.map((opt) => (
-              <option key={opt.id} value={String(opt.id)}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          key={param.name}
+          label={paramLabel(param)}
+          placeholder="-- Оберіть --"
+          data={options.map((opt) => ({ value: String(opt.id), label: opt.name }))}
+          value={paramValue?.id ? String(paramValue.id) : null}
+          onChange={(val) => {
+            if (val) {
+              const option = options.find((opt) => String(opt.id) === val);
+              updateParameterValue(param.name, option ?? undefined);
+            } else {
+              updateParameterValue(param.name, undefined);
+            }
+          }}
+          disabled={disabled || isOptionsLoading || isCourseIdMissing}
+          clearable
+          searchable
+        />
       );
     }
 
     if (param.type === "number") {
       if (options.length > 0) {
         return (
-          <div key={param.name}>
-            <ParamLabel param={param} />
-            <select
-              value={paramValue || ""}
-              onChange={(e) =>
-                updateParameterValue(param.name, e.target.value ? Number(e.target.value) : undefined)
-              }
-              disabled={disabled || loadingOptions[resolvedUrl || ""] || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-              className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
-            >
-              <option value="">-- Оберіть --</option>
-              {options.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            key={param.name}
+            label={paramLabel(param)}
+            placeholder="-- Оберіть --"
+            data={options.map((opt) => ({ value: String(opt.id), label: opt.name }))}
+            value={paramValue ? String(paramValue) : null}
+            onChange={(val) => updateParameterValue(param.name, val ? Number(val) : undefined)}
+            disabled={disabled || isOptionsLoading || isCourseIdMissing}
+            clearable
+            searchable
+          />
         );
       }
       return (
-        <div key={param.name}>
-          <ParamLabel param={param} />
-          <input
-            type="number"
-            value={paramValue || ""}
-            onChange={(e) =>
-              updateParameterValue(param.name, e.target.value ? Number(e.target.value) : undefined)
-            }
-            disabled={disabled}
-            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50 placeholder:text-zinc-600"
-            placeholder="Введіть число"
-          />
-        </div>
+        <NumberInput
+          key={param.name}
+          label={paramLabel(param)}
+          placeholder="Введіть число"
+          value={paramValue || ""}
+          onChange={(val) => updateParameterValue(param.name, val || undefined)}
+          disabled={disabled}
+        />
       );
     }
 
@@ -202,48 +172,33 @@ export default function TemplateParametersInput({
           ? currentList.map((item: any) => String(item?.id ?? item))
           : currentList.map(String);
 
-      const handleAddItem = (value: string) => {
+      const handleAddItem = (value: string | null) => {
         if (!value) return;
-
-        // For object subtype, store the full object
         if (param.subtype === "object") {
           const option = options.find((opt) => String(opt.id) === value);
-          if (!option) return;
-
-          // Check if already added
-          if (selectedIds.includes(String(option.id))) return;
-
+          if (!option || selectedIds.includes(String(option.id))) return;
           updateParameterValue(param.name, [...currentList, option]);
         } else {
-          const val = value;
-          let convertedVal: any = val;
-          if (param.subtype === "number") convertedVal = Number(val);
-          else if (param.subtype === "boolean") convertedVal = val === "true";
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
-          // Check if already added
-          if (selectedIds.includes(String(val))) return;
-
+          let convertedVal: any = value;
+          if (param.subtype === "number") convertedVal = Number(value);
+          else if (param.subtype === "boolean") convertedVal = value === "true";
+          if (selectedIds.includes(String(value))) return;
           updateParameterValue(param.name, [...currentList, convertedVal]);
         }
       };
 
       const handleRemoveItem = (index: number) => {
         const newList = currentList.filter((_, i) => i !== index);
-        updateParameterValue(param.name, newList.length > 0 ? newList : []);
+        updateParameterValue(param.name, newList);
       };
 
       const handleSelectAll = () => {
-        if (options.length === 0) return;
-        
-        const availableOptions = options.filter((opt) => !selectedIds.includes(String(opt.id)));
-        if (availableOptions.length === 0) return;
-
+        const available = options.filter((opt) => !selectedIds.includes(String(opt.id)));
+        if (available.length === 0) return;
         if (param.subtype === "object") {
-          // For object subtype, add all full objects
-          updateParameterValue(param.name, [...currentList, ...availableOptions]);
+          updateParameterValue(param.name, [...currentList, ...available]);
         } else {
-          // For other subtypes, convert values appropriately
-          const newValues = availableOptions.map((opt) => {
+          const newValues = available.map((opt) => {
             const val = String(opt.id);
             if (param.subtype === "number") return Number(val);
             if (param.subtype === "boolean") return val === "true";
@@ -254,140 +209,108 @@ export default function TemplateParametersInput({
       };
 
       const getItemDisplayName = (item: any) => {
-        if (param.subtype === "object" && typeof item === "object" && item !== null) {
+        if (param.subtype === "object" && typeof item === "object" && item !== null)
           return item.name ?? String(item.id ?? item);
-        }
         const itemStr = String(item);
         const option = options.find((opt) => String(opt.id) === itemStr);
         return option ? option.name : itemStr;
       };
 
-      const hasAvailableOptions = options.some((opt) => !selectedIds.includes(String(opt.id)));
+      const availableOptions = options.filter((opt) => !selectedIds.includes(String(opt.id)));
 
       return (
-        <div key={param.name} className="col-span-2">
-          <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.name}
+        <Stack key={param.name} gap="xs">
+          <Text fw={500} size="sm">
+            {param.description ?? param.name}
             {param.description && (
-              <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
+              <Text span size="xs" c="dimmed" ml={4}>
+                ({param.name})
+              </Text>
             )}
-          </label>
-          <div className="flex gap-2 mb-2">
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleAddItem(e.target.value);
-                  e.target.value = ""; // Reset dropdown
-                }
-              }}
-              disabled={disabled || (resolvedUrl && loadingOptions[resolvedUrl]) || options.length === 0 || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-              className="flex-1 bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
-            >
-              <option value="">-- Оберіть для додавання --</option>
-              {options
-                .filter((opt) => !selectedIds.includes(String(opt.id)))
-                .map((opt) => (
-                  <option key={opt.id} value={String(opt.id)}>
-                    {opt.name}
-                  </option>
-                ))}
-            </select>
-            {options.length > 0 && hasAvailableOptions && (
-              <button
+          </Text>
+          <Group gap="xs" align="flex-end">
+            <Select
+              style={{ flex: 1 }}
+              placeholder="-- Оберіть для додавання --"
+              data={availableOptions.map((opt) => ({ value: String(opt.id), label: opt.name }))}
+              value={null}
+              onChange={(val) => { handleAddItem(val); }}
+              disabled={disabled || isOptionsLoading || options.length === 0 || isCourseIdMissing}
+              searchable
+            />
+            {options.length > 0 && availableOptions.length > 0 && (
+              <ActionIcon
+                variant="default"
                 onClick={handleSelectAll}
-                disabled={disabled || (resolvedUrl && loadingOptions[resolvedUrl]) || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-                className="text-amber-50 hover:text-amber-200 cursor-pointer disabled:bg-gray-500 disabled:cursor-not-allowed px-3 py-1 rounded-lg font-bold text-sm whitespace-nowrap"
-                type="button"
+                disabled={disabled || isOptionsLoading || isCourseIdMissing}
+                title="Додати всі"
               >
                 <FontAwesomeIcon icon={faCheckDouble} />
-              </button>
+              </ActionIcon>
             )}
-          </div>
+          </Group>
           {currentList.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <Stack gap={4}>
               {currentList.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between bg-zinc-800 border border-amber-50/30 rounded px-2 py-1"
-                >
-                  <span className="text-amber-50 font-mono text-sm">{getItemDisplayName(item)}</span>
-                  <button
+                <Group key={index} justify="space-between" px="sm" py={4} style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: "var(--mantine-radius-sm)" }}>
+                  <Text size="sm">{getItemDisplayName(item)}</Text>
+                  <ActionIcon
+                    color="red"
+                    variant="subtle"
                     onClick={() => handleRemoveItem(index)}
                     disabled={disabled}
-                    className="text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    type="button"
                   >
                     <FontAwesomeIcon icon={faTrash} />
-                  </button>
-                </div>
+                  </ActionIcon>
+                </Group>
               ))}
-            </div>
+            </Stack>
           ) : (
-            <div className="text-xs text-amber-50/50 italic py-2">
-              Список порожній. Оберіть елемент зі списку вище та натисніть "Додати"
-            </div>
+            <Text size="xs" c="dimmed" fs="italic">
+              Список порожній. Оберіть елемент зі списку вище.
+            </Text>
           )}
-        </div>
+        </Stack>
       );
     }
 
     // text type
     if (options.length > 0) {
       return (
-        <div key={param.name}>
-          <label className="block text-amber-50 font-bold mb-1 text-sm">
-            {param.name}
-            {param.description && (
-              <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-            )}
-          </label>
-          <select
-            value={paramValue || ""}
-            onChange={(e) => updateParameterValue(param.name, e.target.value || undefined)}
-            disabled={disabled || loadingOptions[resolvedUrl || ""] || (param.optionsUrl?.includes("{{courseId}}") && courseId === undefined)}
-            className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50"
-          >
-            <option value="">-- Оберіть --</option>
-            {options.map((opt) => (
-              <option key={opt.id} value={String(opt.id)}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          key={param.name}
+          label={paramLabel(param)}
+          placeholder="-- Оберіть --"
+          data={options.map((opt) => ({ value: String(opt.id), label: opt.name }))}
+          value={paramValue || null}
+          onChange={(val) => updateParameterValue(param.name, val || undefined)}
+          disabled={disabled || isOptionsLoading || isCourseIdMissing}
+          clearable
+          searchable
+        />
       );
     }
 
     return (
-      <div key={param.name}>
-        <label className="block text-amber-50 font-bold mb-1 text-sm">
-          {param.name}
-          {param.description && (
-            <span className="text-xs font-normal opacity-70 ml-2">({param.description})</span>
-          )}
-        </label>
-        <input
-          type="text"
-          value={paramValue || ""}
-          onChange={(e) => updateParameterValue(param.name, e.target.value || undefined)}
-          disabled={disabled}
-          className="w-full bg-transparent border border-amber-50/30 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:border-amber-200 disabled:opacity-50 placeholder:text-zinc-600"
-          placeholder="Введіть текст"
-        />
-      </div>
+      <TextInput
+        key={param.name}
+        label={paramLabel(param)}
+        placeholder="Введіть текст"
+        value={paramValue || ""}
+        onChange={(e) => updateParameterValue(param.name, e.currentTarget.value || undefined)}
+        disabled={disabled}
+      />
     );
   };
 
-  if (parameters.length === 0) {
-    return null;
-  }
+  if (parameters.length === 0) return null;
 
   return (
-    <div className="border-t border-amber-50/30 pt-3 mt-3">
-      <label className="block text-amber-50 font-bold mb-3">Параметри шаблону:</label>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{parameters.map(renderParameterInput)}</div>
-    </div>
+    <Stack gap="md">
+      <Divider label="Параметри шаблону" labelPosition="left" />
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+        {parameters.map(renderParameterInput)}
+      </SimpleGrid>
+    </Stack>
   );
 }
-

@@ -1,13 +1,25 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { loadCoursesBySpecialty, formatDisciplineCode } from "../courses";
 import { loadAllTemplates } from "../templates";
 import { loadAllSpecialties } from "../specialties";
 import type { Course, Template, Specialty } from "@/stores/models";
 import toast from "react-hot-toast";
 import TemplateParametersInput from "../components/TemplateParametersInput";
+import {
+  Title,
+  Stack,
+  Select,
+  PasswordInput,
+  Text,
+  Button,
+  Group,
+  Progress,
+  Paper,
+  Anchor,
+} from "@mantine/core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -36,14 +48,14 @@ export default function GeneratorPage() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string>("");
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState<string>("");
   const [parameterValues, setParameterValues] = useState<Record<string, any>>({});
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
-  
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -82,42 +94,31 @@ export default function GeneratorPage() {
         if (pollingRunning.current) return ;
         pollingRunning.current = true;
         const response = await fetch(`/api/jobs/${jobId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch job status");
-        }
+        if (!response.ok) throw new Error("Failed to fetch job status");
 
         const status: JobStatusResponse = await response.json();
         setProgress(status.progress);
 
         if (status.status === "completed") {
           if (shouldNavigateToEdit && courseId) {
-            // Navigate to course edit page instead of downloading
             toast.success("Генерацію завершено, перехід до редагування");
             clearJobState();
             navigate(`/courses/${courseId}`);
           } else {
-            // Download the file
             const downloadResponse = await fetch(`/api/jobs/${jobId}/download`);
-            
-            if (!downloadResponse.ok) {
-              throw new Error("Failed to download file");
-            }
-
+            if (!downloadResponse.ok) throw new Error("Failed to download file");
             const blob = await downloadResponse.blob();
             await handleDownload(blob, status.filename);
-
-            // Cleanup
             clearJobState();
           }
         } else if (status.status === "error") {
-          // Error occurred
           clearJobState();
           toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
         }
       } catch (error) {
         console.error("Error polling job status:", error);
         toast.error("Помилка генерації: " + error);
-        clearJobState();        
+        clearJobState();
       } finally {
         pollingRunning.current = false;
       }
@@ -128,17 +129,14 @@ export default function GeneratorPage() {
   };
 
   useEffect(() => {
-    // Load API key from localStorage
     const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
+    if (savedApiKey) setApiKey(savedApiKey);
 
     async function fetchData() {
       try {
         const [allTemplates, allSpecialties] = await Promise.all([
           loadAllTemplates(),
-          loadAllSpecialties()
+          loadAllSpecialties(),
         ]);
         setTemplates(allTemplates);
         setSpecialties(allSpecialties);
@@ -146,13 +144,10 @@ export default function GeneratorPage() {
         const savedTemplateId = localStorage.getItem(SELECTED_TEMPLATE_KEY);
         const savedSpecialtyId = localStorage.getItem(SELECTED_SPECIALTY_KEY);
 
-        if (savedTemplateId && allTemplates.some(t => t.id.toString() === savedTemplateId)) {
+        if (savedTemplateId && allTemplates.some((t) => t.id.toString() === savedTemplateId))
           setSelectedTemplateId(savedTemplateId);
-        }
-
-        if (savedSpecialtyId && allSpecialties.some(s => s.id.toString() === savedSpecialtyId)) {
+        if (savedSpecialtyId && allSpecialties.some((s) => s.id.toString() === savedSpecialtyId))
           setSelectedSpecialtyId(savedSpecialtyId);
-        }
       } catch (error) {
         console.error("Failed to load data:", error);
         toast.error("Помилка завантаження даних");
@@ -163,13 +158,11 @@ export default function GeneratorPage() {
     fetchData();
   }, []);
 
-  // Load courses when specialty is selected
   useEffect(() => {
     if (!selectedSpecialtyId) {
       setCourses([]);
       return;
     }
-
     async function fetchCourses() {
       setIsLoadingCourses(true);
       try {
@@ -185,107 +178,86 @@ export default function GeneratorPage() {
     fetchCourses();
   }, [selectedSpecialtyId]);
 
-  // Resume job from localStorage on mount
   useEffect(() => {
     const savedJobStr = localStorage.getItem(STORAGE_KEY);
-    if (savedJobStr) {
-      try {
-        const savedJob: SavedJob = JSON.parse(savedJobStr);
-        setCurrentJobId(savedJob.jobId);
-        setNavigateToEdit(savedJob.navigateToEdit || false);
-        
-        // Check if job still exists and is not completed
-        async function resumeJob() {
-          try {
-            const response = await fetch(`/api/jobs/${savedJob.jobId}`);
-            if (response.ok) {
-              const status: JobStatusResponse = await response.json();
-              setProgress(status.progress);
-              
-              if (status.status === "completed") {
-                if (savedJob.navigateToEdit && savedJob.courseId) {
-                  // Navigate to course edit page
-                  toast.success("Генерацію завершено, перехід до редагування");
-                  clearJobState();
-                  navigate(`/courses/${savedJob.courseId}`);
-                } else {
-                  // Job already completed, download it
-                  const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
-                  if (downloadResponse.ok) {
-                    const blob = await downloadResponse.blob();
-                    const filename = status.filename;
-                    await handleDownload(blob, filename);
-                  }
-                  clearJobState();
-                }
-              } else if (status.status === "error") {
-                toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
+    if (!savedJobStr) return;
+    try {
+      const savedJob: SavedJob = JSON.parse(savedJobStr);
+      setCurrentJobId(savedJob.jobId);
+      setNavigateToEdit(savedJob.navigateToEdit || false);
+
+      async function resumeJob() {
+        try {
+          const response = await fetch(`/api/jobs/${savedJob.jobId}`);
+          if (response.ok) {
+            const status: JobStatusResponse = await response.json();
+            setProgress(status.progress);
+            if (status.status === "completed") {
+              if (savedJob.navigateToEdit && savedJob.courseId) {
+                toast.success("Генерацію завершено, перехід до редагування");
                 clearJobState();
+                navigate(`/courses/${savedJob.courseId}`);
               } else {
-                // Job still in progress, resume polling
-                setIsGenerating(true);
-                pollJobStatus(savedJob.jobId, savedJob.navigateToEdit || false,  savedJob.courseId);
+                const downloadResponse = await fetch(`/api/jobs/${savedJob.jobId}/download`);
+                if (downloadResponse.ok) {
+                  const blob = await downloadResponse.blob();
+                  await handleDownload(blob, status.filename);
+                }
+                clearJobState();
               }
-            } else {
-              // Job not found, clear it
+            } else if (status.status === "error") {
+              toast.error(`Помилка генерації: ${status.error || "Невідома помилка"}`);
               clearJobState();
+            } else {
+              setIsGenerating(true);
+              pollJobStatus(savedJob.jobId, savedJob.navigateToEdit || false, savedJob.courseId);
             }
-          } catch (error) {
-            console.error("Error resuming job:", error);
+          } else {
             clearJobState();
           }
+        } catch (error) {
+          console.error("Error resuming job:", error);
+          clearJobState();
         }
-        resumeJob();
-      } catch (error) {
-        console.error("Failed to parse saved job:", error);
-        localStorage.removeItem(STORAGE_KEY);
       }
+      resumeJob();
+    } catch (error) {
+      console.error("Failed to parse saved job:", error);
+      localStorage.removeItem(STORAGE_KEY);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (selectedSpecialtyId) {
-      localStorage.setItem(SELECTED_SPECIALTY_KEY, selectedSpecialtyId);
-    }
+    if (selectedSpecialtyId) localStorage.setItem(SELECTED_SPECIALTY_KEY, selectedSpecialtyId);
   }, [selectedSpecialtyId]);
 
   useEffect(() => {
-    if (selectedCourseId) {
-      localStorage.setItem(SELECTED_COURSE_KEY, selectedCourseId);
-    }
+    if (selectedCourseId) localStorage.setItem(SELECTED_COURSE_KEY, selectedCourseId);
   }, [selectedCourseId]);
 
   useEffect(() => {
-    if (selectedTemplateId) {
-      localStorage.setItem(SELECTED_TEMPLATE_KEY, selectedTemplateId);
-    }
+    if (selectedTemplateId) localStorage.setItem(SELECTED_TEMPLATE_KEY, selectedTemplateId);
   }, [selectedTemplateId]);
 
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
-    if (value) {
-      localStorage.setItem(API_KEY_STORAGE_KEY, value);
-    } else {
-      localStorage.removeItem(API_KEY_STORAGE_KEY);
-    }
+    if (value) localStorage.setItem(API_KEY_STORAGE_KEY, value);
+    else localStorage.removeItem(API_KEY_STORAGE_KEY);
   };
 
   const selectedTemplate = templates.find((t) => t.id.toString() === selectedTemplateId);
   const templateParameters = selectedTemplate?.data?.parameters || [];
 
-  const handleSpecialtyChange = (value: string) => {
+  const handleSpecialtyChange = (value: string | null) => {
     setSelectedSpecialtyId(value);
-    setSelectedCourseId("");
+    setSelectedCourseId(null);
   };
 
   const handleGenerate = async (navigateAfterCompletion: boolean = false) => {
@@ -293,7 +265,6 @@ export default function GeneratorPage() {
       toast.error("Будь ласка, оберіть дисципліну");
       return;
     }
-
     if (!selectedTemplateId) {
       toast.error("Будь ласка, оберіть шаблон");
       return;
@@ -306,30 +277,25 @@ export default function GeneratorPage() {
     try {
       const response = await fetch(`/api/courses/${selectedCourseId}/generate/${selectedTemplateId}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          apiKey: apiKey || undefined,
-          parameters: parameterValues
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: apiKey || undefined, parameters: parameterValues }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to start generation");
-      }
+      if (!response.ok) throw new Error("Failed to start generation");
 
       const { jobId } = await response.json();
       setCurrentJobId(jobId);
-      
-      // Save to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
-        jobId, 
-        templateId: Number(selectedTemplateId),
-        navigateToEdit: navigateAfterCompletion,
-        courseId: navigateAfterCompletion ? selectedCourseId : undefined
-      } as SavedJob));
-      
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          jobId,
+          templateId: Number(selectedTemplateId),
+          navigateToEdit: navigateAfterCompletion,
+          courseId: navigateAfterCompletion ? selectedCourseId : undefined,
+        } as SavedJob)
+      );
+
       pollJobStatus(jobId, navigateAfterCompletion, navigateAfterCompletion ? selectedCourseId : undefined);
     } catch (error) {
       console.error("Error starting generation:", error);
@@ -340,101 +306,83 @@ export default function GeneratorPage() {
     }
   };
 
-  const handleGenerateAndEdit = async () => {
-    await handleGenerate(true);
-  };
+  const specialtyOptions = specialties.map((s) => ({
+    value: s.id.toString(),
+    label: `${s.code} ${s.name}`,
+  }));
+
+  const courseOptions = courses.map((c) => ({
+    value: c.id.toString(),
+    label: `${formatDisciplineCode(c.data.ok_no)} ${c.name}`,
+  }));
+
+  const templateOptions = templates.map((t) => ({
+    value: t.id.toString(),
+    label: t.name,
+  }));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-        <h1 className="font-mono">Генератор документів</h1>
+    <Stack maw={900} mx="auto">
+      <Title order={2}>Генератор документів</Title>
 
-        <div>
-          <label className="text-amber-50 font-bold mb-2">
-            <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">OpenAI API Key</a> (опціонально):
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => handleApiKeyChange(e.target.value)}
-            disabled={isGenerating}
-            placeholder="Ключ API OpenAI"
-            className="w-2xl bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50 placeholder:opacity-50"
+      <Stack gap="xs">
+        <Text fw={500}>
+          <Anchor href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer">
+            OpenAI API Key
+          </Anchor>{" "}
+          (опціонально):
+        </Text>
+        <PasswordInput
+          value={apiKey}
+          onChange={(e) => handleApiKeyChange(e.currentTarget.value)}
+          disabled={isGenerating}
+          placeholder="Ключ API OpenAI"
+          maw={480}
+        />
+        <Text size="sm" c="dimmed">
+          Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.
+          <br />
+          Краще брати свій ключ, оскільки серверний ключ має обмежену кількість запитів на годину.
+        </Text>
+      </Stack>
+
+      <Paper withBorder p="md">
+        <Stack>
+          <Select
+            label="Спеціальність"
+            placeholder="-- Всі спеціальності --"
+            data={specialtyOptions}
+            value={selectedSpecialtyId}
+            onChange={handleSpecialtyChange}
+            disabled={isGenerating || isLoading}
+            searchable
+            clearable
           />
-          <div className="text-sm text-amber-50 opacity-70 mt-1">
-            Зберігається локально в браузері. Якщо вказано, використовується замість серверного ключа.<br/>
-            Краще брати свій ключ, оскільки серверний ключ має обмежену кількість запитів на годину.
-          </div>
-        </div>
 
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Спеціальність:</label>
-            {isLoading ? (
-              <div className="text-amber-50">Завантаження...</div>
-            ) : (
-              <select
-                value={selectedSpecialtyId}
-                onChange={(e) => handleSpecialtyChange(e.target.value)}
-                disabled={isGenerating}
-                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
-              >
-                <option value="">-- Всі спеціальності --</option>
-                {specialties.map((specialty) => (
-                  <option key={specialty.id} value={specialty.id}>
-                    {specialty.code} {specialty.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          <Select
+            label="Дисципліна"
+            placeholder={!selectedSpecialtyId ? "Спочатку оберіть спеціальність" : "-- Оберіть дисципліну --"}
+            data={courseOptions}
+            value={selectedCourseId}
+            onChange={setSelectedCourseId}
+            disabled={isGenerating || !selectedSpecialtyId || isLoadingCourses}
+            searchable
+            clearable
+          />
 
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Дисципліна:</label>
-            {!selectedSpecialtyId ? (
-              <div className="text-amber-50 opacity-70">Спочатку оберіть спеціальність</div>
-            ) : isLoadingCourses ? (
-              <div className="text-amber-50">Завантаження...</div>
-            ) : (
-              <select
-                value={selectedCourseId}
-                onChange={(e) => setSelectedCourseId(e.target.value)}
-                disabled={isGenerating}
-                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
-              >
-                <option value="">-- Оберіть дисципліну --</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {formatDisciplineCode(course.data.ok_no)} {course.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Шаблон:</label>
-            {isLoading ? (
-              <div className="text-amber-50">Завантаження...</div>
-            ) : (
-              <select
-                value={selectedTemplateId}
-                onChange={(e) => {
-                  setSelectedTemplateId(e.target.value);
-                  setParameterValues({}); // Clear parameter values when template changes
-                }}
-                disabled={isGenerating}
-                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white disabled:opacity-50"
-              >
-                <option value="">-- Оберіть шаблон --</option>
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          <Select
+            label="Шаблон"
+            placeholder="-- Оберіть шаблон --"
+            data={templateOptions}
+            value={selectedTemplateId}
+            onChange={(value) => {
+              setSelectedTemplateId(value);
+              setParameterValues({});
+            }}
+            disabled={isGenerating || isLoading}
+            searchable
+            clearable
+          />
 
           <TemplateParametersInput
             parameters={templateParameters}
@@ -443,47 +391,46 @@ export default function GeneratorPage() {
             courseId={selectedCourseId ? Number(selectedCourseId) : undefined}
             onChange={setParameterValues}
           />
-        </div>
+        </Stack>
+      </Paper>
 
+      {isGenerating && (
+        <Paper withBorder p="md">
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <Text fw={500}>Генерація...</Text>
+              <Text>{progress}%</Text>
+            </Group>
+            <Progress value={progress} animated />
+          </Stack>
+        </Paper>
+      )}
+
+      <Group align="center">
+        <Button
+          leftSection={<FontAwesomeIcon icon={faDownload} />}
+          onClick={() => handleGenerate(false)}
+          disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
+          loading={isGenerating && !navigateToEdit}
+          color="green"
+        >
+          Згенерувати
+        </Button>
+        <Button
+          leftSection={<FontAwesomeIcon icon={faEdit} />}
+          onClick={() => handleGenerate(true)}
+          disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
+          loading={isGenerating && navigateToEdit}
+          color="blue"
+        >
+          Згенерувати і редагувати
+        </Button>
         {isGenerating && (
-          <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-amber-50 font-bold">Генерація...</span>
-              <span className="text-amber-50">{progress}%</span>
-            </div>
-            <div className="w-full bg-zinc-800 rounded-full h-4 overflow-hidden">
-              <div
-                className="bg-green-600 h-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <Text size="sm" c="dimmed">
+            Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
+          </Text>
         )}
-
-        <div className="flex flex-col md:flex-row gap-4 md:items-center">
-          <button
-            onClick={() => handleGenerate(false)}
-            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono justify-center"
-          >
-            <FontAwesomeIcon icon={faDownload} />
-            {isGenerating && !navigateToEdit ? "Генерую..." : "Згенерувати"}
-          </button>
-          <button
-            onClick={handleGenerateAndEdit}
-            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed text-white border-0 px-5 py-2 rounded-lg font-bold transition-all duration-100 hover:-translate-y-px cursor-pointer whitespace-nowrap flex items-center gap-2 font-mono justify-center"
-          >
-            <FontAwesomeIcon icon={faEdit} />
-            {isGenerating && navigateToEdit ? "Генерую..." : "Згенерувати і редагувати"}
-          </button>
-          {isGenerating && (
-            <span className="text-amber-50 font-mono text-center md:text-left">
-              Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
+      </Group>
+    </Stack>
   );
 }

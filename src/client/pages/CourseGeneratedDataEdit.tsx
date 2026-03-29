@@ -5,8 +5,7 @@ import toast from "react-hot-toast";
 import { dropEmpty } from "../util/util";
 import { loadAllTemplates } from "../templates";
 import GeneratedFieldEditor from "../components/GeneratedFieldEditor";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { Title, Stack, Group, Paper, Text, Button, Loader, Center } from "@mantine/core";
 
 interface FieldDescriptor {
   field: string;
@@ -17,12 +16,8 @@ interface FieldDescriptor {
 
 const inferFormat = (value: unknown): Prompt["format"] => {
   if (Array.isArray(value)) {
-    if (value.some((item) => typeof item === "object" && item !== null)) {
-      return "quiz";
-    }
-    return "list";
+    return value.some((item) => typeof item === "object" && item !== null) ? "quiz" : "list";
   }
-
   return "text";
 };
 
@@ -40,218 +35,93 @@ export default function CourseGeneratedDataEdit() {
 
   useEffect(() => {
     if (!courseId) return;
-
-    const fetchCourse = async () => {
-      setIsLoadingCourse(true);
-      try {
-        const response = await fetch(`/api/courses/${courseId}`);
-        if (!response.ok) {
-          throw new Error("Failed to load course");
-        }
-        const data = await response.json() as Course;
-        setCourse(data);
-        setGeneratedValues((data.generated || {}) as GeneratedCourseData);
-      } catch (error) {
-        console.error("Error fetching course:", error);
-        toast.error("Помилка завантаження курсу");
-      } finally {
-        setIsLoadingCourse(false);
-      }
-    };
-
-    void fetchCourse();
+    setIsLoadingCourse(true);
+    fetch(`/api/courses/${courseId}`)
+      .then((r) => { if (!r.ok) throw new Error(); return r.json() as Promise<Course>; })
+      .then((data) => { setCourse(data); setGeneratedValues((data.generated || {}) as GeneratedCourseData); })
+      .catch(() => toast.error("Помилка завантаження курсу"))
+      .finally(() => setIsLoadingCourse(false));
   }, [courseId]);
 
   useEffect(() => {
     let cancelled = false;
-
-    const fetchTemplates = async () => {
-      setIsLoadingPrompts(true);
-      try {
-        const templates = await loadAllTemplates();
+    setIsLoadingPrompts(true);
+    loadAllTemplates()
+      .then((templates) => {
         if (cancelled) return;
-
         const map = new Map<string, Prompt>();
-        templates.forEach((template) => {
-          (template.prompts || []).forEach((prompt) => {
-            if (prompt.type !== "course") return;
-            if (!prompt.field) return;
-            if (!map.has(prompt.field)) {
-              map.set(prompt.field, prompt);
-            }
-          });
-        });
-
-        const promptList = Array.from(map.values()).sort((a, b) =>
-          (a.name || a.field).localeCompare(b.name || b.field, "uk")
-        );
-
-        setCoursePrompts(promptList);
+        templates.forEach((t) => (t.prompts || []).forEach((p) => { if (p.type === "course" && p.field && !map.has(p.field)) map.set(p.field, p); }));
+        setCoursePrompts(Array.from(map.values()).sort((a, b) => (a.name || a.field).localeCompare(b.name || b.field, "uk")));
         setTemplatesError(null);
-      } catch (error) {
-        if (cancelled) return;
-        console.error("Error loading templates:", error);
-        setTemplatesError("Не вдалося завантажити шаблони");
-        toast.error("Не вдалося завантажити шаблони");
-      } finally {
-        if (!cancelled) {
-          setIsLoadingPrompts(false);
-        }
-      }
-    };
-
-    void fetchTemplates();
-
-    return () => {
-      cancelled = true;
-    };
+      })
+      .catch(() => { if (!cancelled) { setTemplatesError("Не вдалося завантажити шаблони"); toast.error("Не вдалося завантажити шаблони"); } })
+      .finally(() => { if (!cancelled) setIsLoadingPrompts(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const fieldDescriptors = useMemo<FieldDescriptor[]>(() => {
     const descriptors: FieldDescriptor[] = [];
     const seen = new Set<string>();
-
-    coursePrompts.forEach((prompt) => {
-      if (!prompt.field) return;
-      descriptors.push({
-        field: prompt.field,
-        prompt,
-        format: prompt.format || "text",
-        value: generatedValues?.[prompt.field]
-      });
-      seen.add(prompt.field);
-    });
-
-    Object.keys(generatedValues || {}).forEach((field) => {
-      if (seen.has(field)) return;
-      descriptors.push({
-        field,
-        format: inferFormat(generatedValues[field]),
-        value: generatedValues[field]
-      });
-      seen.add(field);
-    });
-
+    coursePrompts.forEach((p) => { if (!p.field) return; descriptors.push({ field: p.field, prompt: p, format: p.format || "text", value: generatedValues?.[p.field] }); seen.add(p.field); });
+    Object.keys(generatedValues || {}).forEach((f) => { if (seen.has(f)) return; descriptors.push({ field: f, format: inferFormat(generatedValues[f]), value: generatedValues[f] }); seen.add(f); });
     return descriptors;
   }, [coursePrompts, generatedValues]);
 
-  const isLoading = isLoadingCourse || isLoadingPrompts;
-
   const handleFieldChange = (field: string, value: string | string[] | QuizQuestion[] | null) => {
     setGeneratedValues((prev) => {
-      if (value === null || value === undefined) {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      }
-      return {
-        ...prev,
-        [field]: value,
-      };
+      if (value === null || value === undefined) { const next = { ...prev }; delete next[field]; return next; }
+      return { ...prev, [field]: value };
     });
   };
 
   const handleSave = async () => {
     if (!course || !courseId) return;
-
     setIsSaving(true);
-
     try {
-      const generated: GeneratedCourseData = dropEmpty({ ...generatedValues });
-      const updatedCourse: Course = { ...course, generated };
-
-      const response = await fetch(`/api/courses/${courseId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(updatedCourse)
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save");
-      }
-
+      const r = await fetch(`/api/courses/${courseId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...course, generated: dropEmpty({ ...generatedValues }) }) });
+      if (!r.ok) throw new Error();
       toast.success("Дані успішно збережено");
       navigate(`/courses/${courseId}`);
-    } catch (error) {
-      console.error("Error saving course:", error);
-      toast.error("Помилка збереження даних");
-    } finally {
-      setIsSaving(false);
-    }
+    } catch { toast.error("Помилка збереження даних"); }
+    finally { setIsSaving(false); }
   };
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-amber-50 font-mono">Завантаження...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!course) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-amber-50 font-mono">Курс не знайдено</div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoadingCourse || isLoadingPrompts) return <Center h={200}><Loader /></Center>;
+  if (!course) return <Center h={200}><Text c="dimmed">Курс не знайдено</Text></Center>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-mono">Редагувати згенеровані дані: {course.name}</h1>
+    <Stack maw={1000} mx="auto">
+      <Group justify="space-between">
+        <Title order={2}>Згенеровані дані: {course.name}</Title>
+        <Group gap="xs">
+          <Button variant="default" onClick={() => navigate(`/courses/${courseId}`)}>Скасувати</Button>
+          <Button onClick={handleSave} loading={isSaving}>Зберегти</Button>
+        </Group>
+      </Group>
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="text-amber-50 hover:text-green-400 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faCheck} />
-            </button>
-            <button
-              onClick={() => navigate(`/courses/${courseId}`)}
-              className="text-amber-50 hover:text-red-400 cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-4">
-          {templatesError && (
-            <div className="text-red-400 text-sm">{templatesError}</div>
-          )}
-
+      <Paper withBorder p="md">
+        <Stack>
+          {templatesError && <Text c="red" size="sm">{templatesError}</Text>}
           {fieldDescriptors.length === 0 ? (
-            <div className="text-amber-50/70 text-sm">
+            <Text size="sm" c="dimmed">
               Немає доступних згенерованих полів для редагування. Додайте промпти для дисципліни у шаблонах, щоб з'явилися поля.
-            </div>
+            </Text>
           ) : (
-            <div className="flex flex-col gap-4">
-               {fieldDescriptors.map(({ field, prompt, format, value }) => (
-                 <GeneratedFieldEditor
-                   key={field}
-                   field={field}
-                   promptName={prompt?.name}
-                   format={format}
-                   value={value as string | string[] | QuizQuestion[] | undefined}
-                   onChange={(val) => handleFieldChange(field, val)}
-                   courseId={courseId ? parseInt(courseId) : undefined}
-                   prompt={prompt}
-                 />
-               ))}
-            </div>
-          )}         
-        </div>
-      </div>
-    </div>
+            fieldDescriptors.map(({ field, prompt, format, value }) => (
+              <GeneratedFieldEditor
+                key={field}
+                field={field}
+                promptName={prompt?.name}
+                format={format}
+                value={value as string | string[] | QuizQuestion[] | undefined}
+                onChange={(val) => handleFieldChange(field, val)}
+                courseId={courseId ? parseInt(courseId) : undefined}
+                prompt={prompt}
+              />
+            ))
+          )}
+        </Stack>
+      </Paper>
+    </Stack>
   );
 }

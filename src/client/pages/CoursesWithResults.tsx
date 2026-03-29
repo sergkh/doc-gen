@@ -1,106 +1,109 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Tooltip } from 'react-tooltip';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPen, faSearch, faExclamationTriangle, faChevronDown, faChevronUp, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faPen, faExclamationTriangle, faCheck } from "@fortawesome/free-solid-svg-icons";
 import type { Course, CourseResult, CourseTopic, Specialty } from "@/stores/models";
-import { formatDisciplineCode, loadAllCoursesWithTopics, loadCoursesBySpecialty, normalizeCourseName } from "../courses";
+import { formatDisciplineCode, loadAllCoursesWithTopics, normalizeCourseName } from "../courses";
 import { loadResultsBySpecialty } from "../results";
 import { loadSpecialty } from "../specialties";
+import {
+  Title,
+  Stack,
+  Group,
+  Paper,
+  Text,
+  TextInput,
+  ActionIcon,
+  Tooltip,
+  Loader,
+  Center,
+  Button,
+  Badge,
+  List,
+  Collapse,
+  ThemeIcon,
+  Alert,
+} from "@mantine/core";
 
-const RESULT_TYPES = {
-  "ЗК": "Загальні компетентності",
-  "СК": "Спеціальні компетентності", 
-  "РН": "Результати навчання"
+const RESULT_TYPES: Record<string, string> = {
+  ЗК: "Загальні компетентності",
+  СК: "Спеціальні компетентності",
+  РН: "Результати навчання",
 };
 
-type ExtDependency = {
-  name: string,
-  type: 'ok' | 'unknown_course' | 'not_added'
-}
+type ExtDependency = { name: string; type: "ok" | "unknown_course" | "not_added" };
 
 type ExtendedCourse = {
-  topics: CourseTopic[],
-  ext_prerequisites: ExtDependency[],
-  ext_postrequisites: ExtDependency[]
-}
+  topics: CourseTopic[];
+  ext_prerequisites: ExtDependency[];
+  ext_postrequisites: ExtDependency[];
+};
 
-function courseMatch(course: Course & ExtendedCourse, searchText: string, results: Map<number, CourseResult>): boolean {
-  const okNoText = course.data.ok_no ? formatDisciplineCode(course.data.ok_no).toLowerCase() : "";
-  const nameText = course.name.toLowerCase();
-  const teacherText = (course.teacher ?? course.teacher_id.toString()).toLowerCase();
-  
-  // let's match results as well
-  const  resultMatch = course.data.results?.some(resultId => {
-    const result = results.get(resultId);
-    return result && formatResultCode(result).toLowerCase().includes(searchText) || result?.name.toLowerCase().includes(searchText);
-  }) ?? false;
-
-  const match = okNoText.includes(searchText) || nameText.includes(searchText) || teacherText.includes(searchText) || resultMatch;
-  
-  if (match) return true;
-  
-  // Also check in topics
-  if (course.topics.some(topic => topic.name.toLowerCase().includes(searchText))) return true;
-
-  return false;
-}
-
-// Format result code for display
 function formatResultCode(result: CourseResult): string {
   return `${result.type ?? ""}${result.no}`;
 }
 
-function findCourseByName(courses: (Course & ExtendedCourse)[], courseName: string): Course & ExtendedCourse | null {
+function courseMatch(course: Course & ExtendedCourse, searchText: string, results: Map<number, CourseResult>): boolean {
+  const okNo = course.data.ok_no ? formatDisciplineCode(course.data.ok_no).toLowerCase() : "";
+  const name = course.name.toLowerCase();
+  const teacher = (course.teacher ?? String(course.teacher_id)).toLowerCase();
+  const resultMatch = course.data.results?.some((id) => {
+    const r = results.get(id);
+    return r && (formatResultCode(r).toLowerCase().includes(searchText) || r.name.toLowerCase().includes(searchText));
+  }) ?? false;
+  if (okNo.includes(searchText) || name.includes(searchText) || teacher.includes(searchText) || resultMatch) return true;
+  return course.topics.some((t) => t.name.toLowerCase().includes(searchText));
+}
+
+function findCourseByName(courses: (Course & ExtendedCourse)[], courseName: string) {
   if (!courseName) return null;
-  const normalizedSearchName = normalizeCourseName(courseName);
-  return courses.find(course => normalizeCourseName(course.name) === normalizedSearchName) ?? null;
+  const norm = normalizeCourseName(courseName);
+  return courses.find((c) => normalizeCourseName(c.name) === norm) ?? null;
 }
 
 function validatePostPreRequisites(courses: (Course & { topics: CourseTopic[] })[]): (Course & ExtendedCourse)[] {
-  const extCourses = courses.map(c => {
-    // Hide some unimportant warnings
-    c.data.warnings = (c.data.warnings || []).filter(w => !w.includes('literature') && !w.includes('inabscentia'));
-    return {...c, ext_prerequisites: [], ext_postrequisites: []} as Course & ExtendedCourse;
+  const ext = courses.map((c) => {
+    c.data.warnings = (c.data.warnings || []).filter((w) => !w.includes("literature") && !w.includes("inabscentia"));
+    return { ...c, ext_prerequisites: [], ext_postrequisites: [] } as Course & ExtendedCourse;
   });
 
-  return extCourses.map(course => {    
-    course.data.prerequisites?.forEach(prereqName => {
-      const otherCourse = findCourseByName(extCourses, prereqName);
-      if (!otherCourse) {
-        course.ext_prerequisites.push({name: prereqName, type: 'unknown_course'});
-        course.data.warnings = course.data.warnings || [];
-        course.data.warnings.push(`Пререквізит "${prereqName}" не знайдено`);
+  ext.forEach((course) => {
+    course.data.prerequisites?.forEach((prereqName) => {
+      const other = findCourseByName(ext, prereqName);
+      if (!other) {
+        course.ext_prerequisites.push({ name: prereqName, type: "unknown_course" });
+        course.data.warnings = [...(course.data.warnings || []), `Пререквізит "${prereqName}" не знайдено`];
       } else {
-        course.ext_prerequisites.push({name: prereqName, type: 'ok'});
-        // Check that the other course has this course as postrequisite
-        if (!otherCourse.data.postrequisites || !otherCourse.data.postrequisites.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
-          otherCourse.ext_postrequisites.push({name: course.name, type: 'not_added'});
-          otherCourse.data.warnings = otherCourse.data.warnings || [];
-          otherCourse.data.warnings.push(`Дисципліна "${course.name}" не вказана як постреквізит, однак ссилається на цю`);
+        course.ext_prerequisites.push({ name: prereqName, type: "ok" });
+        if (!other.data.postrequisites?.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
+          other.ext_postrequisites.push({ name: course.name, type: "not_added" });
+          other.data.warnings = [...(other.data.warnings || []), `Дисципліна "${course.name}" не вказана як постреквізит, однак ссилається на цю`];
         }
       }
     });
 
-    course.data.postrequisites?.forEach(postreqName => {
-      const otherCourse = findCourseByName(extCourses, postreqName);
-      if (!otherCourse) {
-        course.ext_postrequisites.push({name: postreqName, type: 'unknown_course'});
-        course.data.warnings = course.data.warnings || [];
-        course.data.warnings.push(`Постреквізит "${postreqName}" не знайдено`);
+    course.data.postrequisites?.forEach((postreqName) => {
+      const other = findCourseByName(ext, postreqName);
+      if (!other) {
+        course.ext_postrequisites.push({ name: postreqName, type: "unknown_course" });
+        course.data.warnings = [...(course.data.warnings || []), `Постреквізит "${postreqName}" не знайдено`];
       } else {
-        course.ext_postrequisites.push({name: postreqName, type: 'ok'});
-        // Check that the other course has this course as prerequisite
-        if (!otherCourse.data.prerequisites || !otherCourse.data.prerequisites.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
-          otherCourse.ext_prerequisites.push({name: course.name, type: 'not_added'});
-          otherCourse.data.warnings = otherCourse.data.warnings || [];
-          otherCourse.data.warnings.push(`Дисципліна "${course.name}" не вказана як пререквізит, однак ссилається на цю`);
+        course.ext_postrequisites.push({ name: postreqName, type: "ok" });
+        if (!other.data.prerequisites?.map(normalizeCourseName).includes(normalizeCourseName(course.name))) {
+          other.ext_prerequisites.push({ name: course.name, type: "not_added" });
+          other.data.warnings = [...(other.data.warnings || []), `Дисципліна "${course.name}" не вказана як пререквізит, однак ссилається на цю`];
         }
       }
     });
-
-    return course;
   });
+
+  return ext;
+}
+
+function DependencyIcon({ dep }: { dep: ExtDependency }) {
+  if (dep.type === "ok") return <ThemeIcon size="xs" color="green" variant="transparent"><FontAwesomeIcon icon={faCheck} /></ThemeIcon>;
+  const tip = dep.type === "unknown_course" ? "Дисципліна не знайдена в системі" : "У вказаній дисципліні не додано зворотне посилання";
+  return <Tooltip label={tip}><ThemeIcon size="xs" color="yellow" variant="transparent"><FontAwesomeIcon icon={faExclamationTriangle} /></ThemeIcon></Tooltip>;
 }
 
 export default function CoursesWithResults() {
@@ -116,286 +119,182 @@ export default function CoursesWithResults() {
   const [expandedWarnings, setExpandedWarnings] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    if (!specialtyId) {
-      setError("Не вказано спеціальність");
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const [coursesData, resultsData, specialtyData] = await Promise.all([
-          loadAllCoursesWithTopics(Number(specialtyId)),
-          loadResultsBySpecialty(Number(specialtyId)),
-          loadSpecialty(specialtyId)
-        ]);
-        setCourses(validatePostPreRequisites(coursesData as (Course & { topics: CourseTopic[] })[]));
-        setResults(resultsData);
-        setSpecialty(specialtyData);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError("Не вдалося завантажити дані");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    if (!specialtyId) { setError("Не вказано спеціальність"); setIsLoading(false); return; }
+    setIsLoading(true); setError(null);
+    Promise.all([
+      loadAllCoursesWithTopics(Number(specialtyId)),
+      loadResultsBySpecialty(Number(specialtyId)),
+      loadSpecialty(specialtyId),
+    ])
+      .then(([c, r, s]) => { setCourses(validatePostPreRequisites(c as (Course & { topics: CourseTopic[] })[])); setResults(r); setSpecialty(s); })
+      .catch(() => setError("Не вдалося завантажити дані"))
+      .finally(() => setIsLoading(false));
   }, [specialtyId]);
 
-  // Create a map of result IDs to result objects for quick lookup
-  const resultIdMap = useMemo(() => {
-    const map = new Map<number, CourseResult>();
-    results.forEach(result => {
-      map.set(result.id, result);
-    });
-    return map;
-  }, [results]);
+  const resultIdMap = useMemo(() => new Map(results.map((r) => [r.id, r])), [results]);
 
-   // Filter courses based on search text
-   const filteredCourses = useMemo(() => {
-     if (!filterText.trim()) return courses;
-     
-     const searchText = filterText.toLowerCase();
-     return courses.filter(course => courseMatch(course, searchText, resultIdMap));
-   }, [courses, filterText, resultIdMap]);
+  const filteredCourses = useMemo(() => {
+    if (!filterText.trim()) return courses;
+    const q = filterText.toLowerCase();
+    return courses.filter((c) => courseMatch(c, q, resultIdMap));
+  }, [courses, filterText, resultIdMap]);
 
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left">
-          <div className="text-amber-50 font-mono">Завантаження даних...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left">
-          <div className="text-red-500 font-mono">{error}</div>
-          <button
-            onClick={() => navigate("/specialties")}
-            className="mt-4 bg-zinc-900 border-2 border-amber-50 rounded-xl px-4 py-2 text-amber-50 font-mono hover:bg-zinc-800 transition-colors"
-          >
-            Повернутися до спеціальностей
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <Center h={200}><Loader /></Center>;
+  if (error) return (
+    <Stack maw={900} mx="auto">
+      <Text c="red">{error}</Text>
+      <Button variant="default" onClick={() => navigate("/specialties")}>Повернутися до спеціальностей</Button>
+    </Stack>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <Tooltip id="my-tooltip" />
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
-          <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <h1 className="font-mono text-2xl">Дисципліни з результатами</h1>
-              {specialty && (
-                <div className="text-amber-200 font-mono text-sm mt-1">
-                  {specialty.code} – {specialty.name}
-                </div>
-              )}
-            </div>
- 
-            <div className="relative flex-1 max-w-md">
-            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-200" />
-            <input
-              type="text"
-              placeholder=""
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="w-full bg-zinc-900 border-2 border-amber-50 rounded-lg px-10 py-2 text-amber-50 font-mono focus:outline-none focus:ring-2 focus:ring-amber-200 placeholder-amber-200"
-            />
-          </div>
-        </div>
+    <Stack maw={1200} mx="auto">
+      <Group justify="space-between" wrap="wrap">
+        <Stack gap={2}>
+          <Title order={2}>Дисципліни з результатами</Title>
+          {specialty && <Text size="sm" c="dimmed">{specialty.code} — {specialty.name}</Text>}
+        </Stack>
+        <TextInput placeholder="Пошук..." value={filterText} onChange={(e) => setFilterText(e.currentTarget.value)} w={280} />
+      </Group>
 
-        {filteredCourses.length === 0 ? (
-          <div className="text-amber-50 font-mono">
-            {filterText ? "Не знайдено дисциплін, що відповідають фільтру" : "Немає дисциплін"}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {filteredCourses.map(course => {
-              const courseResults = course.data.results ?? [];
-              const hasResults = courseResults.length > 0;
+      {filteredCourses.length === 0 ? (
+        <Text c="dimmed">{filterText ? "Не знайдено дисциплін, що відповідають фільтру" : "Немає дисциплін"}</Text>
+      ) : (
+        <Stack>
+          {filteredCourses.map((course) => {
+            const courseResults = course.data.results ?? [];
+            const warnings = course.data.warnings ?? [];
+            const hasWarnings = warnings.length > 0;
 
-              return (
-                <div key={course.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono">
-                   <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                         <div className="font-bold text-lg flex items-center gap-2">
-                           {formatDisciplineCode(course.data.ok_no) + '. '}{course.name}
-                           {(course.data.attestations?.length ?? 0) > 0 && (
-                             <span className="text-amber-400 font-normal text-xs">
-                               ({course.data.attestations?.map(a => a.semester).filter((v, i, a) => a.indexOf(v) === i).sort().join(', ')} семестр)
-                             </span>
-                           )}
-                           {(course.data.warnings?.length ?? 0) > 0 && (
-                             <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-400" title="Ця дисципліна має помилки" />
-                           )}
-                        </div>
-                       <div className="text-sm opacity-80">
-                         Викладач: {course.teacher ?? course.teacher_id}
-                       </div>
-                     </div>
-                     <button
-                       onClick={() => navigate(`/courses/${course.id}`)}
-                       className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-                       aria-label="Редагувати дисципліну"
-                       title="Редагувати дисципліну"
-                     >
-                       <FontAwesomeIcon icon={faPen} />
-                     </button>
-                   </div>
+            return (
+              <Paper key={course.id} withBorder p="md">
+                <Stack gap="sm">
+                  {/* Header */}
+                  <Group justify="space-between" wrap="nowrap" align="flex-start">
+                    <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                      <Group gap="xs" wrap="wrap">
+                        <Text fw={700}>{formatDisciplineCode(course.data.ok_no)}. {course.name}</Text>
+                        {(course.data.attestations?.length ?? 0) > 0 && (
+                          <Badge variant="light" size="sm">
+                            {course.data.attestations?.map((a) => a.semester).filter((v, i, a) => a.indexOf(v) === i).sort().join(", ")} сем.
+                          </Badge>
+                        )}
+                        {hasWarnings && (
+                          <Tooltip label="Ця дисципліна має попередження">
+                            <ThemeIcon size="sm" color="yellow" variant="transparent"><FontAwesomeIcon icon={faExclamationTriangle} /></ThemeIcon>
+                          </Tooltip>
+                        )}
+                      </Group>
+                      <Text size="sm" c="dimmed">Викладач: {course.teacher ?? course.teacher_id}</Text>
+                    </Stack>
+                    <Tooltip label="Редагувати">
+                      <ActionIcon variant="subtle" onClick={() => navigate(`/courses/${course.id}`)}>
+                        <FontAwesomeIcon icon={faPen} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
 
-                    {hasResults ? (
-                      <div className="flex flex-col gap-4">
-                        {Object.entries(RESULT_TYPES).map(([type, typeName]) => {
-                          const typeResults = courseResults
-                            .map(resultId => resultIdMap.get(resultId))
-                            .filter((result): result is CourseResult => 
-                              result !== undefined && result.type === type
-                            );
-  
-                          if (typeResults.length === 0) return null;
-  
-                          return (
-                            <div key={type} className="flex flex-col gap-2">
-                              <h3 className="text-amber-200 font-bold text-base">{typeName}</h3>
-                              <ul className="list-disc list-inside space-y-1 ml-4">
-                                {typeResults.map(result => (
-                                  <li key={result.id} className="text-sm">
-                                    <span className="font-bold text-amber-200">{formatResultCode(result)}</span> - {result.name}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-amber-200 text-sm">
-                        Ця дисципліна не має пов'язаних результатів
-                      </div>
-                    )}
+                  {/* Results */}
+                  {courseResults.length > 0 ? (
+                    <Stack gap="xs">
+                      {Object.entries(RESULT_TYPES).map(([type, typeName]) => {
+                        const typeResults = courseResults.map((id) => resultIdMap.get(id)).filter((r): r is CourseResult => !!r && r.type === type);
+                        if (typeResults.length === 0) return null;
+                        return (
+                          <Stack key={type} gap={2}>
+                            <Text size="sm" fw={600}>{typeName}</Text>
+                            <List size="sm" spacing={2}>
+                              {typeResults.map((r) => (
+                                <List.Item key={r.id}>
+                                  <Text span fw={700} c="blue">{formatResultCode(r)}</Text> — {r.name}
+                                </List.Item>
+                              ))}
+                            </List>
+                          </Stack>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Text size="sm" c="dimmed">Ця дисципліна не має пов'язаних результатів</Text>
+                  )}
 
-                    {(course.topics?.length > 0) && (
-                       <div className="mt-4 gap-2">
-                         <h3 className="text-amber-200 font-bold text-base mb-2">Теми дисципліни</h3>
-                         <ol className="list-decimal list-inside space-y-1 ml-4 text-sm">
-                           {course.topics.map((topic, index) => (
-                             <li key={index}>{topic.name}</li>
-                           ))}
-                         </ol>
-                       </div>
-                     )}
- 
-                     {(course.ext_prerequisites?.length > 0 || course.ext_postrequisites?.length > 0) && (
-                       <div className="mt-4 p-3 bg-zinc-800 border border-zinc-600 rounded-lg">
-                         <h3 className="text-amber-200 font-bold text-base mb-2">Залежності дисципліни</h3>
-                         <div className="flex flex-col gap-3">
-                           {course.ext_prerequisites?.length > 0 && (
-                             <div className="flex flex-col gap-1">
-                               <span className="text-amber-300 font-semibold text-sm">Пререквізити:</span>
-                               <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-                                 {course.ext_prerequisites.map((prereq, index) => (
-                                   <li key={index} className={"flex items-center gap-2" + (prereq.type === 'not_added' ? ' text-red-400' : ' text-amber-100')}>
-                                     {prereq.name}     
-                                     {prereq.type === 'ok' && <FontAwesomeIcon icon={faCheck} className="text-green-400 text-xs" />}
-                                     {prereq.type === 'unknown_course' && (
-                                       <FontAwesomeIcon
-                                         icon={faExclamationTriangle} 
-                                         className="text-yellow-400 text-xs"
-                                         data-tooltip-id="my-tooltip"
-                                         data-tooltip-content="Ця дисципліна не знайдена в системі"
-                                       />
-                                     )}
-                                     {prereq.type === 'not_added' && (
-                                       <FontAwesomeIcon 
-                                         icon={faExclamationTriangle}
-                                         className="text-yellow-400 text-xs"
-                                         data-tooltip-id="my-tooltip"
-                                         data-tooltip-content="У вказаній дисципліні вказано цю як пререквізит"
-                                       />
-                                     )}
-                                   </li>
-                                 ))}
-                               </ul>
-                             </div>
-                           )}
-                           {course.ext_postrequisites?.length > 0 && (
-                             <div className="flex flex-col gap-1">
-                               <span className="text-amber-300 font-semibold text-sm">Постреквізити:</span>
-                               <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
-                                 {course.ext_postrequisites.map((postreq, index) => (
-                                   <li key={index} className={"flex items-center gap-2" + (postreq.type === 'not_added' ? ' text-red-400' : ' text-amber-100')}>
-                                     {postreq.name}
-                                     {postreq.type === 'ok' && <FontAwesomeIcon icon={faCheck} className="text-green-400 text-xs" />}
-                                     {postreq.type === 'unknown_course' && (
-                                       <FontAwesomeIcon
-                                         icon={faExclamationTriangle} 
-                                         className="text-yellow-400 text-xs"
-                                         data-tooltip-id="my-tooltip"
-                                         data-tooltip-content="Ця дисципліна не знайдена в системі"
-                                       />
-                                     )}
-                                     {postreq.type === 'not_added' && (
-                                       <FontAwesomeIcon 
-                                         icon={faExclamationTriangle}
-                                         className="text-yellow-400 text-xs"
-                                         data-tooltip-id="my-tooltip"
-                                         data-tooltip-content="У вказаній дисципліні вказано цю як постреквізит"
-                                       />
-                                     )}
-                                   </li>
-                                 ))}
-                               </ul>
-                             </div>
-                           )}
-                         </div>
-                       </div>
-                     )}
- 
-                     {(course.data.warnings?.length ?? 0) > 0 && (
-                       <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-lg">
-                         <div className="flex justify-between items-center mb-2">
-                           <h3 className="text-yellow-400 font-bold text-base flex items-center gap-2">
-                             <FontAwesomeIcon icon={faExclamationTriangle} />
-                             Можливі помилки
-                           </h3>
-                           <button
-                             onClick={() => {
-                               setExpandedWarnings({
-                                 ...expandedWarnings,
-                                 [course.id]: !expandedWarnings[course.id]
-                               });
-                             }}
-                             className="text-yellow-400 hover:text-yellow-300 transition-colors"
-                             title={expandedWarnings[course.id] ? "Згорнути попередження" : "Розгорнути попередження"}
-                           >
-                             <FontAwesomeIcon icon={expandedWarnings[course.id] ? faChevronUp : faChevronDown} size="sm" />
-                           </button>
-                         </div>
-                         {expandedWarnings[course.id] && (
-                           <ul className="list-disc list-inside space-y-1 ml-4 text-yellow-300 text-sm">
-                             {(course.data.warnings ?? []).map((warning, index) => (
-                               <li key={index}>{warning}</li>
-                             ))}
-                           </ul>
-                         )}
-                       </div>
-                     )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+                  {/* Topics */}
+                  {course.topics?.length > 0 && (
+                    <Stack gap={2}>
+                      <Text size="sm" fw={600}>Теми дисципліни</Text>
+                      <List size="sm" type="ordered" spacing={2}>
+                        {course.topics.map((t, i) => <List.Item key={i}>{t.name}</List.Item>)}
+                      </List>
+                    </Stack>
+                  )}
+
+                  {/* Dependencies */}
+                  {(course.ext_prerequisites.length > 0 || course.ext_postrequisites.length > 0) && (
+                    <Paper withBorder p="sm">
+                      <Stack gap="xs">
+                        <Text size="sm" fw={600}>Залежності</Text>
+                        {course.ext_prerequisites.length > 0 && (
+                          <Stack gap={2}>
+                            <Text size="xs" fw={600}>Пререквізити:</Text>
+                            <List size="sm" spacing={2}>
+                              {course.ext_prerequisites.map((dep, i) => (
+                                <List.Item key={i}>
+                                  <Group gap={4} wrap="nowrap">
+                                    <Text size="sm" c={dep.type === "not_added" ? "red" : undefined}>{dep.name}</Text>
+                                    <DependencyIcon dep={dep} />
+                                  </Group>
+                                </List.Item>
+                              ))}
+                            </List>
+                          </Stack>
+                        )}
+                        {course.ext_postrequisites.length > 0 && (
+                          <Stack gap={2}>
+                            <Text size="xs" fw={600}>Постреквізити:</Text>
+                            <List size="sm" spacing={2}>
+                              {course.ext_postrequisites.map((dep, i) => (
+                                <List.Item key={i}>
+                                  <Group gap={4} wrap="nowrap">
+                                    <Text size="sm" c={dep.type === "not_added" ? "red" : undefined}>{dep.name}</Text>
+                                    <DependencyIcon dep={dep} />
+                                  </Group>
+                                </List.Item>
+                              ))}
+                            </List>
+                          </Stack>
+                        )}
+                      </Stack>
+                    </Paper>
+                  )}
+
+                  {/* Warnings */}
+                  {hasWarnings && (
+                    <Alert
+                      color="yellow"
+                      variant="light"
+                      title={
+                        <Group justify="space-between" style={{ cursor: "pointer" }} onClick={() => setExpandedWarnings((prev) => ({ ...prev, [course.id]: !prev[course.id] }))}>
+                          <Group gap="xs">
+                            <FontAwesomeIcon icon={faExclamationTriangle} />
+                            <Text fw={600} size="sm">Можливі помилки</Text>
+                          </Group>
+                          <Text size="xs">{expandedWarnings[course.id] ? "Згорнути" : "Розгорнути"}</Text>
+                        </Group>
+                      }
+                    >
+                      <Collapse in={!!expandedWarnings[course.id]}>
+                        <List size="sm" spacing={2} mt="xs">
+                          {warnings.map((w, i) => <List.Item key={i}>{w}</List.Item>)}
+                        </List>
+                      </Collapse>
+                    </Alert>
+                  )}
+                </Stack>
+              </Paper>
+            );
+          })}
+        </Stack>
+      )}
+    </Stack>
   );
 }
