@@ -138,16 +138,6 @@ export default function CoursesList() {
               <FontAwesomeIcon icon={faListCheck} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label="Граф залежностей">
-            <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/graph`)}>
-              <FontAwesomeIcon icon={faSitemap} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Зведення годин">
-            <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/summary`)}>
-              <FontAwesomeIcon icon={faChartPie} />
-            </ActionIcon>
-          </Tooltip>
         </Group>
 
         <Group gap="sm">

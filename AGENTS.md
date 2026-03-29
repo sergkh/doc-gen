@@ -212,7 +212,6 @@ JSON fields store complex data structures (CourseData, GeneratedCourseData, etc.
 - **CoursesList** (`/courses`) - Browse and manage courses
 - **CourseEdit** (`/courses/:id`) - Edit course details
 - **CoursesWithResults** (`/courses/results`) - View courses with their outcomes
-- **CourseGraph** (`/courses/graph`) - Visualize course dependencies
 - **ResultsList** (`/results`) - Manage learning outcomes by specialty
 - **ResultsMatrix** (`/results/matrix`) - Matrix view of course-outcome mappings
 - **TeachersList** (`/teachers`) - Manage teacher profiles

@@ -75,32 +75,6 @@ export default function SpecialtiesList() {
         </Tooltip>
       </Group>
 
-      <Box
-        {...getRootProps()}
-        p="xl"
-        style={{
-          border: `2px dashed var(--mantine-color-${isDragActive ? "blue-5" : "default-border"})`,
-          borderRadius: "var(--mantine-radius-sm)",
-          textAlign: "center",
-          cursor: isUploading ? "not-allowed" : "pointer",
-          opacity: isUploading ? 0.5 : 1,
-          backgroundColor: isDragActive ? "var(--mantine-color-blue-light)" : undefined,
-          transition: "all 150ms ease",
-        }}
-      >
-        <input {...getInputProps()} />
-        <Stack align="center" gap="xs">
-          <FontAwesomeIcon icon={faUpload} size="lg" />
-          <Text fw={500}>
-            {isUploading
-              ? "Завантаження..."
-              : isDragActive
-              ? "Відпустіть файл тут"
-              : "Перетягніть файл ОПП у форматі .docx сюди або натисніть для вибору"}
-          </Text>
-        </Stack>
-      </Box>
-
       <Stack gap="xs">
         {items.length === 0 ? (
           <Text c="dimmed">Немає спеціальностей</Text>
@@ -133,6 +107,32 @@ export default function SpecialtiesList() {
           ))
         )}
       </Stack>
+
+            <Box
+        {...getRootProps()}
+        p="xl"
+        style={{
+          border: `2px dashed var(--mantine-color-${isDragActive ? "blue-5" : "default-border"})`,
+          borderRadius: "var(--mantine-radius-sm)",
+          textAlign: "center",
+          cursor: isUploading ? "not-allowed" : "pointer",
+          opacity: isUploading ? 0.5 : 1,
+          backgroundColor: isDragActive ? "var(--mantine-color-blue-light)" : undefined,
+          transition: "all 150ms ease",
+        }}
+      >
+        <input {...getInputProps()} />
+        <Stack align="center" gap="xs">
+          <FontAwesomeIcon icon={faUpload} size="lg" />
+          <Text fw={500}>
+            {isUploading
+              ? "Завантаження..."
+              : isDragActive
+              ? "Відпустіть файл тут"
+              : "Перетягніть файл ОПП у форматі .docx сюди або натисніть для вибору"}
+          </Text>
+        </Stack>
+      </Box>
     </Stack>
   );
 }
