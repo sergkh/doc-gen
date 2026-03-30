@@ -61,7 +61,7 @@ export default function ResultEdit() {
   }
 
   return (
-    <Stack maw={800} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Title order={2}>{item.id >= 0 ? "Редагувати результат" : "Додати результат"}</Title>
 
       <Paper withBorder p="md">

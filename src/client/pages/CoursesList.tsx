@@ -176,7 +176,7 @@ export default function CoursesList() {
                     {formatDisciplineCode(d.data.ok_no)}. {d.name}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    Автор: {d.teacher ?? d.teacher_id}
+                    Викладач: {d.teacher ?? d.teacher_id}
                   </Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">

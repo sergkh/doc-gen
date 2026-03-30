@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { Stack, Group, Text, TextInput, Select, Badge, ActionIcon, Button, Divider } from "@mantine/core";
+import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { Stack, Group, Text, TextInput, Select, Badge, ActionIcon, Button, Divider, Box } from "@mantine/core";
 
 export type Attestation = {
   name: string;
@@ -43,12 +43,15 @@ export default function AttestationsEditor({
       {attestations.length > 0 && (
         <Group gap="xs" wrap="wrap">
           {attestations.map((att, index) => (
-            <Badge
+            <Box
+              style={(theme) => ({
+                display: 'inline-block',
+                padding: '10px 16px',
+                backgroundColor: theme.colors.blue[0],
+                borderRadius: '0.5em'
+              })}
               key={index}
-              variant="outline"
-              rightSection={
-                <ActionIcon size="xs" variant="transparent" onClick={() => onRemove(index)}>×</ActionIcon>
-              }
+              variant="outline"              
             >
               {att.name}{" "}
               <Select
@@ -57,10 +60,10 @@ export default function AttestationsEditor({
                 onChange={(v) => v && onUpdateSemester(index, Number(v))}
                 size="xs"
                 w={100}
-                styles={{ input: { border: "none", background: "transparent", padding: 0, fontSize: "inherit", color: "inherit" } }}
+                styles={{ input: { border: "none", background: "transparent", padding: 0, fontSize: "inherit", color: "inherit", display: "inline-block" } }}
                 withCheckIcon={false}
               />
-            </Badge>
+            </Box>
           ))}
         </Group>
       )}

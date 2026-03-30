@@ -118,7 +118,7 @@ export default function TopicGeneratedDataEdit() {
   if (!topic) return <Center h={200}><Text c="dimmed">Тема не знайдена</Text></Center>;
 
   return (
-    <Stack maw={1000} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Title order={2}>Згенеровані дані: {topic.name}</Title>
 
       <Paper withBorder p="md">

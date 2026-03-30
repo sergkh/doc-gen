@@ -104,7 +104,7 @@ export default function SpecialtyEdit() {
   }
 
   return (
-    <Stack maw={900} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Group justify="space-between">
         <Title order={2}>{specialty.id >= 0 ? "Редагувати спеціальність" : "Додати спеціальність"}</Title>
         <Group gap="xs">

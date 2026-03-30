@@ -97,7 +97,7 @@ export default function TemplateEdit() {
   }
 
   return (
-    <Stack maw={1000} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Group justify="space-between">
         <Title order={2}>{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</Title>
         <Group gap="xs">

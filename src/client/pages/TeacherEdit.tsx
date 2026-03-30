@@ -114,18 +114,11 @@ export default function TeacherEdit() {
   }
 
   return (
-    <Stack maw={900} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Group justify="space-between">
         <Title order={2}>{item.id >= 0 ? "Редагувати викладача" : "Додати викладача"}</Title>
-        <Group gap="xs">
-          <Button variant="default" onClick={() => navigate("/teachers")}>Скасувати</Button>
-          {item.id > 0 && (
-            <Tooltip label="Оновити публікації з репозиторію">
-              <ActionIcon variant="default" onClick={handleRefreshPublications}>
-                <FontAwesomeIcon icon={faSyncAlt} />
-              </ActionIcon>
-            </Tooltip>
-          )}
+        <Group>
+          <Button variant="default" onClick={() => navigate("/teachers")}>Скасувати</Button>                  
           <Button onClick={handleSave} disabled={!isValid}>Зберегти</Button>
         </Group>
       </Group>
@@ -192,10 +185,19 @@ export default function TeacherEdit() {
       {item.id > 0 && (
         <Paper withBorder p="md">
           <Stack gap="xs">
-            <Group gap="xs">
-              <FontAwesomeIcon icon={faBook} />
-              <Text fw={600}>Публікації</Text>
+
+            <Group gap="xs" justify="space-between">
+              <Group>
+                <FontAwesomeIcon icon={faBook} />
+                <Text fw={600}>Публікації</Text>
+              </Group>
+              <Tooltip label="Оновити публікації з репозиторію">
+                <ActionIcon variant="subtle" onClick={handleRefreshPublications}>
+                  <FontAwesomeIcon icon={faSyncAlt} />
+                </ActionIcon>
+              </Tooltip>
             </Group>
+
             {isLoadingPublications ? (
               <Loader size="sm" />
             ) : publications.length === 0 ? (
@@ -203,7 +205,7 @@ export default function TeacherEdit() {
                 Немає публікацій. Натисніть кнопку оновлення, щоб завантажити публікації з репозиторію.
               </Text>
             ) : (
-              <Stack gap="xs" mah={400} style={{ overflowY: "auto" }}>
+              <Stack gap="xs" style={{ overflowY: "auto" }}>
                 {publications.map((pub) => (
                   <Paper key={pub.id} withBorder p="sm">
                     <Group justify="space-between" wrap="nowrap" align="flex-start">

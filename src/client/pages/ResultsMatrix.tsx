@@ -138,7 +138,7 @@ export default function ResultsMatrix() {
   }));
 
   return (
-    <Stack maw={1400} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Group justify="space-between" wrap="wrap">
         <Title order={2}>Матриця результатів</Title>
         <Select

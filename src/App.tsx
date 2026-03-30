@@ -9,6 +9,7 @@ import {
   Group,
   NavLink,
   Text,
+  UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import CoursesList from "./client/pages/CoursesList";
@@ -29,11 +30,10 @@ import ChatPage from "./client/pages/ChatPage";
 import { theme } from "./theme";
 
 const navItems = [
-  { label: "Генератор документів", to: "/", match: (path: string) => path === "/" },
+  { label: "Генератор", to: "/", match: (path: string) => path === "/" },
   { label: "Дисципліни", to: "/courses", match: (path: string) => path.startsWith("/courses") },
   { label: "Викладачі", to: "/teachers", match: (path: string) => path.startsWith("/teachers") },
   { label: "Спеціальності", to: "/specialties", match: (path: string) => path.startsWith("/specialties") },
-  { label: "Результати", to: "/results/matrix", match: (path: string) => path.includes("/results") },
   { label: "Шаблони", to: "/templates", match: (path: string) => path.startsWith("/templates") },
   { label: "Чат", to: "/chat", match: (path: string) => path.startsWith("/chat") },
 ];
@@ -47,13 +47,20 @@ export function App() {
       <Toaster position="top-right" />
       <AppShell
         header={{ height: 60 }}
-        navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !opened } }}
+        navbar={{ width: 300, breakpoint: "sm", collapsed: { desktop: true, mobile: !opened } }}
         padding="md"
       >
         <AppShell.Header>
           <Group h="100%" px="md">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text fw={700} size="lg">Doc Gen</Text>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />            
+            <Group justify="space-between" style={{ flex: 1 }}>
+              <Text fw={700} size="lg">Doc Gen</Text>
+                <Group ml="xl" visibleFrom="sm">
+                  {navItems.map((item) => (
+                    <Link key={item.to} to={item.to}>{item.label}</Link>
+                  ))}
+                </Group>
+            </Group>
           </Group>
         </AppShell.Header>
 

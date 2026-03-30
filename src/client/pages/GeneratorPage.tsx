@@ -322,7 +322,7 @@ export default function GeneratorPage() {
   }));
 
   return (
-    <Stack maw={900} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Title order={2}>Генератор документів</Title>
 
       <Stack gap="xs">

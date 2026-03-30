@@ -90,7 +90,7 @@ export default function CourseGeneratedDataEdit() {
   if (!course) return <Center h={200}><Text c="dimmed">Курс не знайдено</Text></Center>;
 
   return (
-    <Stack maw={1000} mx="auto">
+    <Stack maw={1200} mx="auto">
       <Group justify="space-between">
         <Title order={2}>Згенеровані дані: {course.name}</Title>
         <Group gap="xs">

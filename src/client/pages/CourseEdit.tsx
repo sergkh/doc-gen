@@ -273,7 +273,7 @@ export default function CourseEdit() {
                 variant="outline"
                 rightSection={
                   <ActionIcon size="xs" variant="transparent" onClick={() => handleRemoveDependency(field, index)}>
-                    ×
+                    <FontAwesomeIcon icon={faTimes} size="xs" />
                   </ActionIcon>
                 }
               >
@@ -317,7 +317,7 @@ export default function CourseEdit() {
                 key={s}
                 variant="outline"
                 rightSection={
-                  <ActionIcon size="xs" variant="transparent" onClick={() => handleRemoveSemester(form, s)}>×</ActionIcon>
+                  <ActionIcon size="xs" variant="transparent" onClick={() => handleRemoveSemester(form, s)}><FontAwesomeIcon icon={faTimes} size="xs" /></ActionIcon>
                 }
               >
                 {s} семестр

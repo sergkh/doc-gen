@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import type { CourseResult } from "@/stores/models";
 import { Stack, Group, Text, Select, Badge, ActionIcon, Button, Tooltip } from "@mantine/core";
 
@@ -46,14 +46,13 @@ export default function ResultsEditor({
           {selectedResults.map((result) => (
             <Badge
               key={result.id}
-              variant="outline"
+              variant="light"
+              title={result.name}
               rightSection={
-                <ActionIcon size="xs" variant="transparent" onClick={() => onRemove(result.id)}>
-                  ×
-                </ActionIcon>
+                <ActionIcon size="xs" variant="transparent" onClick={() => onRemove(result.id)}><FontAwesomeIcon icon={faTimes} size="xs" /></ActionIcon>
               }
             >
-              <Text span fw={700}>{result.no}.</Text> {result.name}
+              {result.no}. {result.name}
             </Badge>
           ))}
         </Group>
