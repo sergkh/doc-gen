@@ -1,4 +1,3 @@
-import "./index.css";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useState } from "react";
@@ -24,7 +23,7 @@ import ChatPage from "./client/pages/ChatPage";
 
 function Navigation() {
   const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);  
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
