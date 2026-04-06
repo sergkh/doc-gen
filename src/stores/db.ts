@@ -107,7 +107,7 @@ const courses = {
 
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
-      (name, teacher_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.data}, ${c.generated}) RETURNING *`;
+      (name, teacher_id, specialty_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.specialty_id}, ${c.data}, ${c.generated}) RETURNING *`;
   },
   
   get: async (id: number): Promise<Course | null> => {
