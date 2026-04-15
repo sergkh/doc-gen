@@ -1,8 +1,8 @@
 import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "@/stores/models";
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faEdit, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { loadCourse, upsertCourse, loadAllCourses, normalizeCourseName, formatDisciplineCode, autofillCourseResults } from "../courses";
 
 function extractRawCourseName(displayName: string): string {
@@ -27,6 +27,7 @@ type DependencyField = "prerequisites" | "postrequisites";
 
 export default function CourseEdit() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [item, setItem] = useState<Course | null>(null);
   const [teachers, setTeachers] = useState([] as Teacher[]);
@@ -46,7 +47,21 @@ export default function CourseEdit() {
     postrequisites: ""
   });
 
-  useEffect(() => { loadCourse(id || "new").then(setItem).catch(console.error); }, [id]);
+  const clonedCourse = (location.state as { clonedCourse?: Course } | null)?.clonedCourse;
+
+  useEffect(() => {
+    if (clonedCourse) {
+      setItem({
+        ...clonedCourse,
+        id: -1,
+        version: 0,
+        name: `${clonedCourse.name} (копія)`
+      });
+      return;
+    }
+
+    loadCourse(id || "new").then(setItem).catch(console.error);
+  }, [id, clonedCourse]);
   useEffect(() => { 
     loadAllTeachers().then(setTeachers).catch(console.error); 
     loadAllResults().then(setAllResults).catch(console.error);
@@ -69,7 +84,7 @@ export default function CourseEdit() {
   
   // Load prerequisite and postrequisite info when item or prerequisites/postrequisites change
   useEffect(() => {
-    if (!item || !item.id || item.id < 0) {
+    if (!item) {
       setSelectedResults([]);
       return;
     }
@@ -94,6 +109,15 @@ export default function CourseEdit() {
     if (!item || !isValid) return;
     await upsertCourse(item);
     navigate("/courses");
+  };
+
+  const handleClone = () => {
+    if (!item || item.id < 0) return;
+    navigate("/courses/new", {
+      state: {
+        clonedCourse: item
+      }
+    });
   };
 
   const handleAddResult = (resultId: string) => {
@@ -352,7 +376,7 @@ export default function CourseEdit() {
           <div className="flex items-center gap-4">
             <h1 className="font-mono">Редагувати курс</h1>
             <div className="flex items-start justify-end gap-2">
-              {item?.id && (
+              {item.id > 0 && (
                 <Link
                   to={`/courses/${item.id}/generated`}
                   className="inline-flex items-center text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
@@ -366,6 +390,16 @@ export default function CourseEdit() {
             </div>
           </div>
           <div className="flex gap-2">
+            {item.id > 0 && (
+              <button
+                onClick={handleClone}
+                className="text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
+                aria-label="Клонувати дисципліну"
+                title="Клонувати дисципліну"
+              >
+                <FontAwesomeIcon icon={faCopy} />
+              </button>
+            )}
             <button
               onClick={handleSave}
               disabled={!isValid}
@@ -610,7 +644,7 @@ export default function CourseEdit() {
           </div>
         </div>
 
-        {item?.id && <CourseTopicsEditor courseId={item.id} />}
+        {item.id > 0 && <CourseTopicsEditor courseId={item.id} />}
 
         <div className="col-span-2">
           <label className="block text-amber-50 font-bold mb-2 text-sm">Основна література (одна на рядок):</label>
