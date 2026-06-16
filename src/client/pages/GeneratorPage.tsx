@@ -50,6 +50,7 @@ export default function GeneratorPage() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [navigateToEdit, setNavigateToEdit] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
+  const pollingRunning = useRef<boolean | null>(false);
 
   const handleDownload = async (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -68,6 +69,7 @@ export default function GeneratorPage() {
     setProgress(0);
     setIsGenerating(false);
     setNavigateToEdit(false);
+    pollingRunning.current = false;
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
@@ -75,8 +77,10 @@ export default function GeneratorPage() {
   };
 
   const pollJobStatus = (jobId: string, shouldNavigateToEdit: boolean = false, courseId?: string) => {
-    const poll = async () => {
+    const poll = async () => {      
       try {
+        if (pollingRunning.current) return ;
+        pollingRunning.current = true;
         const response = await fetch(`/api/jobs/${jobId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch job status");
@@ -114,6 +118,8 @@ export default function GeneratorPage() {
         console.error("Error polling job status:", error);
         toast.error("Помилка генерації: " + error);
         clearJobState();        
+      } finally {
+        pollingRunning.current = false;
       }
     };
 

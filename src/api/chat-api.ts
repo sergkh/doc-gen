@@ -1,64 +1,159 @@
-import type { BunRequest } from "bun";
-import { runAgent } from "@/ai/agent";
-import { AVAILABLE_MODELS } from "@/ai/models";
+import type { BunRequest, ServerWebSocket } from "bun";
+import { runAgentStream } from "@/ai/agent";
+import { AVAILABLE_MODELS, type AgentReply } from "@/ai/models";
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 
-const CLARIFICATION_MESSAGE =
-  "Я можу: (1) знайти дисципліни за СК (наприклад: СК-5), " +
-  "(2) знайти дисципліни за ЗК (наприклад: ЗК-3), " +
-  "(3) знайти дисципліни за ПР (наприклад: ПР-7), " +
-  "(4) знайти дисципліни за темою, (5) підсумувати практичні години, " +
-  "(6) встановити контекст дисципліни та додавати теми. Сформулюйте запит трохи точніше.";
+type ChatWebSocketData = {
+  sessionId?: string;
+};
 
-function getOrCreateSessionId(req: BunRequest): string {
-  const existing = req.headers.get("x-session-id");
-  if (existing) return existing;
-  
-  return crypto.randomUUID();
+type ChatWsRequest = {
+  type: "chat";
+  payload: {
+    requestId?: string;
+    specialtyId?: number;
+    message?: string;
+    approvalId?: string;
+    approvalDecision?: "approve" | "reject";
+    apiKey?: string;
+    model?: string;
+    sessionId?: string;
+  };
+};
+
+function normalizeWsMessage(message: string | Buffer | ArrayBuffer | Uint8Array): string {
+  if (typeof message === "string") return message;
+  if (message instanceof ArrayBuffer) return Buffer.from(message).toString("utf-8");
+  return Buffer.from(message).toString("utf-8");
+}
+
+function tryParseRequest(message: string | Buffer | ArrayBuffer | Uint8Array): ChatWsRequest | null {
+  const raw = normalizeWsMessage(message);
+
+  try {
+    const parsed = JSON.parse(raw) as ChatWsRequest;
+    if (parsed?.type === "chat" && parsed?.payload) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function sendWs(ws: ServerWebSocket<ChatWebSocketData>, payload: unknown): void {
+  ws.send(JSON.stringify(payload));
+}
+
+function toWsStreamStart(requestId?: string) {
+  return {
+    type: "chat_stream_start",
+    requestId,
+  };
+}
+
+function toWsStreamChunk(delta: string, requestId?: string) {
+  return {
+    type: "chat_stream_chunk",
+    requestId,
+    payload: {
+      delta,
+    },
+  };
+}
+
+function toWsStreamEnd(result: AgentReply, sessionId: string, requestId?: string) {
+  return {
+    type: "chat_stream_end",
+    requestId,
+    payload: {
+      context: {
+        ...result.context,
+        sessionId,
+      },
+      tools: result.tools,
+      reply: result.reply,
+      requiresUserInput: result.requiresUserInput ?? null,
+    },
+  };
 }
 
 const chatApi = {
   "/api/chat": {
-    async POST(req: BunRequest) {
-      try {
-        const body = (await req.json().catch(() => null)) as null | {
-          specialtyId?: number;
-          message?: string;
-          apiKey?: string;
-          model?: string;
-        };
+    GET(req: BunRequest, server: Bun.Server<ChatWebSocketData>) {
+      const sessionId = req.headers.get("x-session-id") ?? undefined;
+      const upgraded = server.upgrade(req, {
+        data: { sessionId },
+      });
 
-        const specialtyId = Number(body?.specialtyId);
-        const message = body?.message?.toString() ?? "";
-        const apiKey = body?.apiKey?.toString() || null;
-        const model = body?.model && AVAILABLE_MODELS.some(m => m.id === body.model) ? body.model : DEFAULT_MODEL;
-        const sessionId = getOrCreateSessionId(req);
-
-        if (!Number.isFinite(specialtyId) || specialtyId <= 0) {
-          return new Response("Missing or invalid specialtyId", { status: 400 });
-        }
-
-        if (!message.trim()) {
-          return new Response("Missing message", { status: 400 });
-        }
-
-        const result = await runAgent({ specialtyId, sessionId, message, apiKey, model });        
-
-        const headers = new Headers();
-        headers.set("Content-Type", "application/json");
-
-        if (!req.headers.has("x-session-id")) {
-          headers.set("x-session-id", sessionId);
-        }
-
-        return new Response(JSON.stringify(result), { headers });
-      } catch (error) {
-        console.error("Chat API error:", error);
-        return new Response(`Chat error: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
-      }
+      if (upgraded) return;
+      return new Response("WebSocket upgrade failed", { status: 400 });
     },
   },
 };
+
+export const chatWebsocket = {
+  async message(ws: ServerWebSocket<ChatWebSocketData>, message: string | Buffer | ArrayBuffer | Uint8Array) {
+    const request = tryParseRequest(message);
+
+    if (!request) {
+      sendWs(ws, { type: "error", error: "Invalid WebSocket payload" });
+      return;
+    }
+
+    try {
+      const specialtyId = Number(request.payload.specialtyId);
+      const userMessage = request.payload.message?.toString() ?? "";
+      const approvalId = request.payload.approvalId?.toString();
+      const approvalDecision = request.payload.approvalDecision;
+      const apiKey = request.payload.apiKey?.toString() || null;
+      const model =
+        request.payload.model && AVAILABLE_MODELS.some((m) => m.id === request.payload.model)
+          ? request.payload.model
+          : DEFAULT_MODEL;
+
+      const incomingSessionId = request.payload.sessionId?.toString().trim();
+      const sessionId = incomingSessionId || ws.data.sessionId || crypto.randomUUID();
+      ws.data.sessionId = sessionId;
+
+      if (!Number.isFinite(specialtyId) || specialtyId <= 0) {
+        sendWs(ws, { type: "error", error: "Missing or invalid specialtyId" });
+        return;
+      }
+
+      if (!approvalId && !userMessage.trim()) {
+        sendWs(ws, { type: "error", error: "Missing message" });
+        return;
+      }
+
+      const requestId = request.payload.requestId;
+
+      sendWs(ws, toWsStreamStart(requestId));
+
+      const result = await runAgentStream({
+        specialtyId,
+        sessionId,
+        message: userMessage,
+        approvalId,
+        approvalDecision,
+        apiKey,
+        model,
+        onTextDelta: (delta) => {
+          sendWs(ws, toWsStreamChunk(delta, requestId));
+        },
+      });
+
+      sendWs(ws, toWsStreamEnd(result, sessionId, requestId));
+    } catch (error) {
+      console.error("Chat WebSocket error:", error);
+      sendWs(ws, {
+        type: "error",
+        requestId: request.payload.requestId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+} as const;
 
 export default chatApi;

@@ -1,12 +1,86 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import type { Specialty } from "@/stores/models";
 import { loadAllSpecialties } from "../specialties";
 import Markdown from 'react-markdown';
-import { AVAILABLE_MODELS, DEFAULT_AGENT_MODEL, type ChatMessage, type DisciplineContext } from "../../ai/models";
-import { callAgentApi } from "../chat";
+import { AVAILABLE_MODELS, DEFAULT_AGENT_MODEL, type ChatMessage, type DisciplineContext, type UserInputRequest } from "../../ai/models";
 
 const API_KEY_STORAGE_KEY = "openai_api_key";
+
+type ChatWsStreamStart = {
+  type: "chat_stream_start";
+  requestId?: string;
+};
+
+type ChatWsStreamChunk = {
+  type: "chat_stream_chunk";
+  requestId?: string;
+  payload: {
+    delta: string;
+  };
+};
+
+type ChatWsStreamEnd = {
+  type: "chat_stream_end";
+  requestId?: string;
+  payload: {
+    reply: string;
+    tools: unknown[];
+    requiresUserInput?: UserInputRequest | null;
+    context: {
+      sessionId: string;
+      discipline: DisciplineContext | null;
+    };
+  };
+};
+
+type ChatWsError = {
+  type: "error";
+  requestId?: string;
+  error: string;
+};
+
+type PendingRequest = {
+  id: string;
+  resolve: (value: ChatWsStreamEnd) => void;
+  reject: (reason?: unknown) => void;
+  onChunk: (delta: string) => void;
+};
+
+type PendingApprovalAction = {
+  approvalId: string;
+  decision: "approve" | "reject";
+};
+
+function buildChatWsUrl(): string {
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${protocol}://${window.location.host}/api/chat`;
+}
+
+function parseWsMessage(
+  data: unknown
+): ChatWsStreamStart | ChatWsStreamChunk | ChatWsStreamEnd | ChatWsError | null {
+  if (typeof data !== "string") return null;
+
+  try {
+    const parsed = JSON.parse(data) as
+      | ChatWsStreamStart
+      | ChatWsStreamChunk
+      | ChatWsStreamEnd
+      | ChatWsError;
+    if (
+      parsed?.type === "chat_stream_start" ||
+      parsed?.type === "chat_stream_chunk" ||
+      parsed?.type === "chat_stream_end" ||
+      parsed?.type === "error"
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 
 export default function ChatPage() {
@@ -18,13 +92,16 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [expandedToolHistory, setExpandedToolHistory] = useState<Record<string, boolean>>({});
   const [sessionId, setSessionId] = useState<string>("");
   const [disciplineContext, setDisciplineContext] = useState<DisciplineContext | null >(null);
+  const [pendingInputRequest, setPendingInputRequest] = useState<UserInputRequest | null>(null);
   const [model, setModel] = useState<string>(DEFAULT_AGENT_MODEL);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const pendingRef = useRef<Map<string, PendingRequest>>(new Map());
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -60,17 +137,92 @@ export default function ChatPage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const socket = new WebSocket(buildChatWsUrl());
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      setIsSocketConnected(true);
+    };
+
+    socket.onclose = () => {
+      setIsSocketConnected(false);
+      for (const pending of pendingRef.current.values()) {
+        pending.reject(new Error("WebSocket disconnected"));
+      }
+      pendingRef.current.clear();
+    };
+
+    socket.onerror = () => {
+      setIsSocketConnected(false);
+    };
+
+    socket.onmessage = (event) => {
+      const parsed = parseWsMessage(event.data);
+      if (!parsed) return;
+
+      if (parsed.type === "error") {
+        if (parsed.requestId) {
+          const pending = pendingRef.current.get(parsed.requestId);
+          if (pending) {
+            pendingRef.current.delete(parsed.requestId);
+            pending.reject(new Error(parsed.error));
+            return;
+          }
+        }
+
+        toast.error(`Помилка чату: ${parsed.error}`);
+        setIsSending(false);
+        return;
+      }
+
+      if (parsed.type === "chat_stream_start") {
+        return;
+      }
+
+      if (parsed.type === "chat_stream_chunk") {
+        if (!parsed.requestId) return;
+
+        const pending = pendingRef.current.get(parsed.requestId);
+        if (!pending) return;
+        pending.onChunk(parsed.payload.delta);
+        return;
+      }
+
+      if (parsed.type === "chat_stream_end") {
+        if (!parsed.requestId) return;
+
+        const pending = pendingRef.current.get(parsed.requestId);
+        if (!pending) return;
+        pendingRef.current.delete(parsed.requestId);
+        pending.resolve(parsed);
+        return;
+      }
+
+    };
+
+    return () => {
+      for (const pending of pendingRef.current.values()) {
+        pending.reject(new Error("WebSocket closed"));
+      }
+      pendingRef.current.clear();
+      socket.close();
+      socketRef.current = null;
+      setIsSocketConnected(false);
+    };
+  }, []);
+
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
     if (value) localStorage.setItem(API_KEY_STORAGE_KEY, value);
     else localStorage.removeItem(API_KEY_STORAGE_KEY);
   };
 
-  const send = async () => {
+  const send = async (providedMessage?: string, approvalAction?: PendingApprovalAction) => {
     if (isSending) return;
 
-    const trimmed = message.trim();
-    if (!trimmed) return;
+    const trimmed = (providedMessage ?? message).trim();
+    if (!approvalAction && !trimmed) return;
 
     if (!specialtyId) {
       toast.error("Оберіть спеціальність");
@@ -80,7 +232,11 @@ export default function ChatPage() {
     const userMsg: ChatMessage = {
       id: `${Date.now()}-u`,
       role: "user",
-      text: trimmed,
+      text: approvalAction
+        ? approvalAction.decision === "approve"
+          ? "Підтверджую"
+          : "Відхиляю"
+        : trimmed,
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -88,24 +244,74 @@ export default function ChatPage() {
     setIsSending(true);
 
     try {
-      const data = await callAgentApi(specialtyId, trimmed, sessionId, apiKey, model);
-
-      const sessionIdHeader = data.context.sessionId;
-      if (sessionIdHeader && sessionIdHeader !== sessionId) {
-        setSessionId(sessionIdHeader);
+      const socket = socketRef.current;
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        throw new Error("WebSocket not connected");
       }
 
-      if (data.context.discipline) {
-        setDisciplineContext(data.context.discipline);
+      const requestId = crypto.randomUUID();
+      const assistantMessageId = `${Date.now()}-a`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          text: "",
+        },
+      ]);
+
+      const responsePromise = new Promise<ChatWsStreamEnd>((resolve, reject) => {
+        pendingRef.current.set(requestId, {
+          id: requestId,
+          resolve,
+          reject,
+          onChunk: (delta) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, text: `${msg.text}${delta}` }
+                  : msg
+              )
+            );
+          },
+        });
+      });
+
+      socket.send(
+        JSON.stringify({
+          type: "chat",
+          payload: {
+            requestId,
+            specialtyId,
+            message: trimmed || undefined,
+            approvalId: approvalAction?.approvalId,
+            approvalDecision: approvalAction?.decision,
+            sessionId: sessionId || undefined,
+            apiKey: apiKey || undefined,
+            model: model || undefined,
+          },
+        })
+      );
+
+      const data = await responsePromise;
+
+      const responseSessionId = data.payload.context.sessionId;
+      if (responseSessionId && responseSessionId !== sessionId) {
+        setSessionId(responseSessionId);
       }
 
-      const assistantMsg: ChatMessage = {
-        id: `${Date.now()}-a`,
-        role: "assistant",
-        text: data.reply
-      };
+      if (data.payload.context.discipline) {
+        setDisciplineContext(data.payload.context.discipline);
+      }
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setPendingInputRequest(data.payload.requiresUserInput ?? null);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessageId ? { ...msg, text: data.payload.reply } : msg
+        )
+      );
     } catch (error) {
       console.error("Chat send error:", error);
       toast.error(`Помилка чату: ${error instanceof Error ? error.message : String(error)}`);
@@ -121,11 +327,12 @@ export default function ChatPage() {
     }
   };
 
-  const toggleToolHistory = (messageId: string) => {
-    setExpandedToolHistory((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }));
+  const answerInputRequest = (decision: "approve" | "reject") => {
+    if (!pendingInputRequest || pendingInputRequest.kind !== "approval") return;
+
+    const approvalId = pendingInputRequest.approvalId;
+    setPendingInputRequest(null);
+    void send(undefined, { approvalId, decision });
   };
 
   if (isLoading) {
@@ -154,6 +361,7 @@ export default function ChatPage() {
             <select
               value={model}
               onChange={(e) => setModel(e.target.value)}
+              disabled={isSending}
               className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
             >
               {AVAILABLE_MODELS.map((m) => (
@@ -166,6 +374,7 @@ export default function ChatPage() {
             <select
               value={specialtyId}
               onChange={(e) => setSpecialtyId(Number(e.target.value))}
+              disabled={isSending}
               className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2"
             >
               {specialties.map((s) => (
@@ -181,6 +390,10 @@ export default function ChatPage() {
           ref={listRef}
           className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono flex-1 overflow-y-auto flex flex-col gap-3 min-h-0"
         >
+          {!isSocketConnected ? (
+            <div className="text-amber-300 text-sm mb-2">Підключення до WebSocket чату...</div>
+          ) : null}
+
           {messages.length === 0 ? (
             <div className="text-amber-200 text-sm">
               Приклади:
@@ -212,23 +425,50 @@ export default function ChatPage() {
 
         </div>
 
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono flex gap-2 items-end shrink-0">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            className="flex-1 bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2 resize-none overflow-hidden"
-            style={{ minHeight: "42px", maxHeight: "150px" }}
-          />
-          <button
-            onClick={send}
-            disabled={isSending}
-            className="bg-zinc-950 border border-amber-50 rounded-lg px-4 py-2 hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          >
-            {isSending ? "..." : "Надіслати"}
-          </button>
+        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-4 text-amber-50 font-mono flex flex-col gap-2 shrink-0">
+          {pendingInputRequest && (
+            <div className="w-full mb-3 rounded-lg border border-amber-300/40 bg-zinc-800 p-3 text-sm">
+              <div className="mb-2 text-amber-200">Потрібна ваша відповідь: {pendingInputRequest.question}</div>
+              {pendingInputRequest.kind === "approval" ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => answerInputRequest("approve")}
+                    disabled={isSending || !isSocketConnected}
+                    className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-1.5 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                  >
+                    Підтвердити
+                  </button>
+                  <button
+                    onClick={() => answerInputRequest("reject")}
+                    disabled={isSending || !isSocketConnected}
+                    className="bg-zinc-950 border border-amber-50 rounded-lg px-3 py-1.5 hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                  >
+                    Відхилити
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 items-end">
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={!isSocketConnected || isSending}
+              rows={1}
+              className="flex-1 bg-zinc-950 border border-amber-50 rounded-lg px-3 py-2 resize-none overflow-hidden"
+              style={{ minHeight: "42px", maxHeight: "150px" }}
+            />
+            <button
+              onClick={() => void send()}
+              disabled={isSending || !isSocketConnected}
+              className="bg-zinc-950 border border-amber-50 rounded-lg px-4 py-2 hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            >
+              {isSending ? "..." : "Надіслати"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

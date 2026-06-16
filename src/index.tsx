@@ -8,6 +8,7 @@ import resultsApi from "@/api/results-api.ts";
 import templatesApi from "@/api/templates-api.ts";
 import specialtiesApi from "@/api/specialties-api.ts";
 import chatApi from "@/api/chat-api.ts";
+import { chatWebsocket } from "@/api/chat-api.ts";
 import { NotFoundError } from "openai";
 
 const routes = {    
@@ -23,6 +24,7 @@ const routes = {
 
 const server = serve({
   routes: routes,
+  websocket: chatWebsocket,
 
   development: process.env.NODE_ENV !== "production" && {
     hmr: true, // Enable browser hot reloading in development

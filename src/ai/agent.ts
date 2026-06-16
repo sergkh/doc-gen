@@ -1,4 +1,4 @@
-import { Agent, MemorySession, run, RunContext, tool } from "@openai/agents";
+import { Agent, MemorySession, RunState, run, RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { courseResults, courses } from "@/stores/db";
 import type { ResultType } from "@/stores/models";
@@ -20,22 +20,18 @@ import { DEFAULT_AGENT_MODEL, type AgentReply, type DisciplineContext, type Agen
 //   | { action: "save_discipline_topics"; status: "ok" | "error"; message: string; addedTopics: string[] };
 
 const agentSessions = new Map<string, AgentContext>();
-
 function getOrInitAgentContext(sessionId: string): AgentContext {
   const existing = agentSessions.get(sessionId);
   if (existing) return existing;
 
   const next: AgentContext = { 
     session: new MemorySession({ sessionId }), 
-    discipline: null 
+    discipline: null,
+    pendingRunStates: new Map<string, string>()
   };
 
   agentSessions.set(sessionId, next);
   return next;
-}
-
-function clearAgentContext(sessionId: string): void {
-  agentSessions.delete(sessionId);
 }
 
 const SYSTEM_PROMPT =
@@ -45,6 +41,106 @@ const SYSTEM_PROMPT =
   "Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані. " +
   "Ти можеш працювати конкретною дисципліною: спочатку встанови контекст дисципліни (set_discipline_context), а потім можна керувати нею чи теми (save_discipline_topics).";
 
+function getApprovalId(sessionId: string, toolName: string, callId: string): string {
+  return `${sessionId}:${toolName}:${callId}`;
+}
+
+function parseApprovalId(approvalId: string): { sessionId: string; toolName: string; callId: string } | null {
+  const firstColon = approvalId.indexOf(":");
+  const secondColon = approvalId.indexOf(":", firstColon + 1);
+
+  if (firstColon <= 0 || secondColon <= firstColon + 1) return null;
+
+  return {
+    sessionId: approvalId.slice(0, firstColon),
+    toolName: approvalId.slice(firstColon + 1, secondColon),
+    callId: approvalId.slice(secondColon + 1),
+  };
+}
+
+async function applyPendingApproval(options: {
+  context: AgentContext;
+  chatAgent: Agent<any, any>;
+  approvalId: string;
+  decision: "approve" | "reject";
+}) {
+  const parsed = parseApprovalId(options.approvalId);
+  if (!parsed) {
+    throw new Error("Invalid approval id");
+  }
+
+  const stateKey = options.approvalId;
+  const serializedState = options.context.pendingRunStates.get(stateKey);
+  if (!serializedState) {
+    throw new Error("Approval state not found or expired");
+  }
+
+  const state = await RunState.fromString(options.chatAgent, serializedState);
+  const interruptions = state.getInterruptions();
+  const target = interruptions.find((item) => {
+    const toolName = item.name ?? item.toolName ?? "unknown";
+    const callId = (item.rawItem as any).callId ?? (item.rawItem as any).call_id;
+    return toolName === parsed.toolName && String(callId) === parsed.callId;
+  });
+
+  if (!target) {
+    throw new Error("Approval target not found");
+  }
+
+  if (options.decision === "approve") {
+    state.approve(target);
+  } else {
+    state.reject(target, { message: "Користувач відхилив виконання дії." });
+  }
+
+  options.context.pendingRunStates.delete(stateKey);
+  return state;
+}
+
+function extractInterruptionRequest(
+  sessionId: string,
+  context: AgentContext,
+  runResult: { interruptions: any[]; state: any }
+): AgentReply["requiresUserInput"] {
+  const first = runResult.interruptions?.[0];
+  if (!first) return null;
+
+  const toolName = first.name ?? first.toolName ?? "unknown";
+  const callId = (first.rawItem as any).callId ?? (first.rawItem as any).call_id;
+  if (!callId) return null;
+
+  const approvalId = getApprovalId(sessionId, toolName, String(callId));
+  context.pendingRunStates.set(approvalId, runResult.state.toString());
+
+  return {
+    kind: "approval",
+    approvalId,
+    question: `Підтвердити виконання інструменту \"${toolName}\"?`,
+    options: ["approve", "reject"],
+  };
+}
+
+function extractToolCalls(output: Array<any>): ToolResult[] {
+  return output
+    .filter((r) => r.type === "function_call_result")
+    .map((toolResult) => ({
+      name: toolResult.name,
+      status: toolResult.status,
+      // @ts-ignore
+      output: JSON.parse(toolResult.output?.type === "text" ? toolResult.output.text : "{}"),
+    })) as ToolResult[];
+}
+
+function buildChatAgent(specialtyId: number, model: string) {
+  return new Agent({
+    name: "Teacher Assistant",
+    instructions: SYSTEM_PROMPT,
+    model,
+    modelSettings: { temperature: 0 },
+    tools: [disciplineByResult(specialtyId)],
+  });
+}
+
 export async function runAgent(options: {
   specialtyId: number;
   sessionId: string;
@@ -52,45 +148,109 @@ export async function runAgent(options: {
   apiKey: string | null;
   model?: string;
   maxSteps?: number;
+  approvalId?: string;
+  approvalDecision?: "approve" | "reject";
 }): Promise<AgentReply> {
   const model = options.model || DEFAULT_AGENT_MODEL;
   const context = getOrInitAgentContext(options.sessionId);
 
   // const client = createOpenAIClient(options.apiKey);
 
-  const chatAgent = new Agent({
-    name: "Teacher Assistant",
-    instructions: SYSTEM_PROMPT,
-    model,
-    modelSettings: { temperature: 0 },
-    tools: [
-      disciplineByResult(options.specialtyId)
-    ]
-  });
+  const chatAgent = buildChatAgent(options.specialtyId, model);
 
-  const reply = await run(chatAgent, options.message, { 
-    session: context.session, 
+  const runInput =
+    options.approvalId && options.approvalDecision
+      ? await applyPendingApproval({
+          context,
+          chatAgent,
+          approvalId: options.approvalId,
+          decision: options.approvalDecision,
+        })
+      : options.message;
+
+  const reply = await run(chatAgent, runInput, {
+    session: context.session,
     maxTurns: options.maxSteps ?? 10,
     context: context
   });
 
   console.log("Output:", reply.finalOutput)
   console.log("Output tools:", reply.output)
-  
-  const toolsCalls = reply.output.filter(r => r.type === "function_call_result").map(toolResult => ({
-    name: toolResult.name,
-    status: toolResult.status,
-    // @ts-ignore
-    output: JSON.parse(toolResult.output?.type === 'text' ? toolResult.output.text : '{}')
-  })) as ToolResult[];
+
+  const toolsCalls = extractToolCalls(reply.output as Array<any>);
+  const interruptionRequest = extractInterruptionRequest(options.sessionId, context, reply as any);
+  const finalReply = reply.finalOutput ?? (interruptionRequest ? "Потрібне підтвердження дії." : "Вибачте, не вдалося згенерувати відповідь.");
 
   return {
-    reply: reply.finalOutput ?? "Вибачте, не вдалося згенерувати відповідь.",
+    reply: finalReply,
+    requiresUserInput: interruptionRequest,
     context: {
+      sessionId: options.sessionId,
+      discipline: context.discipline,
+    },
+    tools: toolsCalls,
+  };
+}
+
+export async function runAgentStream(options: {
+  specialtyId: number;
+  sessionId: string;
+  message: string;
+  apiKey: string | null;
+  model?: string;
+  maxSteps?: number;
+  onTextDelta?: (delta: string) => void;
+  approvalId?: string;
+  approvalDecision?: "approve" | "reject";
+}): Promise<AgentReply> {
+  const model = options.model || DEFAULT_AGENT_MODEL;
+  const context = getOrInitAgentContext(options.sessionId);
+
+  const chatAgent = buildChatAgent(options.specialtyId, model);
+
+  const runInput =
+    options.approvalId && options.approvalDecision
+      ? await applyPendingApproval({
+          context,
+          chatAgent,
+          approvalId: options.approvalId,
+          decision: options.approvalDecision,
+        })
+      : options.message;
+
+  const streamed = await run(chatAgent, runInput, {
+    session: context.session,
+    maxTurns: options.maxSteps ?? 10,
+    context,
+    stream: true,
+  });
+
+  let replyText = "";
+  const textStream = streamed.toTextStream();
+
+  for await (const delta of textStream as AsyncIterable<string>) {
+    if (!delta) continue;
+    replyText += delta;
+    options.onTextDelta?.(delta);
+  }
+
+  await streamed.completed;
+
+  const toolsCalls = extractToolCalls(streamed.output as Array<any>);
+  const interruptionRequest = extractInterruptionRequest(options.sessionId, context, streamed as any);
+  const finalReply = (
+    (streamed.finalOutput as string | undefined) ?? replyText
+  ) || (interruptionRequest ? "Потрібне підтвердження дії." : "");
+
+  return {
+    reply: finalReply,
+    requiresUserInput: interruptionRequest,
+    context: {
+      sessionId: options.sessionId,
       discipline: context.discipline
     },
     tools: toolsCalls
-  } as AgentReply;
+  };
 }
 
 function disciplineByResult(specialtyId: number) {
@@ -115,6 +275,7 @@ function disciplineByResult(specialtyId: number) {
     name: "search_disciplines_by_result",
     description: "Шукає дисципліни за результатом (ЗК, СК, ПР/РН). Приймає код результату на кшталт 'ЗК-3', 'СК2', 'ПР-7' або 'РН-1'",
     parameters: z.object({ result: z.string() }),
+    needsApproval: ({ result }) => false,
     execute: async ({ result }, context?: RunContext<AgentContext>) => {
       console.log("Searching disciplines by result:", result);
       try {
