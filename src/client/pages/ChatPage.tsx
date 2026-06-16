@@ -4,6 +4,7 @@ import type { Specialty } from "@/stores/models";
 import { loadAllSpecialties } from "../specialties";
 import Markdown from 'react-markdown';
 import { AVAILABLE_MODELS, DEFAULT_AGENT_MODEL, type ChatMessage, type DisciplineContext, type UserInputRequest } from "../../ai/models";
+import { Loader, Center } from "@mantine/core";
 
 const API_KEY_STORAGE_KEY = "openai_api_key";
 
@@ -131,7 +132,7 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    viewport.current?.scrollTo({ top: viewport.current.scrollHeight, behavior: "smooth" });
+    // viewport.current?.scrollTo({ top: viewport.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
