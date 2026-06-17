@@ -82,9 +82,9 @@ export default function SpecialtyEdit() {
   const handleSave = async () => {
     if (!specialty) return;
     try {
-      await upsertSpecialty(specialty);
+      const saved = await upsertSpecialty(specialty);
       toast.success("Спеціальність успішно збережена");
-      loadSpecialty(specialty.id.toString()).then(setSpecialty);
+      navigate(`/specialties`);      
     } catch {
       toast.error("Не вдалося зберегти спеціальність");
     }

@@ -26,7 +26,6 @@ import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
 import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
-import ChatPage from "./client/pages/ChatPage";
 import { theme } from "./theme";
 
 const navItems = [
@@ -35,7 +34,6 @@ const navItems = [
   { label: "Викладачі", to: "/teachers", match: (path: string) => path.startsWith("/teachers") },
   { label: "Спеціальності", to: "/specialties", match: (path: string) => path.startsWith("/specialties") },
   { label: "Шаблони", to: "/templates", match: (path: string) => path.startsWith("/templates") },
-  { label: "Чат", to: "/chat", match: (path: string) => path.startsWith("/chat") },
 ];
 
 export function App() {
@@ -94,7 +92,6 @@ export function App() {
             <Route path="/results/:id" element={<ResultEdit />} />
             <Route path="/templates" element={<TemplatesList />} />
             <Route path="/templates/:id" element={<TemplateEdit />} />
-            <Route path="/chat" element={<ChatPage />} />
           </Routes>
         </AppShell.Main>
       </AppShell>

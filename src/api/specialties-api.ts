@@ -9,8 +9,8 @@ const specialtiesApi = {
     },
     async POST(req: BunRequest) {
       const specialtyData = await req.json() as Omit<Specialty, "id">;
-      await specialtiesService.createSpecialty(specialtyData);
-      return Response.json({ success: true });
+       const specialty = await specialtiesService.createSpecialty(specialtyData);
+      return Response.json(specialty);
     }
   },
   "/api/specialties/:id": {
@@ -26,7 +26,7 @@ const specialtiesApi = {
       const { id } = req.params as { id: string };
       const specialty = await req.json() as Specialty;
       await specialtiesService.updateSpecialty(Number(id), specialty);
-      return Response.json({ success: true });
+      return Response.json(specialty);
     },
     async DELETE(req: BunRequest) {
       const { id } = req.params as { id: string };
