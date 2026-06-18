@@ -1,6 +1,16 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import type { QuizQuestion } from "@/stores/models";
+import {
+  Stack,
+  Group,
+  Paper,
+  Text,
+  TextInput,
+  Textarea,
+  ActionIcon,
+  Button,
+} from "@mantine/core";
 
 interface QuizEditorProps {
   quiz: QuizQuestion[];
@@ -9,95 +19,61 @@ interface QuizEditorProps {
 
 export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
   const handleAddQuestion = () => {
-    const newQuestion: QuizQuestion = {
-      question: "",
-      options: ["", "", "", ""],
-      answerIndex: 0
-    };
-    onQuizChange([...quiz, newQuestion]);
+    onQuizChange([...quiz, { question: "", options: ["", "", "", ""], answerIndex: 0 }]);
   };
 
-  const handleRemoveQuestion = (index: number) => {
-    const updated = quiz.filter((_, i) => i !== index);
-    onQuizChange(updated);
+  const handleUpdateOption = (qIndex: number, oIndex: number, value: string) => {
+    onQuizChange(quiz.map((q, i) => i === qIndex ? { ...q, options: q.options.map((o, j) => j === oIndex ? value : o) } : q));
   };
 
-  const handleUpdateQuestion = (index: number, field: keyof QuizQuestion, value: string | string[]) => {
-    const updated = quiz.map((q, i) => 
-      i === index ? { ...q, [field]: value } : q
-    );
-    onQuizChange(updated);
-  };
-
-  const handleUpdateOption = (questionIndex: number, optionIndex: number, value: string) => {
-    const updated = quiz.map((q, i) => {
-      if (i === questionIndex) {
-        const newOptions = [...q.options];
-        newOptions[optionIndex] = value;
-        return { ...q, options: newOptions };
-      }
-      return q;
-    });
-    onQuizChange(updated);
-  };
-
-  const handleSetCorrectAnswer = (questionIndex: number, optionIndex: number) => {
-    const updated = quiz.map((q, i) => 
-      i === questionIndex ? { ...q, answerIndex: optionIndex } : q
-    );
-    onQuizChange(updated);
+  const handleSetCorrectAnswer = (qIndex: number, oIndex: number) => {
+    onQuizChange(quiz.map((q, i) => i === qIndex ? { ...q, answerIndex: oIndex } : q));
   };
 
   return (
-    <div>
-      <div className="flex flex-col gap-4">
-        {quiz.map((question, qIndex) => (
-          <div key={qIndex} className="bg-zinc-800 border border-amber-50 rounded-lg p-3 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-amber-50 font-bold">Питання {qIndex + 1}:</span>
-              <button
-                onClick={() => handleRemoveQuestion(qIndex)}
-                className="text-red-400 hover:text-red-300"
-              >
+    <Stack>
+      {quiz.map((question, qIndex) => (
+        <Paper key={qIndex} withBorder p="sm">
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <Text fw={600} size="sm">Питання {qIndex + 1}</Text>
+              <ActionIcon variant="subtle" color="red" onClick={() => onQuizChange(quiz.filter((_, i) => i !== qIndex))}>
                 <FontAwesomeIcon icon={faTrash} />
-              </button>
-            </div>
-            <textarea
-              rows={3}
+              </ActionIcon>
+            </Group>
+            <Textarea
               value={question.question}
-              onChange={(e) => handleUpdateQuestion(qIndex, "question", e.target.value)}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
+              onChange={(e) => onQuizChange(quiz.map((q, i) => i === qIndex ? { ...q, question: e.currentTarget.value } : q))}
               placeholder="Текст питання"
+              autosize
+              minRows={2}
             />
-             <div className="flex flex-col gap-2">
-               {question.options.map((option, oIndex) => (
-                 <div key={oIndex} className="flex items-center gap-2">                   
-                   <button 
-                    onClick={() => handleSetCorrectAnswer(qIndex, oIndex)} 
-                    className={ question.answerIndex === oIndex ? "text-green-400 hover:text-green-300" :  "text-red-400 hover:text-red-300"}
+            <Stack gap={4}>
+              {question.options.map((option, oIndex) => (
+                <Group key={oIndex} gap="xs" wrap="nowrap">
+                  <ActionIcon
+                    variant="subtle"
+                    color={question.answerIndex === oIndex ? "green" : "red"}
+                    onClick={() => handleSetCorrectAnswer(qIndex, oIndex)}
                   >
-                     {question.answerIndex === oIndex ? <FontAwesomeIcon icon={faCheck} /> : <FontAwesomeIcon icon={faXmark} />}
-                   </button>
-                   <input
-                     type="text"
-                     value={option}
-                     onChange={(e) => handleUpdateOption(qIndex, oIndex, e.target.value)}
-                     className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-sm py-1 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-                     placeholder={`Варіант ${oIndex + 1}`}
-                   />
-                 </div>
-               ))}
-             </div>
-          </div>
-        ))}
-        <button
-          onClick={handleAddQuestion}
-          className="text-amber-50 hover:text-amber-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 justify-center"
-        >
-          <FontAwesomeIcon icon={faPlus} /> Додати питання
-        </button>
-      </div>
-    </div>
+                    <FontAwesomeIcon icon={question.answerIndex === oIndex ? faCheck : faXmark} />
+                  </ActionIcon>
+                  <TextInput
+                    style={{ flex: 1 }}
+                    size="sm"
+                    value={option}
+                    onChange={(e) => handleUpdateOption(qIndex, oIndex, e.currentTarget.value)}
+                    placeholder={`Варіант ${oIndex + 1}`}
+                  />
+                </Group>
+              ))}
+            </Stack>
+          </Stack>
+        </Paper>
+      ))}
+      <Button variant="default" leftSection={<FontAwesomeIcon icon={faPlus} />} onClick={handleAddQuestion}>
+        Додати питання
+      </Button>
+    </Stack>
   );
 }
-

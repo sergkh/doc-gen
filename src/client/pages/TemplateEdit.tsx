@@ -6,8 +6,18 @@ import { loadTemplate, upsertTemplate } from "../templates";
 import toast from "react-hot-toast";
 import TemplateParametersEditor from "../components/TemplateParametersEditor";
 import TemplatePromptsEditor from "../components/TemplatePromptsEditor";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  Title,
+  Stack,
+  Group,
+  Paper,
+  TextInput,
+  Text,
+  Button,
+  Box,
+  Loader,
+  Center,
+} from "@mantine/core";
 
 export default function TemplateEdit() {
   const { id } = useParams();
@@ -17,13 +27,12 @@ export default function TemplateEdit() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    loadTemplate(id || "new").then((template) => {
-      // Ensure prompts is initialized
-      if (!template.prompts) {
-        template.prompts = [];
-      }
-      setItem(template);
-    }).catch(console.error);
+    loadTemplate(id || "new")
+      .then((template) => {
+        if (!template.prompts) template.prompts = [];
+        setItem(template);
+      })
+      .catch(console.error);
   }, [id]);
 
   const update = (json: Partial<Template>) => {
@@ -33,64 +42,42 @@ export default function TemplateEdit() {
 
   const handleParametersChange = (parameters: TemplateParameter[]) => {
     if (!item) return;
-    setItem({
-      ...item,
-      data: {
-        ...item.data,
-        parameters
-      }
-    } as Template);
+    setItem({ ...item, data: { ...item.data, parameters } } as Template);
   };
 
   const handlePromptsChange = (prompts: Prompt[]) => {
     if (!item) return;
-    setItem({
-      ...item,
-      prompts
-    } as Template);
-  };
-
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
+    setItem({ ...item, prompts } as Template);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (file) {
-        handleFileSelect(file);
-      }
+      if (acceptedFiles[0]) setSelectedFile(acceptedFiles[0]);
     },
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
-      'text/html': ['.html'],
-      'text/xml': ['.xml']
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "text/plain": [".txt"],
+      "text/html": [".html"],
+      "text/xml": [".xml"],
     },
     maxFiles: 1,
     disabled: isUploading,
-    onDropRejected: () => {
-      toast.error("Будь ласка, перетягніть файл .docx, .txt, .html або .xml");
-    }
+    onDropRejected: () => toast.error("Будь ласка, перетягніть файл .docx, .txt, .html або .xml"),
   });
 
   const handleSave = async () => {
     if (!item || !isValid) return;
-    
     setIsUploading(true);
     try {
-      // For new templates, file is required
       if (item.id < 0 && !selectedFile) {
-        alert("Будь ласка, виберіть файл");
-        setIsUploading(false);
+        toast.error("Будь ласка, виберіть файл");
         return;
       }
-
       await upsertTemplate(item, selectedFile || undefined);
       navigate("/templates");
     } catch (error) {
       console.error("Error saving template:", error);
-      alert("Не вдалося зберегти шаблон");
+      toast.error("Не вдалося зберегти шаблон");
     } finally {
       setIsUploading(false);
     }
@@ -98,82 +85,65 @@ export default function TemplateEdit() {
 
   const isValid = useMemo(() => {
     if (!item) return false;
-    const hasName = item.name.trim() !== "";
-    // For new templates, file is required. For existing ones, file is optional (can update name only)
-    const hasFile = item.id < 0 ? selectedFile !== null : true;
-    return hasName && hasFile;
+    return item.name.trim() !== "" && (item.id >= 0 || selectedFile !== null);
   }, [item, selectedFile]);
 
   if (!item) {
     return (
-      <div className="max-w-7xl mx-auto text-center relative z-10">
-        <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-          <div className="text-amber-50 font-mono">Шаблон не знайдено</div>
-        </div>
-      </div>
+      <Center h={200}>
+        <Loader />
+      </Center>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="font-mono">{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</h1>
+    <Stack maw={1200} mx="auto">
+      <Group justify="space-between">
+        <Title order={2}>{item.id >= 0 ? "Редагувати шаблон" : "Додати шаблон"}</Title>
+        <Group gap="xs">
+          <Button variant="default" onClick={() => navigate("/templates")}>Скасувати</Button>
+          <Button onClick={handleSave} disabled={!isValid} loading={isUploading}>Зберегти</Button>
+        </Group>
+      </Group>
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={!isValid || isUploading}
-              className="text-amber-50 hover:text-green-400 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
+      <Paper withBorder p="md">
+        <Stack>
+          <TextInput
+            label="Назва"
+            value={item.name}
+            onChange={(e) => update({ name: e.currentTarget.value })}
+          />
+
+          <Stack gap="xs">
+            <Text fw={500} size="sm">
+              Файл {item.id < 0 ? "(обов'язково)" : "(за бажанням)"}
+            </Text>
+            <Box
+              {...getRootProps()}
+              p="md"
+              style={{
+                border: `2px dashed var(--mantine-color-${isDragActive ? "blue-5" : "default-border"})`,
+                borderRadius: "var(--mantine-radius-sm)",
+                textAlign: "center",
+                cursor: isUploading ? "not-allowed" : "pointer",
+                opacity: isUploading ? 0.5 : 1,
+                backgroundColor: isDragActive ? "var(--mantine-color-blue-light)" : undefined,
+                transition: "all 150ms ease",
+              }}
             >
-              <FontAwesomeIcon icon={faCheck} />
-            </button>
-            <button
-              onClick={() => navigate("/templates")}
-              className="text-amber-50 hover:text-red-400 cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-          </div>
-        </div>
-
-
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-amber-50 font-bold mb-2">Назва:</label>
-              <input
-                className="w-full bg-transparent border-0 text-amber-50 font-mono text-base py-1.5 px-2 outline-none focus:text-white"
-                value={item.name}
-                onChange={(e) => update({ name: e.target.value })}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-amber-50 font-bold mb-2">
-                Файл {item.id < 0 ? "(обов'язково)" : "(за бажанням)"}:
-              </label>
-              <div
-                {...getRootProps()}
-                className={`border-2 ${isDragActive ? "border-amber-200 border-dashed bg-zinc-800" : "border-amber-50"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer hover:border-amber-200"}`}
-              >
-                <input {...getInputProps()} />
-                {isUploading ? (
-                  <span className="text-amber-50">Завантаження...</span>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <span className="text-amber-50">
-                      {isDragActive ? "Відпустіть файл тут" : "Перетягніть файл шаблону (.docx, .txt, .html або .xml) або натисніть для вибору"}
-                    </span>
-                    {selectedFile && (
-                      <div className="text-sm text-amber-50 opacity-80 mt-2">
-                        Вибрано: {selectedFile.name}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+              <input {...getInputProps()} />
+              <Text c="dimmed" size="sm">
+                {isUploading
+                  ? "Завантаження..."
+                  : isDragActive
+                  ? "Відпустіть файл тут"
+                  : "Перетягніть файл шаблону (.docx, .txt, .html або .xml) або натисніть для вибору"}
+              </Text>
+              {selectedFile && (
+                <Text size="sm" mt="xs">Вибрано: {selectedFile.name}</Text>
+              )}
+            </Box>
+          </Stack>
 
           <TemplateParametersEditor
             parameters={item.data?.parameters || []}
@@ -184,9 +154,8 @@ export default function TemplateEdit() {
             prompts={item.prompts || []}
             onChange={handlePromptsChange}
           />
-        </div>
-      </div>
-    </div>
+        </Stack>
+      </Paper>
+    </Stack>
   );
 }
-

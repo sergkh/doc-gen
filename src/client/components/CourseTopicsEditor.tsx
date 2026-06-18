@@ -1,11 +1,25 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faTimes, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { Reorder, useDragControls } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
 import { generateCourseTopics, type AIGeneratedTopic } from "../courses";
+import {
+  Stack,
+  Group,
+  Paper,
+  Text,
+  TextInput,
+  Textarea,
+  Select,
+  Button,
+  ActionIcon,
+  Tooltip,
+  SimpleGrid,
+  Divider,
+} from "@mantine/core";
 
 interface CourseTopicsEditorProps {
   courseId: number;
@@ -14,35 +28,34 @@ interface CourseTopicsEditorProps {
 interface TopicItemProps {
   topic: CourseTopic;
   courseId: number;
-  bgColor: string;
   onEdit: (topic: CourseTopic) => void;
   onDelete: (id: number) => void;
-  onUpdateAttestation: (topic: CourseTopic, newAttestation: number) => void;
-  onUpdateFulltimeHours: (topic: CourseTopic, newHours: number) => void;
-  onUpdatePracticalHours: (topic: CourseTopic, newHours: number) => void;
-  onUpdateFulltimeSrsHours: (topic: CourseTopic, newHours: number) => void;
-  onUpdateInabscentiaHours: (topic: CourseTopic, newHours: number) => void;
-  onUpdateInabscentiaPracticalHours: (topic: CourseTopic, newHours: number) => void;
-  onUpdateInabscentiaSrsHours: (topic: CourseTopic, newHours: number) => void;
+  onUpdateAttestation: (topic: CourseTopic, v: number) => void;
+  onUpdateFulltimeHours: (topic: CourseTopic, v: number) => void;
+  onUpdatePracticalHours: (topic: CourseTopic, v: number) => void;
+  onUpdateFulltimeSrsHours: (topic: CourseTopic, v: number) => void;
+  onUpdateInabscentiaHours: (topic: CourseTopic, v: number) => void;
+  onUpdateInabscentiaPracticalHours: (topic: CourseTopic, v: number) => void;
+  onUpdateInabscentiaSrsHours: (topic: CourseTopic, v: number) => void;
 }
 
+const ATTESTATION_COLORS: Record<number, string> = {
+  1: "var(--mantine-color-default)",
+  2: "var(--mantine-color-blue-light)",
+  3: "var(--mantine-color-red-light)",
+  4: "var(--mantine-color-green-light)",
+};
+
 function TopicItem({
-  topic,
-  courseId,
-  bgColor,
-  onEdit,
-  onDelete,
-  onUpdateAttestation,
-  onUpdateFulltimeHours,
-  onUpdatePracticalHours,
-  onUpdateFulltimeSrsHours,
-  onUpdateInabscentiaHours,
-  onUpdateInabscentiaPracticalHours,
-  onUpdateInabscentiaSrsHours,
+  topic, courseId,
+  onEdit, onDelete,
+  onUpdateAttestation, onUpdateFulltimeHours, onUpdatePracticalHours,
+  onUpdateFulltimeSrsHours, onUpdateInabscentiaHours,
+  onUpdateInabscentiaPracticalHours, onUpdateInabscentiaSrsHours,
 }: TopicItemProps) {
   const navigate = useNavigate();
   const dragControls = useDragControls();
-  
+
   const attestation = topic.data?.attestation || 1;
   const hours = topic.data?.fulltime?.hours || 2;
   const practicalHours = topic.data?.fulltime?.practical_hours || 0;
@@ -54,243 +67,228 @@ function TopicItem({
   return (
     <Reorder.Item
       value={topic}
-      className={`${bgColor} border border-amber-50 rounded-lg p-3 flex flex-col gap-2 transition-colors`}
-      style={{ cursor: 'default' }}
+      style={{ cursor: "default", listStyle: "none" }}
       dragListener={false}
       dragControls={dragControls}
     >
-      <div className="flex items-start justify-between gap-2 flex-col sm:flex-row">
-        <div className="flex items-start gap-2 flex-1 min-w-0 w-full">
-          <div 
-            className="mt-1 text-amber-50 opacity-60 cursor-grab active:cursor-grabbing shrink-0 touch-none"
-            onPointerDown={(event) => dragControls.start(event)}
+      <Paper
+        withBorder
+        p="sm"
+        bg={ATTESTATION_COLORS[attestation] ?? ATTESTATION_COLORS[1]}
+      >
+        <Group align="flex-start" wrap="nowrap" gap="xs">
+          <div
+            style={{ cursor: "grab", paddingTop: 4, touchAction: "none", color: "var(--mantine-color-dimmed)" }}
+            onPointerDown={(e) => dragControls.start(e)}
           >
             <FontAwesomeIcon icon={faGripVertical} />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-              <div className="font-bold text-amber-200 wrap-break-words min-w-0">
+
+          <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+            <Group gap="xs" wrap="wrap">
+              <Text fw={700} size="sm">
                 {topic.index}. {topic.name || `Тема ${topic.index}`}
-              </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-amber-50 opacity-70 flex-wrap">
-                <InPlaceEditor
-                  value={hours}
-                  options={[
-                    { value: 2, label: "2 год." },
-                    { value: 4, label: "4 год." },
-                    { value: 6, label: "6 год." },
-                    { value: 8, label: "8 год." },
-                  ]}
-                  displayText={`${hours} год.`}
-                  title="Натисніть для зміни годин"
-                  onChange={(newHours) => onUpdateFulltimeHours(topic, newHours)}
-                />
-                <InPlaceEditor
-                  value={practicalHours}
-                  options={[
-                    { value: 0, label: "0 пр." },
-                    { value: 2, label: "2 пр." },
-                    { value: 4, label: "4 пр." },
-                    { value: 6, label: "6 пр." },
-                    { value: 8, label: "8 пр." },
-                  ]}
-                  displayText={`${practicalHours} пр.`}
-                  title="Натисніть для зміни практичних годин"
-                  onChange={(newPracticalHours) => onUpdatePracticalHours(topic, newPracticalHours)}
-                />
-                <InPlaceEditor
-                  value={srsHours}
-                  options={[
-                    { value: 0, label: "0 СРС" },
-                    { value: 2, label: "2 СРС" },
-                    { value: 4, label: "4 СРС" },
-                    { value: 5, label: "5 СРС" },
-                    { value: 6, label: "6 СРС" },
-                    { value: 7, label: "7 СРС" },
-                    { value: 8, label: "8 СРС" },
-                    { value: 10, label: "10 СРС" },
-                    { value: 12, label: "12 СРС" },
-                    { value: 14, label: "14 СРС" },
-                    { value: 16, label: "16 СРС" },
-                    { value: 18, label: "18 СРС" },
-                  ]}
-                  displayText={`${srsHours} СРС`}
-                  title="Натисніть для зміни СРС годин денної форми"
-                  onChange={(newSrsHours) => onUpdateFulltimeSrsHours(topic, newSrsHours)}
-                />                          
-                <InPlaceEditor
-                  value={inabscentiaHours}
-                  options={[
-                    { value: 0, label: "0 год. заоч." },
-                    { value: 1, label: "1 год. заоч." },
-                    { value: 2, label: "2 год. заоч." },
-                    { value: 4, label: "4 год. заоч." },
-                    { value: 6, label: "6 год. заоч." },
-                    { value: 8, label: "8 год. заоч." },
-                  ]}
-                  displayText={`${inabscentiaHours} год. заоч.`}
-                  title="Натисніть для зміни годин заочної форми"
-                  onChange={(newHours) => onUpdateInabscentiaHours(topic, newHours)}
-                />
-                <InPlaceEditor
-                  value={inabscentiaPracticalHours}
-                  options={[
-                    { value: 0, label: "0 пр. заоч." },
-                    { value: 1, label: "1 пр. заоч." },
-                    { value: 2, label: "2 пр. заоч." },
-                    { value: 4, label: "4 пр. заоч." },
-                    { value: 6, label: "6 пр. заоч." },
-                    { value: 8, label: "8 пр. заоч." },
-                  ]}
-                  displayText={`${inabscentiaPracticalHours} пр. заоч.`}
-                  title="Натисніть для зміни практичних годин заочної форми"
-                  onChange={(newPracticalHours) => onUpdateInabscentiaPracticalHours(topic, newPracticalHours)}
-                />
-                <InPlaceEditor
-                  value={inabscentiaSrsHours}
-                  options={[
-                    { value: 0, label: "0 СРС заоч." },
-                    { value: 2, label: "2 СРС заоч." },
-                    { value: 4, label: "4 СРС заоч." },
-                    { value: 6, label: "6 СРС заоч." },
-                    { value: 8, label: "8 СРС заоч." },
-                    { value: 10, label: "10 СРС заоч." },
-                    { value: 12, label: "12 СРС заоч." },
-                    { value: 14, label: "14 СРС заоч." },
-                    { value: 16, label: "16 СРС заоч." },
-                    { value: 18, label: "18 СРС заоч." },
-                  ]}
-                  displayText={`${inabscentiaSrsHours} СРС заоч.`}
-                  title="Натисніть для зміни СРС годин заочної форми"
-                  onChange={(newSrsHours) => onUpdateInabscentiaSrsHours(topic, newSrsHours)}
-                />
-                <InPlaceEditor
-                  value={attestation}
-                  options={[
-                    { value: 1, label: "Атест. 1" },
-                    { value: 2, label: "Атест. 2" },
-                    { value: 3, label: "Атест. 3" },
-                    { value: 4, label: "Атест. 4" },
-                  ]}
-                  displayText={`Атест. ${attestation}`}
-                  title="Натисніть для зміни атестації"
-                  onChange={(newAttestation) => onUpdateAttestation(topic, newAttestation)}
-                />                          
-              </div>
-            </div>
-            <div className="text-sm text-amber-50 opacity-80 whitespace-pre-wrap line-clamp-3 overflow-hidden">
-              {topic.lection}
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 sm:ml-4 flex-shrink-0">
-          {topic.generated && (
-            <button
-              onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}
-              className="text-amber-50 hover:text-blue-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-              aria-label="Редагувати згенеровані дані"
-              title="Редагувати згенеровані дані"
-            >
-              <FontAwesomeIcon icon={faEdit} />
-            </button>
-          )}
-          <button
-            onClick={() => onEdit(topic)}
-            className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-            aria-label="Редагувати тему"
-            title="Редагувати тему"
-          >
-            <FontAwesomeIcon icon={faPen} />
-          </button>
-          <button
-            onClick={() => onDelete(topic.id)}
-            className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded"
-            aria-label="Видалити тему"
-            title="Видалити тему"
-          >
-            <FontAwesomeIcon icon={faTrash} />
-          </button>
-        </div>
-      </div>
+              </Text>
+              <Group gap={4} wrap="wrap">
+                <InPlaceEditor value={hours} options={[2,4,6,8].map(v=>({value:v,label:`${v} год.`}))} displayText={`${hours} год.`} title="Години (денна)" onChange={(v)=>onUpdateFulltimeHours(topic,v)} />
+                <InPlaceEditor value={practicalHours} options={[0,2,4,6,8].map(v=>({value:v,label:`${v} пр.`}))} displayText={`${practicalHours} пр.`} title="Практичні (денна)" onChange={(v)=>onUpdatePracticalHours(topic,v)} />
+                <InPlaceEditor value={srsHours} options={[0,2,4,5,6,7,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС`}))} displayText={`${srsHours} СРС`} title="СРС (денна)" onChange={(v)=>onUpdateFulltimeSrsHours(topic,v)} />
+                <InPlaceEditor value={inabscentiaHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} год.заоч.`}))} displayText={`${inabscentiaHours} год.заоч.`} title="Години (заочна)" onChange={(v)=>onUpdateInabscentiaHours(topic,v)} />
+                <InPlaceEditor value={inabscentiaPracticalHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} пр.заоч.`}))} displayText={`${inabscentiaPracticalHours} пр.заоч.`} title="Практичні (заочна)" onChange={(v)=>onUpdateInabscentiaPracticalHours(topic,v)} />
+                <InPlaceEditor value={inabscentiaSrsHours} options={[0,2,4,6,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС заоч.`}))} displayText={`${inabscentiaSrsHours} СРС заоч.`} title="СРС (заочна)" onChange={(v)=>onUpdateInabscentiaSrsHours(topic,v)} />
+                <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} />
+              </Group>
+            </Group>
+            {topic.lection && (
+              <Text size="sm" c="dimmed" lineClamp={3} style={{ whiteSpace: "pre-wrap" }}>{topic.lection}</Text>
+            )}
+          </Stack>
+
+          <Group gap="xs" wrap="nowrap">
+            {topic.generated && (
+              <Tooltip label="Згенеровані дані">
+                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}>
+                  <FontAwesomeIcon icon={faEdit} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            <Tooltip label="Редагувати">
+              <ActionIcon variant="subtle" onClick={() => onEdit(topic)}>
+                <FontAwesomeIcon icon={faPen} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Видалити">
+              <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic.id)}>
+                <FontAwesomeIcon icon={faTrash} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
+      </Paper>
     </Reorder.Item>
   );
 }
 
+// ─── hours options helpers ────────────────────────────────────────────────────
+const hoursOptions = (vals: number[], suffix: string) =>
+  vals.map((v) => ({ value: String(v), label: `${v} ${suffix}` }));
+
+const FULLTIME_HOURS_OPTS = hoursOptions([2, 4, 6, 8], "год.");
+const PRACTICAL_OPTS = hoursOptions([0, 2, 4, 6, 8], "год.");
+const SRS_OPTS = hoursOptions([0, 2, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18], "год.");
+const INABS_HOURS_OPTS = hoursOptions([0, 1, 2, 4, 6, 8], "год.");
+const ATTESTATION_OPTS = [1, 2, 3, 4].map((v) => ({ value: String(v), label: String(v) }));
+
+// ─── Topic form (shared for new & edit) ──────────────────────────────────────
+interface TopicFormProps {
+  title: string;
+  topicName: string; setTopicName: (v: string) => void;
+  topicSubtopics: string; setTopicSubtopics: (v: string) => void;
+  topicLection: string; setTopicLection: (v: string) => void;
+  topicHours: number; setTopicHours: (v: number) => void;
+  topicPracticalHours: number; setTopicPracticalHours: (v: number) => void;
+  topicSrsHours: number; setTopicSrsHours: (v: number) => void;
+  topicInabscentiaHours: number; setTopicInabscentiaHours: (v: number) => void;
+  topicInabscentiaPracticalHours: number; setTopicInabscentiaPracticalHours: (v: number) => void;
+  topicInabscentiaSrsHours: number; setTopicInabscentiaSrsHours: (v: number) => void;
+  topicAttestation: number; setTopicAttestation: (v: number) => void;
+  isDragging: boolean; setIsDragging: (v: boolean) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function TopicForm({
+  title,
+  topicName, setTopicName,
+  topicSubtopics, setTopicSubtopics,
+  topicLection, setTopicLection,
+  topicHours, setTopicHours,
+  topicPracticalHours, setTopicPracticalHours,
+  topicSrsHours, setTopicSrsHours,
+  topicInabscentiaHours, setTopicInabscentiaHours,
+  topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours,
+  topicInabscentiaSrsHours, setTopicInabscentiaSrsHours,
+  topicAttestation, setTopicAttestation,
+  isDragging, setIsDragging,
+  onSave, onCancel,
+}: TopicFormProps) {
+  const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const isText = file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
+    if (!isText) { alert("Будь ласка, перетягніть текстовий файл (.txt)"); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => setTopicLection(ev.target?.result as string);
+    reader.readAsText(file);
+  };
+
+  return (
+    <Paper withBorder p="md">
+      <Stack>
+        <Group justify="space-between">
+          <Text fw={600}>{title}</Text>
+          <Group gap="xs">
+            <Button variant="default" onClick={onCancel}>Скасувати</Button>
+            <Button onClick={onSave}>Зберегти</Button>
+          </Group>
+        </Group>
+
+        <TextInput
+          label="Назва теми"
+          placeholder="Введіть назву теми"
+          value={topicName}
+          onChange={(e) => setTopicName(e.currentTarget.value)}
+        />
+
+        <Textarea
+          label="Підтеми (по одній на рядок)"
+          placeholder="Введіть підтеми, по одній на рядок"
+          value={topicSubtopics}
+          onChange={(e) => setTopicSubtopics(e.currentTarget.value)}
+          autosize
+          minRows={2}
+        />
+
+        <Divider label="Денна форма" labelPosition="left" />
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <Select label="Години" data={FULLTIME_HOURS_OPTS} value={String(topicHours)} onChange={(v) => v && setTopicHours(Number(v))} />
+          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(topicPracticalHours)} onChange={(v) => v && setTopicPracticalHours(Number(v))} />
+          <Select label="СРС" data={SRS_OPTS} value={String(topicSrsHours)} onChange={(v) => v && setTopicSrsHours(Number(v))} />
+        </SimpleGrid>
+
+        <Divider label="Заочна форма" labelPosition="left" />
+        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+          <Select label="Години" data={INABS_HOURS_OPTS} value={String(topicInabscentiaHours)} onChange={(v) => v && setTopicInabscentiaHours(Number(v))} />
+          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(topicInabscentiaPracticalHours)} onChange={(v) => v && setTopicInabscentiaPracticalHours(Number(v))} />
+          <Select label="СРС" data={SRS_OPTS} value={String(topicInabscentiaSrsHours)} onChange={(v) => v && setTopicInabscentiaSrsHours(Number(v))} />
+        </SimpleGrid>
+
+        <Select label="Атестація" data={ATTESTATION_OPTS} value={String(topicAttestation)} onChange={(v) => v && setTopicAttestation(Number(v))} w={120} />
+
+        <Textarea
+          label="Текст лекції"
+          placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"}
+          value={topicLection}
+          onChange={(e) => setTopicLection(e.currentTarget.value)}
+          autosize
+          minRows={4}
+          onDrop={handleFileDrop}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+          styles={isDragging ? { input: { borderStyle: "dashed", borderColor: "var(--mantine-color-blue-5)" } } : undefined}
+        />
+      </Stack>
+    </Paper>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps) {
-  const navigate = useNavigate();
   const [topics, setTopics] = useState<CourseTopic[]>([]);
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [topicName, setTopicName] = useState("");
   const [topicSubtopics, setTopicSubtopics] = useState("");
   const [topicLection, setTopicLection] = useState("");
-  const [topicHours, setTopicHours] = useState<number>(2);
-  const [topicAttestation, setTopicAttestation] = useState<number>(1);
-  const [topicPracticalHours, setTopicPracticalHours] = useState<number>(2);
-  const [topicInabscentiaHours, setTopicInabscentiaHours] = useState<number>(0);
-  const [topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours] = useState<number>(0);
-  const [topicSrsHours, setTopicSrsHours] = useState<number>(0);
-  const [topicInabscentiaSrsHours, setTopicInabscentiaSrsHours] = useState<number>(0);
+  const [topicHours, setTopicHours] = useState(2);
+  const [topicAttestation, setTopicAttestation] = useState(1);
+  const [topicPracticalHours, setTopicPracticalHours] = useState(0);
+  const [topicInabscentiaHours, setTopicInabscentiaHours] = useState(0);
+  const [topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours] = useState(0);
+  const [topicSrsHours, setTopicSrsHours] = useState(0);
+  const [topicInabscentiaSrsHours, setTopicInabscentiaSrsHours] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
-  useEffect(() => {
-    if (courseId) {
-      fetchTopics(courseId);
-    }
-  }, [courseId]);
+  useEffect(() => { if (courseId) fetchTopics(courseId); }, [courseId]);
 
-  const fetchTopics = async (courseId: number) => {
+  const fetchTopics = async (id: number) => {
     try {
-      const response = await fetch(`/api/courses/${courseId}/topics`);
-      if (response.ok) {
-        const data = await response.json() as CourseTopic[];
-        setTopics(data);
-      }
-    } catch (error) {
-      console.error("Error fetching topics:", error);
-    }
+      const r = await fetch(`/api/courses/${id}/topics`);
+      if (r.ok) setTopics(await r.json() as CourseTopic[]);
+    } catch (e) { console.error(e); }
+  };
+
+  const resetForm = () => {
+    setEditingTopic(null);
+    setTopicName(""); setTopicSubtopics(""); setTopicLection("");
+    setTopicHours(2); setTopicAttestation(1); setTopicPracticalHours(0);
+    setTopicInabscentiaHours(0); setTopicInabscentiaPracticalHours(0);
+    setTopicSrsHours(0); setTopicInabscentiaSrsHours(0);
   };
 
   const handleAddTopic = () => {
-    setEditingTopic({
-      id: 0,
-      course_id: courseId,
-      index: topics.length + 1,
-      name: "",
-      lection: "",
-      data: {
-        attestation: 1,
-        fulltime: {
-          hours: 2,
-          practical_hours: 0,
-          srs_hours: 0
-        },
-        inabscentia: {
-          hours: 0,
-          practical_hours: 0,
-          srs_hours: 0
-        }
-      },
-      generated: {}
-    });
-    setTopicName("");
-    setTopicSubtopics("");
-    setTopicLection("");
-    setTopicHours(2);
-    setTopicAttestation(1);
-    setTopicPracticalHours(2);
-    setTopicInabscentiaHours(0);
-    setTopicInabscentiaPracticalHours(0);
-    setTopicSrsHours(0);
-    setTopicInabscentiaSrsHours(0);
+    setEditingTopic({ id: 0, course_id: courseId, index: topics.length + 1, name: "", lection: "", data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } }, generated: {} });
+    resetForm();
+    setEditingTopic({ id: 0, course_id: courseId, index: topics.length + 1, name: "", lection: "", data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } }, generated: {} });
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
     setEditingTopic(topic);
     setTopicName(topic.name || "");
-    const subtopics = topic.generated?.subtopics || [];
-    setTopicSubtopics(subtopics.join("\n"));
+    setTopicSubtopics((topic.generated?.subtopics || []).join("\n"));
     setTopicLection(topic.lection || "");
     setTopicHours(topic.data?.fulltime?.hours || 2);
     setTopicAttestation(topic.data?.attestation || 1);
@@ -301,912 +299,179 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicInabscentiaSrsHours(topic.data?.inabscentia?.srs_hours || 0);
   };
 
-  const handleCancelEdit = () => {
-    setEditingTopic(null);
-    setTopicName("");
-    setTopicSubtopics("");
-    setTopicLection("");
-    setTopicHours(2);
-    setTopicAttestation(1);
-    setTopicPracticalHours(0);
-    setTopicInabscentiaHours(0);
-    setTopicInabscentiaPracticalHours(0);
-    setTopicSrsHours(0);
-    setTopicInabscentiaSrsHours(0);
-  };
-
   const handleSaveTopic = async () => {
     if (!editingTopic) return;
-    if (!topicName.trim()) {
-      alert("Назва лекції обов'язкова");
-      return;
-    }
+    if (!topicName.trim()) { alert("Назва теми обов'язкова"); return; }
+
+    const subtopicsArray = topicSubtopics.split("\n").map((s) => s.trim()).filter(Boolean);
+    const existingGenerated = editingTopic.generated;
+    const topicData: CourseTopic = {
+      ...editingTopic,
+      name: topicName.trim(),
+      lection: topicLection.trim(),
+      data: {
+        attestation: topicAttestation,
+        fulltime: { hours: topicHours, practical_hours: topicPracticalHours, lab_hours: 0, srs_hours: topicSrsHours },
+        inabscentia: { hours: topicInabscentiaHours, practical_hours: topicInabscentiaPracticalHours, lab_hours: 0, srs_hours: topicInabscentiaSrsHours },
+      },
+      generated: { subtopics: subtopicsArray, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(existingGenerated || {}) },
+    };
 
     try {
-      const subtopicsArray = topicSubtopics
-        .split("\n")
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-      
-      const existingGenerated = editingTopic.generated;
-      const topicData: CourseTopic = {
-        ...editingTopic,
-        name: topicName.trim(),
-        lection: topicLection.trim(),
-        data: {
-          attestation: topicAttestation,
-          fulltime: {
-            hours: topicHours,
-            practical_hours: topicPracticalHours,
-            srs_hours: topicSrsHours
-          },
-          inabscentia: {
-            hours: topicInabscentiaHours,
-            practical_hours: topicInabscentiaPracticalHours,
-            srs_hours: topicInabscentiaSrsHours
-          }
-        },
-        generated: {
-          subtopics: subtopicsArray,
-          keywords: existingGenerated?.keywords || [],
-          topics: existingGenerated?.topics || [],
-          referats: existingGenerated?.referats || [],
-          quiz: existingGenerated?.quiz || [],
-          keyQuestions: existingGenerated?.keyQuestions || [],
-          ...(existingGenerated || {})
-        }
-      };
-
-      let response;
-      if (editingTopic.id === 0) {
-        // Create new topic
-        response = await fetch(`/api/courses/${courseId}/topics`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(topicData),
-        });
-      } else {
-        // Update existing topic
-        response = await fetch(`/api/courses/${courseId}/topics/${editingTopic.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(topicData),
-        });
-      }
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-        handleCancelEdit();
-      } else {
-        throw new Error("Failed to save topic");
-      }
-    } catch (error) {
-      console.error("Error saving topic:", error);
-      alert("Не вдалося зберегти тему");
-    }
+      const isNew = editingTopic.id === 0;
+      const url = isNew ? `/api/courses/${courseId}/topics` : `/api/courses/${courseId}/topics/${editingTopic.id}`;
+      const r = await fetch(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(topicData) });
+      if (!r.ok) throw new Error("Failed to save");
+      await fetchTopics(courseId);
+      resetForm();
+    } catch (e) { console.error(e); alert("Не вдалося зберегти тему"); }
   };
 
   const handleDeleteTopic = async (topicId: number) => {
     if (!confirm("Ви впевнені, що хочете видалити цю тему?")) return;
-
     try {
-      const response = await fetch(`/api/courses/${courseId}/topics/${topicId}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to delete topic");
-      }
-    } catch (error) {
-      console.error("Error deleting topic:", error);
-      alert("Не вдалося видалити тему");
-    }
-  };
-
-  const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const fileName = file.name.toLowerCase();
-      const isTextFile = 
-        file.type === "text/plain" || 
-        fileName.endsWith(".txt") || 
-        fileName.endsWith(".text") ||
-        file.type.startsWith("text/");
-
-      if (isTextFile) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const content = event.target?.result as string;
-          setTopicLection(content);
-        };
-        reader.onerror = () => {
-          alert("Помилка читання файлу. Будь ласка, спробуйте ще раз.");
-        };
-        reader.readAsText(file);
-      } else {
-        alert("Будь ласка, перетягніть текстовий файл (.txt)");
-      }
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
+      const r = await fetch(`/api/courses/${courseId}/topics/${topicId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error();
+      await fetchTopics(courseId);
+    } catch { alert("Не вдалося видалити тему"); }
   };
 
   const handleReorder = async (newOrder: CourseTopic[]) => {
-    // Update local state immediately for responsive UI
     setTopics(newOrder);
-    
-    // Extract topic IDs in the new order
-    const topicIds = newOrder.map(topic => topic.id);
-    
-    // Send reorder request to server
     try {
-      const response = await fetch(`/api/courses/${courseId}/topics/order`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(topicIds),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to reorder topics");
-      }
-      
-      // Refresh topics to ensure sync with server
+      const r = await fetch(`/api/courses/${courseId}/topics/order`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newOrder.map((t) => t.id)) });
+      if (!r.ok) throw new Error();
       await fetchTopics(courseId);
-    } catch (error) {
-      console.error("Error reordering topics:", error);
-      // Revert to previous order on error
+    } catch { await fetchTopics(courseId); alert("Не вдалося зберегти порядок тем"); }
+  };
+
+  const patchTopic = async (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
+    const updated: CourseTopic = { ...topic, data: { ...topic.data, ...patch } };
+    try {
+      const r = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+      if (!r.ok) throw new Error();
       await fetchTopics(courseId);
-      alert("Не вдалося зберегти порядок тем");
-    }
+    } catch { alert("Не вдалося оновити тему"); }
   };
 
-  const handleUpdateAttestation = async (topic: CourseTopic, newAttestation: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          attestation: newAttestation
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update attestation");
-      }
-    } catch (error) {
-      console.error("Error updating attestation:", error);
-      alert("Не вдалося оновити атестацію");
-    }
-  };
-
-  const handleUpdateFulltimeHours = async (topic: CourseTopic, newHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          fulltime: {
-            ...topic.data?.fulltime,
-            hours: newHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update fulltime hours");
-      }
-    } catch (error) {
-      console.error("Error updating fulltime hours:", error);
-      alert("Не вдалося оновити години");
-    }
-  };
-
-  const handleUpdatePracticalHours = async (topic: CourseTopic, newPracticalHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          fulltime: {
-            ...topic.data?.fulltime,
-            practical_hours: newPracticalHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update practical hours");
-      }
-    } catch (error) {
-      console.error("Error updating practical hours:", error);
-      alert("Не вдалося оновити практичні години");
-    }
-  };
-
-  const handleUpdateInabscentiaHours = async (topic: CourseTopic, newHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          inabscentia: {
-            ...topic.data?.inabscentia,
-            hours: newHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update in absentia hours");
-      }
-    } catch (error) {
-      console.error("Error updating in absentia hours:", error);
-      alert("Не вдалося оновити години заочної форми");
-    }
-  };
-
-  const handleUpdateInabscentiaPracticalHours = async (topic: CourseTopic, newPracticalHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          inabscentia: {
-            ...topic.data?.inabscentia,
-            practical_hours: newPracticalHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update in absentia practical hours");
-      }
-    } catch (error) {
-      console.error("Error updating in absentia practical hours:", error);
-      alert("Не вдалося оновити практичні години заочної форми");
-    }
-  };
-
-  const handleUpdateFulltimeSrsHours = async (topic: CourseTopic, newSrsHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          fulltime: {
-            ...topic.data?.fulltime,
-            srs_hours: newSrsHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update fulltime SRS hours");
-      }
-    } catch (error) {
-      console.error("Error updating fulltime SRS hours:", error);
-      alert("Не вдалося оновити СРС години денної форми");
-    }
-  };
-
-  const handleUpdateInabscentiaSrsHours = async (topic: CourseTopic, newSrsHours: number) => {
-    try {
-      const updatedTopic: CourseTopic = {
-        ...topic,
-        data: {
-          ...topic.data,
-          inabscentia: {
-            ...topic.data?.inabscentia,
-            srs_hours: newSrsHours
-          }
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedTopic),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-      } else {
-        throw new Error("Failed to update in absentia SRS hours");
-      }
-    } catch (error) {
-      console.error("Error updating in absentia SRS hours:", error);
-      alert("Не вдалося оновити СРС години заочної форми");
-    }
-  };
+  const handleUpdateAttestation = (topic: CourseTopic, v: number) => patchTopic(topic, { attestation: v });
+  const handleUpdateFulltimeHours = (topic: CourseTopic, v: number) => patchTopic(topic, { fulltime: { ...topic.data?.fulltime, hours: v, practical_hours: topic.data?.fulltime?.practical_hours ?? 0, lab_hours: topic.data?.fulltime?.lab_hours ?? 0, srs_hours: topic.data?.fulltime?.srs_hours ?? 0 } });
+  const handleUpdatePracticalHours = (topic: CourseTopic, v: number) => patchTopic(topic, { fulltime: { ...topic.data?.fulltime, hours: topic.data?.fulltime?.hours ?? 2, practical_hours: v, lab_hours: topic.data?.fulltime?.lab_hours ?? 0, srs_hours: topic.data?.fulltime?.srs_hours ?? 0 } });
+  const handleUpdateFulltimeSrsHours = (topic: CourseTopic, v: number) => patchTopic(topic, { fulltime: { ...topic.data?.fulltime, hours: topic.data?.fulltime?.hours ?? 2, practical_hours: topic.data?.fulltime?.practical_hours ?? 0, lab_hours: topic.data?.fulltime?.lab_hours ?? 0, srs_hours: v } });
+  const handleUpdateInabscentiaHours = (topic: CourseTopic, v: number) => patchTopic(topic, { inabscentia: { ...topic.data?.inabscentia, hours: v, practical_hours: topic.data?.inabscentia?.practical_hours ?? 0, lab_hours: topic.data?.inabscentia?.lab_hours ?? 0, srs_hours: topic.data?.inabscentia?.srs_hours ?? 0 } });
+  const handleUpdateInabscentiaPracticalHours = (topic: CourseTopic, v: number) => patchTopic(topic, { inabscentia: { ...topic.data?.inabscentia, hours: topic.data?.inabscentia?.hours ?? 0, practical_hours: v, lab_hours: topic.data?.inabscentia?.lab_hours ?? 0, srs_hours: topic.data?.inabscentia?.srs_hours ?? 0 } });
+  const handleUpdateInabscentiaSrsHours = (topic: CourseTopic, v: number) => patchTopic(topic, { inabscentia: { ...topic.data?.inabscentia, hours: topic.data?.inabscentia?.hours ?? 0, practical_hours: topic.data?.inabscentia?.practical_hours ?? 0, lab_hours: topic.data?.inabscentia?.lab_hours ?? 0, srs_hours: v } });
 
   const handleGenerateTopics = async () => {
     setAiTopicsLoading(true);
-    try {
-      const topics = await generateCourseTopics(courseId);
-      setGeneratedTopics(topics);
-    } catch (error) {
-      console.error("Error generating topics:", error);
-      alert("Не вдалося згенерувати теми");
-    } finally {
-      setAiTopicsLoading(false);
-    }
+    try { setGeneratedTopics(await generateCourseTopics(courseId)); }
+    catch { alert("Не вдалося згенерувати теми"); }
+    finally { setAiTopicsLoading(false); }
   };
 
-  const handleAddGeneratedTopic = async (generatedTopic: AIGeneratedTopic) => {
+  const handleAddGeneratedTopic = async (gen: AIGeneratedTopic) => {
+    const topicData: CourseTopic = {
+      id: 0, course_id: courseId, index: topics.length + 1, name: gen.name, lection: "",
+      data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
+      generated: { subtopics: gen.subtopics, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [] },
+    };
     try {
-      const newIndex = topics.length + 1;
-      const topicData: CourseTopic = {
-        id: 0,
-        course_id: courseId,
-        index: newIndex,
-        name: generatedTopic.name,
-        lection: "",
-        data: {
-          attestation: 1,
-          fulltime: {
-            hours: 2,
-            practical_hours: 0,
-            srs_hours: 0
-          },
-          inabscentia: {
-            hours: 0,
-            practical_hours: 0,
-            srs_hours: 0
-          }
-        },
-        generated: {
-          subtopics: generatedTopic.subtopics,
-          keywords: [],
-          topics: [],
-          referats: [],
-          quiz: [],
-          keyQuestions: []
-        }
-      };
-
-      const response = await fetch(`/api/courses/${courseId}/topics`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(topicData),
-      });
-
-      if (response.ok) {
-        await fetchTopics(courseId);
-        setGeneratedTopics(prev => prev?.filter(t => t.name !== generatedTopic.name) || null);
-      } else {
-        throw new Error("Failed to add topic");
-      }
-    } catch (error) {
-      console.error("Error adding generated topic:", error);
-      alert("Не вдалося додати тему");
-    }
+      const r = await fetch(`/api/courses/${courseId}/topics`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(topicData) });
+      if (!r.ok) throw new Error();
+      await fetchTopics(courseId);
+      setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
+    } catch { alert("Не вдалося додати тему"); }
   };
 
-  const handleAddAllGeneratedTopics = async () => {
-    if (!generatedTopics || generatedTopics.length === 0) return;
-
-    for (const generatedTopic of generatedTopics) {
-      await handleAddGeneratedTopic(generatedTopic);
-    }
+  const formProps = {
+    topicName, setTopicName, topicSubtopics, setTopicSubtopics, topicLection, setTopicLection,
+    topicHours, setTopicHours, topicPracticalHours, setTopicPracticalHours, topicSrsHours, setTopicSrsHours,
+    topicInabscentiaHours, setTopicInabscentiaHours, topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours,
+    topicInabscentiaSrsHours, setTopicInabscentiaSrsHours, topicAttestation, setTopicAttestation,
+    isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm,
   };
 
   return (
-    <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-amber-50 font-bold text-lg">Теми курсу:</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleGenerateTopics}
-            disabled={aiTopicsLoading}
-            className="text-amber-50 hover:text-amber-200 disabled:opacity-50 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2 transition-opacity"
-            title="Згенерувати теми за допомогою AI"
-          >
-            <FontAwesomeIcon icon={faWandMagicSparkles} spin={aiTopicsLoading} />
-          </button>
-          <button
-            onClick={handleAddTopic}
-            className="text-amber-50 hover:text-amber-200 px-3 py-1.5 rounded-lg font-bold flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
-        </div>
-      </div>
+    <Paper withBorder p="md">
+      <Stack>
+        <Group justify="space-between">
+          <Text fw={700}>Теми курсу</Text>
+          <Group gap="xs">
+            <Tooltip label="Згенерувати теми AI">
+              <ActionIcon variant="subtle" onClick={handleGenerateTopics} loading={aiTopicsLoading}>
+                <FontAwesomeIcon icon={faWandMagicSparkles} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Додати тему">
+              <ActionIcon variant="default" onClick={handleAddTopic}>
+                <FontAwesomeIcon icon={faPlus} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
 
-      {generatedTopics && generatedTopics.length > 0 && (
-        <div className="bg-zinc-800 border border-amber-200 rounded-lg p-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-amber-200 font-bold text-sm">Згенеровані теми:</h3>
-            <button
-              onClick={handleAddAllGeneratedTopics}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm font-bold"
-            >
-              Додати всі
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {generatedTopics.map((topic, index) => (
-              <div key={index} className="flex items-start justify-between gap-2 bg-zinc-900 rounded p-2">
-                <div className="flex-1">
-                  <div className="text-amber-50 font-bold text-sm">{topic.name}</div>
-                  {topic.subtopics.length > 0 && (
-                    <div className="text-amber-50 opacity-60 text-xs mt-1">
-                      {topic.subtopics.join(", ")}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => handleAddGeneratedTopic(topic)}
-                  className="bg-amber-500 hover:bg-amber-400 text-black px-2 py-0.5 rounded text-xs font-bold shrink-0"
-                >
-                  Додати
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        {generatedTopics && generatedTopics.length > 0 && (
+          <Paper withBorder p="sm">
+            <Stack gap="xs">
+              <Group justify="space-between">
+                <Text fw={600} size="sm">Згенеровані теми</Text>
+                <Button size="xs" color="green" onClick={() => generatedTopics.forEach(handleAddGeneratedTopic)}>
+                  Додати всі
+                </Button>
+              </Group>
+              {generatedTopics.map((gen, i) => (
+                <Paper key={i} withBorder p="xs">
+                  <Group justify="space-between" wrap="nowrap">
+                    <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
+                      <Text fw={600} size="sm" truncate>{gen.name}</Text>
+                      {gen.subtopics.length > 0 && (
+                        <Text size="xs" c="dimmed" truncate>{gen.subtopics.join(", ")}</Text>
+                      )}
+                    </Stack>
+                    <Button size="xs" variant="default" onClick={() => handleAddGeneratedTopic(gen)}>Додати</Button>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+          </Paper>
+        )}
 
-      {topics.length === 0 && !editingTopic ? (
-        <div className="text-amber-50 opacity-60">Немає тем</div>
-      ) : (
-        <Reorder.Group
-          axis="y"
-          values={topics}
-          onReorder={handleReorder}
-          className="flex flex-col gap-3"
-        >
-          {topics.map((topic) => {
-            // If this topic is being edited, show the editor instead
-            if (editingTopic && editingTopic.id === topic.id) {
+        {topics.length === 0 && !editingTopic ? (
+          <Text c="dimmed" size="sm">Немає тем</Text>
+        ) : (
+          <Reorder.Group axis="y" values={topics} onReorder={handleReorder} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+            {topics.map((topic) => {
+              if (editingTopic && editingTopic.id === topic.id) {
+                return (
+                  <div key={topic.id}>
+                    <TopicForm title="Редагувати тему" {...formProps} />
+                  </div>
+                );
+              }
               return (
-                <div
+                <TopicItem
                   key={topic.id}
-                  className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-amber-50 font-bold">
-                      Редагувати тему
-                    </h3>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="text-amber-50 hover:text-white"
-                    >
-                      <FontAwesomeIcon icon={faTimes} />
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
-                    <input
-                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-                      value={topicName}
-                      onChange={(e) => setTopicName(e.target.value)}
-                      placeholder="Введіть назву теми"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
-                    <textarea
-                      rows={3}
-                      className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
-                      value={topicSubtopics}
-                      onChange={(e) => setTopicSubtopics(e.target.value)}
-                      placeholder="Введіть підтеми, по одній на рядок"
-                    />
-                  </div>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">Години (денна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicHours}
-                          onChange={(e) => setTopicHours(Number(e.target.value))}
-                        >
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">Практ. год. (денна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicPracticalHours}
-                          onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
-                        >
-                          <option value={0}>0 годин</option>
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">СРС год. (денна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicSrsHours}
-                          onChange={(e) => setTopicSrsHours(Number(e.target.value))}
-                        >
-                          <option value={0}>0 годин</option>
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                          <option value={10}>10 годин</option>
-                          <option value={12}>12 годин</option>
-                          <option value={14}>14 годин</option>
-                          <option value={16}>16 годин</option>
-                          <option value={18}>18 годин</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">Години (заочна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicInabscentiaHours}
-                          onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
-                        >
-                          <option value={0}>0 годин</option>
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">Практ. год. (заочна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicInabscentiaPracticalHours}
-                          onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
-                        >
-                          <option value={0}>0 годин</option>
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">СРС год. (заочна):</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicInabscentiaSrsHours}
-                          onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
-                        >
-                          <option value={0}>0 годин</option>
-                          <option value={2}>2 години</option>
-                          <option value={4}>4 години</option>
-                          <option value={6}>6 годин</option>
-                          <option value={8}>8 годин</option>
-                          <option value={10}>10 годин</option>
-                          <option value={12}>12 годин</option>
-                          <option value={14}>14 годин</option>
-                          <option value={16}>16 годин</option>
-                          <option value={18}>18 годин</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-amber-50 font-bold mb-2">Атестація:</label>
-                        <select
-                          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                          value={topicAttestation}
-                          onChange={(e) => setTopicAttestation(Number(e.target.value))}
-                        >
-                          <option value={1}>1</option>
-                          <option value={2}>2</option>
-                          <option value={3}>3</option>
-                          <option value={4}>4</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-amber-50 font-bold mb-2">Текст лекції:</label>
-                    <textarea
-                      rows={5}
-                      onDrop={handleFileDrop}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      className={`w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
-                        isDragging ? "bg-zinc-800 border-amber-200 border-dashed" : ""
-                      }`}
-                      value={topicLection}
-                      onChange={(e) => setTopicLection(e.target.value)}
-                      placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveTopic}
-                      className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                    >
-                      Зберегти
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="bg-gray-600 hover:bg-gray-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-                    >
-                      Скасувати
-                    </button>
-                  </div>
-                </div>
+                  topic={topic}
+                  courseId={courseId}
+                  onEdit={handleEditTopic}
+                  onDelete={handleDeleteTopic}
+                  onUpdateAttestation={handleUpdateAttestation}
+                  onUpdateFulltimeHours={handleUpdateFulltimeHours}
+                  onUpdatePracticalHours={handleUpdatePracticalHours}
+                  onUpdateFulltimeSrsHours={handleUpdateFulltimeSrsHours}
+                  onUpdateInabscentiaHours={handleUpdateInabscentiaHours}
+                  onUpdateInabscentiaPracticalHours={handleUpdateInabscentiaPracticalHours}
+                  onUpdateInabscentiaSrsHours={handleUpdateInabscentiaSrsHours}
+                />
               );
-            }
-            
-            // Otherwise show the normal topic item
-            const attestation = topic.data?.attestation || 1;
-            // Background colors based on attestation index
-            const attestationBgColors = {
-              1: "bg-zinc-800", // Default dark gray
-              2: "bg-slate-800", // Slightly blue-tinted
-              3: "bg-red-900", // Slightly red-tinted
-              4: "bg-green-900"  // Slightly green-tinted
-            };
-            const bgColor = attestationBgColors[attestation as keyof typeof attestationBgColors] || attestationBgColors[1];
-            
-            return (
-              <TopicItem
-                key={topic.id}
-                topic={topic}
-                courseId={courseId}
-                bgColor={bgColor}
-                onEdit={handleEditTopic}
-                onDelete={handleDeleteTopic}
-                onUpdateAttestation={handleUpdateAttestation}
-                onUpdateFulltimeHours={handleUpdateFulltimeHours}
-                onUpdatePracticalHours={handleUpdatePracticalHours}
-                onUpdateFulltimeSrsHours={handleUpdateFulltimeSrsHours}
-                onUpdateInabscentiaHours={handleUpdateInabscentiaHours}
-                onUpdateInabscentiaPracticalHours={handleUpdateInabscentiaPracticalHours}
-                onUpdateInabscentiaSrsHours={handleUpdateInabscentiaSrsHours}
-              />
-            );
-          })}
-        </Reorder.Group>
-      )}
+            })}
+          </Reorder.Group>
+        )}
 
-      {editingTopic && editingTopic.id === 0 && (
-        <div className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-amber-50 font-bold">
-              {editingTopic.id === 0 ? "Додати тему" : "Редагувати тему"}
-            </h3>
-            <button
-              onClick={handleCancelEdit}
-              className="text-amber-50 hover:text-white"
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </button>
-          </div>
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Назва теми:</label>
-            <input
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-              value={topicName}
-              onChange={(e) => setTopicName(e.target.value)}
-              placeholder="Введіть назву теми"
-            />
-          </div>
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Підтеми (по одній на рядок):</label>
-            <textarea
-              rows={3}
-              className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
-              value={topicSubtopics}
-              onChange={(e) => setTopicSubtopics(e.target.value)}
-              placeholder="Введіть підтеми, по одній на рядок"
-            />
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">Години (денна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicHours}
-                  onChange={(e) => setTopicHours(Number(e.target.value))}
-                >
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">Практ. год. (денна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicPracticalHours}
-                  onChange={(e) => setTopicPracticalHours(Number(e.target.value))}
-                >
-                  <option value={0}>0 годин</option>
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">СРС год. (денна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicSrsHours}
-                  onChange={(e) => setTopicSrsHours(Number(e.target.value))}
-                >
-                  <option value={0}>0 годин</option>
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                  <option value={10}>10 годин</option>
-                  <option value={12}>12 годин</option>
-                  <option value={14}>14 годин</option>
-                  <option value={16}>16 годин</option>
-                  <option value={18}>18 годин</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">Години (заочна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicInabscentiaHours}
-                  onChange={(e) => setTopicInabscentiaHours(Number(e.target.value))}
-                >
-                  <option value={0}>0 годин</option>
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">Практ. год. (заочна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicInabscentiaPracticalHours}
-                  onChange={(e) => setTopicInabscentiaPracticalHours(Number(e.target.value))}
-                >
-                  <option value={0}>0 годин</option>
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">СРС год. (заочна):</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicInabscentiaSrsHours}
-                  onChange={(e) => setTopicInabscentiaSrsHours(Number(e.target.value))}
-                >
-                  <option value={0}>0 годин</option>
-                  <option value={2}>2 години</option>
-                  <option value={4}>4 години</option>
-                  <option value={6}>6 годин</option>
-                  <option value={8}>8 годин</option>
-                  <option value={10}>10 годин</option>
-                  <option value={12}>12 годин</option>
-                  <option value={14}>14 годин</option>
-                  <option value={16}>16 годин</option>
-                  <option value={18}>18 годин</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-amber-50 font-bold mb-2">Атестація:</label>
-                <select
-                  className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
-                  value={topicAttestation}
-                  onChange={(e) => setTopicAttestation(Number(e.target.value))}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                  <option value={4}>4</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Текст лекції:</label>
-            <textarea
-              rows={5}
-              onDrop={handleFileDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              className={`w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y transition-colors duration-200 ${
-                isDragging ? "bg-zinc-800 border-amber-200 border-dashed" : ""
-              }`}
-              value={topicLection}
-              onChange={(e) => setTopicLection(e.target.value)}
-              placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"}
-            />
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleSaveTopic}
-              className="bg-green-600 hover:bg-green-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-            >
-              Зберегти
-            </button>
-            <button
-              onClick={handleCancelEdit}
-              className="bg-gray-600 hover:bg-gray-700 text-white border-0 px-4 py-1.5 rounded-lg font-bold"
-            >
-              Скасувати
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        {editingTopic && editingTopic.id === 0 && (
+          <TopicForm title="Додати тему" {...formProps} />
+        )}
+      </Stack>
+    </Paper>
   );
 }
-

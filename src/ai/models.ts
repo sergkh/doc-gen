@@ -10,7 +10,8 @@ export const AVAILABLE_MODELS = [
 
 export type AgentContext = {
   session: MemorySession,
-  discipline: DisciplineContext | null
+  discipline: DisciplineContext | null,
+  pendingRunStates: Map<string, string>
 }
 
 export type DisciplineContext = {
@@ -25,8 +26,16 @@ export type ToolResult = {
   output: any;
 };
 
+export type UserInputRequest = {
+  kind: "approval";
+  approvalId: string;
+  question: string;
+  options: ["approve", "reject"];
+};
+
 export type AgentReply = {
   reply: string;
+  requiresUserInput?: UserInputRequest | null;
   context: {
     sessionId: string,
     discipline: DisciplineContext | null;

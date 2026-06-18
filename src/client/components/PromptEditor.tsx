@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { Prompt } from "@/stores/models";
 import PromptTester from "./PromptTester";
 import { AVAILABLE_MODELS } from "@/ai/models";
+import {
+  Stack,
+  Group,
+  Text,
+  TextInput,
+  Textarea,
+  Select,
+  Button,
+} from "@mantine/core";
 
 const AVAILABLE_FORMATS: Array<{ value: Prompt["format"]; label: string }> = [
   { value: "text", label: "Текст" },
@@ -19,15 +26,8 @@ interface PromptEditorProps {
   onCancel: () => void;
 }
 
-type PromptType = "course" | "topic";
-
-export default function PromptEditor({
-  prompt,
-  selectedType,
-  onSave,
-  onCancel,
-}: PromptEditorProps) {
-  const promptType: PromptType = selectedType ?? prompt.type;
+export default function PromptEditor({ prompt, selectedType, onSave, onCancel }: PromptEditorProps) {
+  const promptType = selectedType ?? prompt.type;
 
   const [name, setName] = useState(prompt.name || "");
   const [field, setField] = useState(prompt.field);
@@ -51,10 +51,9 @@ export default function PromptEditor({
       toast.error("Всі поля обов'язкові");
       return;
     }
-
     setIsSaving(true);
     try {
-      const updatedPrompt: Prompt = {
+      await onSave({
         ...prompt,
         name: name.trim(),
         type: promptType,
@@ -63,8 +62,7 @@ export default function PromptEditor({
         format: format || "text",
         system_prompt: systemPrompt.trim(),
         prompt: userPrompt.trim(),
-      };
-      await onSave(updatedPrompt);
+      });
     } catch (error) {
       console.error("Error saving prompt:", error);
       toast.error("Не вдалося зберегти промпт");
@@ -76,97 +74,59 @@ export default function PromptEditor({
   const isExistingPrompt = Boolean((prompt.name || "").trim() || (prompt.field || "").trim());
 
   return (
-    <div className="bg-zinc-800 border-2 border-amber-200 rounded-lg p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-amber-50 font-bold">
-          {isExistingPrompt ? "Редагувати промпт" : "Додати промпт"}
-        </h3>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="text-amber-50 hover:text-green-400 opacity-60 hover:opacity-100 transition-opacity p-1.5 rounded disabled:opacity-30 cursor-pointer"
-            aria-label="Зберегти"
-            title="Зберегти"
-          >
-            <FontAwesomeIcon icon={faCheck} />
-          </button>
-          <button
-            onClick={onCancel}
-            className="text-amber-50 hover:text-white hover:bg-gray-700 cursor-pointer"
-            aria-label="Скасувати"
-            title="Скасувати"
-          >
-            <FontAwesomeIcon icon={faTimes} />
-          </button>
-        </div>
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Назва промпта:</label>
-        <input
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Наприклад: Self Method Goal"
-        />
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Поле:</label>
-        <input
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white placeholder:text-zinc-600"
-          value={field}
-          onChange={(e) => setField(e.target.value)}
-          placeholder="Назва поля (наприклад: subtopics, keywords)"
-        />
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Модель:</label>
-        <select
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+    <Stack gap="sm">
+      <Group justify="space-between">
+        <Text fw={600}>{isExistingPrompt ? "Редагувати промпт" : "Додати промпт"}</Text>
+        <Group gap="xs">
+          <Button variant="default" onClick={onCancel} disabled={isSaving}>Скасувати</Button>
+          <Button onClick={handleSave} loading={isSaving}>Зберегти</Button>
+        </Group>
+      </Group>
+
+      <TextInput
+        label="Назва промпта"
+        placeholder="Наприклад: Self Method Goal"
+        value={name}
+        onChange={(e) => setName(e.currentTarget.value)}
+      />
+      <TextInput
+        label="Поле"
+        placeholder="Назва поля (наприклад: subtopics, keywords)"
+        value={field}
+        onChange={(e) => setField(e.currentTarget.value)}
+      />
+      <Group grow>
+        <Select
+          label="Модель"
+          data={AVAILABLE_MODELS.map((m) => ({ value: m.id, label: m.name }))}
           value={model}
-          onChange={(e) => setModel(e.target.value)}
-        >
-          {AVAILABLE_MODELS.map((m) => (
-            <option key={m.id} value={m.id} className="bg-zinc-800 text-amber-50">
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Формат відповіді:</label>
-        <select
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white"
+          onChange={(v) => v && setModel(v)}
+        />
+        <Select
+          label="Формат відповіді"
+          data={AVAILABLE_FORMATS.map((f) => ({ value: f.value as string, label: f.label }))}
           value={format}
-          onChange={(e) => setFormat(e.target.value as Prompt["format"])}
-        >
-          {AVAILABLE_FORMATS.map(({ value, label }) => (
-            <option key={value} value={value} className="bg-zinc-800 text-amber-50">
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Системний промпт:</label>
-        <textarea
-          rows={2}
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          placeholder="Системний промпт"
+          onChange={(v) => v && setFormat(v as Prompt["format"])}
         />
-      </div>
-      <div>
-        <label className="block text-amber-50 font-bold mb-2">Промпт:</label>
-        <textarea
-          rows={15}
-          className="w-full bg-transparent border border-amber-50 text-amber-50 font-mono text-base py-1.5 px-2 rounded outline-none focus:text-white resize-y placeholder:text-zinc-600"
-          value={userPrompt}
-          onChange={(e) => setUserPrompt(e.target.value)}
-          placeholder="Промпт користувача"
-        />
-      </div>
+      </Group>
+      <Textarea
+        label="Системний промпт"
+        placeholder="Системний промпт"
+        value={systemPrompt}
+        onChange={(e) => setSystemPrompt(e.currentTarget.value)}
+        autosize
+        minRows={2}
+        maxRows={6}
+      />
+      <Textarea
+        label="Промпт"
+        placeholder="Промпт користувача"
+        value={userPrompt}
+        onChange={(e) => setUserPrompt(e.currentTarget.value)}
+        autosize
+        minRows={6}
+        maxRows={20}
+      />
 
       <PromptTester
         prompt={prompt}
@@ -177,6 +137,6 @@ export default function PromptEditor({
         systemPrompt={systemPrompt}
         userPrompt={userPrompt}
       />
-    </div>
+    </Stack>
   );
 }

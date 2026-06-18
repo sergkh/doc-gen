@@ -1,9 +1,17 @@
+import "@mantine/core/styles.css";
 import "./index.css";
 import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  AppShell,
+  MantineProvider,
+  Burger,
+  Group,
+  NavLink,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
@@ -12,211 +20,82 @@ import CourseEdit from "./client/pages/CourseEdit";
 import ResultEdit from "./client/pages/ResultEdit";
 import ResultsMatrix from "./client/pages/ResultsMatrix";
 import CoursesWithResults from "./client/pages/CoursesWithResults";
-import CourseGraph from "./client/pages/CourseGraph";
-import CoursesSummary from "./client/pages/CoursesSummary";
 import TemplatesList from "./client/pages/TemplatesList";
 import TemplateEdit from "./client/pages/TemplateEdit";
 import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
 import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
-import ChatPage from "./client/pages/ChatPage";
+import { theme } from "./theme";
 
-function Navigation() {
-  const location = useLocation();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const closeMenu = () => {
-    setIsMenuOpen(false);
-  };
-
-  const linkClassName = (isActive: boolean) => 
-    `font-mono px-4 py-2 rounded-lg transition-all duration-100 ${
-      isActive
-        ? "bg-amber-50 text-zinc-900 font-bold"
-        : "text-amber-50 hover:bg-zinc-800"
-    }`;
-
-  return (
-    <nav className="bg-zinc-900 border-b-2 border-amber-50 mb-4">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Mobile header with hamburger */}
-        <div className="flex items-center justify-between p-4 md:hidden">
-          <button
-            onClick={toggleMenu}
-            className="text-amber-50 hover:text-white transition-colors p-2"
-            aria-label="Toggle menu"
-          >
-            <FontAwesomeIcon icon={isMenuOpen ? faTimes : faBars} size="lg" />
-          </button>
-        </div>
-
-        {/* Desktop menu */}
-        <div className="hidden md:flex gap-4 p-4">
-          <Link
-            to="/"
-            onClick={closeMenu}
-            className={linkClassName(location.pathname === "/")}
-          >
-            Генератор документів
-          </Link>        
-          <Link
-            to="/courses"
-            onClick={closeMenu}
-            className={linkClassName(location.pathname.startsWith("/courses"))}
-          >
-            Дисципліни
-          </Link>
-           <Link
-             to="/teachers"
-             onClick={closeMenu}
-             className={linkClassName(location.pathname.startsWith("/teachers"))}
-           >
-             Викладачі
-           </Link>
-           <Link
-             to="/specialties"
-             onClick={closeMenu}
-             className={linkClassName(location.pathname.startsWith("/specialties"))}
-           >
-             Спеціальності
-           </Link>
-           <Link
-             to="/templates"
-             onClick={closeMenu}
-             className={linkClassName(location.pathname.startsWith("/templates"))}
-           >
-             Шаблони
-           </Link>
-           <Link
-             to="/chat"
-             onClick={closeMenu}
-             className={linkClassName(location.pathname.startsWith("/chat"))}
-           >
-             Чат
-           </Link>
-         </div>
-
-        {/* Mobile menu */}
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-            isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <div className="flex flex-col gap-2 px-4 pb-4">
-            <Link
-              to="/"
-              onClick={closeMenu}
-              className={linkClassName(location.pathname === "/")}
-            >
-              Генератор документів
-            </Link>        
-            <Link
-              to="/courses"
-              onClick={closeMenu}
-              className={linkClassName(location.pathname.startsWith("/courses"))}
-            >
-              Дисципліни
-            </Link>
-             <Link
-               to="/teachers"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/teachers"))}
-             >
-               Викладачі
-             </Link>
-             <Link
-               to="/specialties"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/specialties"))}
-             >
-               Спеціальності
-             </Link>
-             <Link
-               to="/results"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/results"))}
-             >
-               Результати
-             </Link>
-              <Link
-               to="/templates"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/templates"))}
-             >
-               Шаблони
-             </Link>
-             <Link
-               to="/chat"
-               onClick={closeMenu}
-               className={linkClassName(location.pathname.startsWith("/chat"))}
-             >
-               Чат
-             </Link>
-           </div>
-        </div>
-      </div>
-    </nav>
-  );
-}
+const navItems = [
+  { label: "Генератор", to: "/", match: (path: string) => path === "/" },
+  { label: "Дисципліни", to: "/courses", match: (path: string) => path.startsWith("/courses") },
+  { label: "Викладачі", to: "/teachers", match: (path: string) => path.startsWith("/teachers") },
+  { label: "Спеціальності", to: "/specialties", match: (path: string) => path.startsWith("/specialties") },
+  { label: "Шаблони", to: "/templates", match: (path: string) => path.startsWith("/templates") },
+];
 
 export function App() {
-  return (
-    <div className="w-full min-h-screen">
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#18181b',
-            color: '#fffbeb',
-            border: '2px solid #fffbeb',
-            fontFamily: 'monospace',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#fffbeb',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#fffbeb',
-            },
-          },
-        }}
-      />
-      <Navigation />
-      <Routes>
-         <Route
-           path="/"
-           element={<GeneratorPage />}
-         />
-          <Route path="/courses" element={<CoursesList />} />
-          <Route path="/specialties/:specialtyId/courses/summary" element={<CoursesSummary />} />
-          <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
-          <Route path="/specialties/:specialtyId/courses/graph" element={<CourseGraph />} />
+  const [opened, { toggle, close }] = useDisclosure();
+  const location = useLocation();
 
-          <Route path="/courses/:id" element={<CourseEdit />} />
-          <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
-          <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
-          <Route path="/teachers" element={<TeachersList />} />
-          <Route path="/teachers/:id" element={<TeacherEdit />} />
-          <Route path="/specialties" element={<SpecialtiesList />} />
-          <Route path="/specialties/:id" element={<SpecialtyEdit />} />
-          <Route path="/results/matrix" element={<ResultsMatrix />} />
-          <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
-          <Route path="/results/:id" element={<ResultEdit />} />
-          <Route path="/templates" element={<TemplatesList />} />
-          <Route path="/templates/:id" element={<TemplateEdit />} />
-          <Route path="/chat" element={<ChatPage />} />
-       </Routes>
-    </div>
+  return (
+    <MantineProvider theme={theme}>
+      <Toaster position="top-right" />
+      <AppShell
+        header={{ height: 60 }}
+        navbar={{ width: 300, breakpoint: "sm", collapsed: { desktop: true, mobile: !opened } }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Group h="100%" px="md">
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />            
+            <Group justify="space-between" style={{ flex: 1 }}>
+              <Text fw={700} size="lg">Doc Gen</Text>
+                <Group ml="xl" visibleFrom="sm">
+                  {navItems.map((item) => (
+                    <Link key={item.to} to={item.to}>{item.label}</Link>
+                  ))}
+                </Group>
+            </Group>
+          </Group>
+        </AppShell.Header>
+
+        <AppShell.Navbar p="md">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              component={Link}
+              to={item.to}
+              label={item.label}
+              active={item.match(location.pathname)}
+              onClick={close}
+            />
+          ))}
+        </AppShell.Navbar>
+
+        <AppShell.Main>
+          <Routes>
+            <Route path="/" element={<GeneratorPage />} />
+            <Route path="/courses" element={<CoursesList />} />
+            <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
+            <Route path="/courses/:id" element={<CourseEdit />} />
+            <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
+            <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
+            <Route path="/teachers" element={<TeachersList />} />
+            <Route path="/teachers/:id" element={<TeacherEdit />} />
+            <Route path="/specialties" element={<SpecialtiesList />} />
+            <Route path="/specialties/:id" element={<SpecialtyEdit />} />
+            <Route path="/results/matrix" element={<ResultsMatrix />} />
+            <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
+            <Route path="/results/:id" element={<ResultEdit />} />
+            <Route path="/templates" element={<TemplatesList />} />
+            <Route path="/templates/:id" element={<TemplateEdit />} />
+          </Routes>
+        </AppShell.Main>
+      </AppShell>
+    </MantineProvider>
   );
 }
 

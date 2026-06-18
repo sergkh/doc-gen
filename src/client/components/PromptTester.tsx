@@ -1,8 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronUp, faSpinner, faSave } from "@fortawesome/free-solid-svg-icons";
+import { faSave } from "@fortawesome/free-solid-svg-icons";
 import type { Prompt, KeyValue, CourseTopic, PromptResult } from "@/stores/models";
 import { loadAllCoursesBrief } from "@/client/courses";
+import {
+  Stack,
+  Group,
+  Text,
+  Select,
+  Button,
+  Paper,
+  ActionIcon,
+  Tooltip,
+  Collapse,
+  Loader,
+  Anchor,
+  Code,
+  Divider,
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 
 interface PromptTesterProps {
   prompt: Prompt;
@@ -16,9 +32,7 @@ interface PromptTesterProps {
 
 async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
   const text = await response.text();
-  
   if (!text) return fallback;
-  
   try {
     const json = JSON.parse(text);
     if (json.error) return json.error;
@@ -27,25 +41,15 @@ async function extractErrorMessage(response: Response, fallback: string): Promis
   } catch {
     if (text.startsWith("<!DOCTYPE") || text.startsWith("<html")) {
       const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
-      if (titleMatch) return titleMatch[1];
-      return fallback;
+      return titleMatch?.[1] ?? fallback;
     }
-    if (text.length > 200) {
-      return text.slice(0, 200) + "...";
-    }
-    return text;
+    return text.length > 200 ? text.slice(0, 200) + "..." : text;
   }
 }
 
 function formatResult({ item }: PromptResult): string {
-  if (typeof item === "string") {
-    return item;
-  }
-
-  if (Array.isArray(item)) {
-    return item.map((i) => JSON.stringify(i, null, 2)).join("\n\n");
-  }
-
+  if (typeof item === "string") return item;
+  if (Array.isArray(item)) return item.map((i) => JSON.stringify(i, null, 2)).join("\n\n");
   return JSON.stringify(item, null, 2);
 }
 
@@ -58,8 +62,8 @@ export default function PromptTester({
   systemPrompt,
   userPrompt,
 }: PromptTesterProps) {
+  const [opened, { toggle }] = useDisclosure(false);
 
-  const [isTesterOpen, setIsTesterOpen] = useState(false);
   const [courses, setCourses] = useState<KeyValue[]>([]);
   const [coursesError, setCoursesError] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
@@ -71,7 +75,6 @@ export default function PromptTester({
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string>("");
 
-  const [testApiKey, setTestApiKey] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<PromptResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
@@ -79,8 +82,6 @@ export default function PromptTester({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    const savedApiKey = localStorage.getItem("openai_api_key");
-    if (savedApiKey) setTestApiKey(savedApiKey);
     const savedCourseId = localStorage.getItem("prompt_tester_course_id");
     if (savedCourseId) setSelectedCourseId(savedCourseId);
     const savedTopicId = localStorage.getItem("prompt_tester_topic_id");
@@ -88,15 +89,11 @@ export default function PromptTester({
   }, []);
 
   useEffect(() => {
-    if (selectedCourseId) {
-      localStorage.setItem("prompt_tester_course_id", selectedCourseId);
-    }
+    if (selectedCourseId) localStorage.setItem("prompt_tester_course_id", selectedCourseId);
   }, [selectedCourseId]);
 
   useEffect(() => {
-    if (selectedTopicId) {
-      localStorage.setItem("prompt_tester_topic_id", selectedTopicId);
-    }
+    if (selectedTopicId) localStorage.setItem("prompt_tester_topic_id", selectedTopicId);
   }, [selectedTopicId]);
 
   useEffect(() => {
@@ -105,11 +102,10 @@ export default function PromptTester({
     setSaveSuccess(false);
   }, [prompt]);
 
-  const courseOptions = useMemo(() => {
-    const items = [...courses];
-    items.sort((a, b) => a.name.localeCompare(b.name));
-    return items;
-  }, [courses]);
+  const courseOptions = useMemo(
+    () => [...courses].sort((a, b) => a.name.localeCompare(b.name)).map((c) => ({ value: String(c.id), label: c.name })),
+    [courses]
+  );
 
   const fetchCourses = useCallback(async () => {
     setIsLoadingCourses(true);
@@ -118,11 +114,8 @@ export default function PromptTester({
       const data = await loadAllCoursesBrief();
       setCourses(data);
       setSelectedCourseId((prev) => {
-        if (prev) {
-          return prev;
-        }
-        const firstCourse = data[0];
-        return firstCourse ? String(firstCourse.id) : "";
+        if (prev) return prev;
+        return data[0] ? String(data[0].id) : "";
       });
     } catch (error) {
       setCoursesError(error instanceof Error ? error.message : "Не вдалося завантажити список дисциплін");
@@ -132,20 +125,13 @@ export default function PromptTester({
   }, []);
 
   useEffect(() => {
-    if (!isTesterOpen) {
-      return;
-    }
-    if (hasRequestedCourses) {
-      return;
-    }
+    if (!opened || hasRequestedCourses) return;
     setHasRequestedCourses(true);
     void fetchCourses();
-  }, [isTesterOpen, hasRequestedCourses, fetchCourses]);
+  }, [opened, hasRequestedCourses, fetchCourses]);
 
   useEffect(() => {
-    if (!isTesterOpen) {
-      return;
-    }
+    if (!opened) return;
     if (promptType !== "topic") {
       setTopics([]);
       setSelectedTopicId("");
@@ -159,35 +145,27 @@ export default function PromptTester({
       return;
     }
 
-    let aborted = false;
     const courseId = Number.parseInt(selectedCourseId, 10);
     if (Number.isNaN(courseId)) {
-      setTopics([]);
-      setSelectedTopicId("");
       setTopicsError("ID дисципліни має бути числом");
       return;
     }
 
+    let aborted = false;
     setIsLoadingTopics(true);
     setTopicsError(null);
 
     fetch(`/api/courses/${courseId}/topics`)
-      .then(async (response) => {
-        if (!response.ok) {
-          const message = await extractErrorMessage(response, "Не вдалося завантажити теми");
-          throw new Error(message);
-        }
-        return await response.json() as CourseTopic[];
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await extractErrorMessage(r, "Не вдалося завантажити теми"));
+        return r.json() as Promise<CourseTopic[]>;
       })
       .then((data) => {
         if (aborted) return;
         setTopics(data);
         setSelectedTopicId((prev) => {
-          if (prev && data.some((topic) => topic.id === Number(prev))) {
-            return prev;
-          }
-          const firstTopic = data[0];
-          return firstTopic ? String(firstTopic.id) : "";
+          if (prev && data.some((t) => t.id === Number(prev))) return prev;
+          return data[0] ? String(data[0].id) : "";
         });
       })
       .catch((error) => {
@@ -196,61 +174,40 @@ export default function PromptTester({
         setSelectedTopicId("");
         setTopicsError(error instanceof Error ? error.message : "Не вдалося завантажити теми");
       })
-      .finally(() => {
-        if (aborted) return;
-        setIsLoadingTopics(false);
-      });
+      .finally(() => { if (!aborted) setIsLoadingTopics(false); });
 
-    return () => {
-      aborted = true;
-    };
-  }, [isTesterOpen, promptType, selectedCourseId]);
+    return () => { aborted = true; };
+  }, [opened, promptType, selectedCourseId]);
+
+  const canTest = useMemo(() => {
+    if (isTesting || !selectedCourseId) return false;
+    if (promptType === "topic" && !selectedTopicId) return false;
+    return !!(field.trim() && systemPrompt.trim() && userPrompt.trim());
+  }, [isTesting, selectedCourseId, selectedTopicId, promptType, field, systemPrompt, userPrompt]);
 
   const handleTestPrompt = async () => {
-    const normalizedField = field.trim();
-    const normalizedSystemPrompt = systemPrompt.trim();
-    const normalizedUserPrompt = userPrompt.trim();
-
-    if (!normalizedField || !normalizedSystemPrompt || !normalizedUserPrompt) {
-      setTestError("Заповніть поле, системний та користувацький промпт перед тестуванням");
-      return;
-    }
-
-    if (!selectedCourseId) {
-      setTestError("Оберіть дисципліну для тестування");
-      return;
-    }
-
     const courseId = Number.parseInt(selectedCourseId, 10);
-    if (Number.isNaN(courseId)) {
-      setTestError("ID дисципліни має бути числом");
-      return;
-    }
+    if (Number.isNaN(courseId)) { setTestError("ID дисципліни має бути числом"); return; }
 
     let endpoint = `/api/courses/${courseId}/run-prompt`;
-
     if (promptType === "topic") {
-      if (!selectedTopicId) {
-        setTestError("Оберіть тему для тестування");
-        return;
-      }
+      if (!selectedTopicId) { setTestError("Оберіть тему для тестування"); return; }
       const topicId = Number.parseInt(selectedTopicId, 10);
-      if (Number.isNaN(topicId)) {
-        setTestError("ID теми має бути числом");
-        return;
-      }
+      if (Number.isNaN(topicId)) { setTestError("ID теми має бути числом"); return; }
       endpoint = `/api/courses/${courseId}/topics/${topicId}/run-prompt`;
     }
 
     const payload: Prompt = {
       ...prompt,
       type: promptType,
-      field: normalizedField,
+      field: field.trim(),
       model: model || "gpt-4o",
       format: format || "text",
-      system_prompt: normalizedSystemPrompt,
-      prompt: normalizedUserPrompt,
+      system_prompt: systemPrompt.trim(),
+      prompt: userPrompt.trim(),
     };
+
+    const savedApiKey = localStorage.getItem("openai_api_key");
 
     setIsTesting(true);
     setTestError(null);
@@ -260,22 +217,11 @@ export default function PromptTester({
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: payload,
-          ...(testApiKey.trim() ? { apiKey: testApiKey.trim() } : {}),
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: payload, ...(savedApiKey ? { apiKey: savedApiKey } : {}) }),
       });
-
-      if (!response.ok) {
-        const message = await extractErrorMessage(response, "Не вдалося протестувати промпт");
-        throw new Error(message);
-      }
-
-      const data = await response.json() as PromptResult;
-      setTestResult(data);
+      if (!response.ok) throw new Error(await extractErrorMessage(response, "Не вдалося протестувати промпт"));
+      setTestResult(await response.json() as PromptResult);
     } catch (error) {
       setTestError(error instanceof Error ? error.message : "Сталася невідома помилка");
     } finally {
@@ -283,22 +229,12 @@ export default function PromptTester({
     }
   };
 
-  const canTest = useMemo(() => {
-    if (isTesting) return false;
-    if (!selectedCourseId) return false;
-    if (promptType === "topic" && !selectedTopicId) return false;
-    if (!field.trim() || !systemPrompt.trim() || !userPrompt.trim()) return false;
-    return true;
-  }, [isTesting, selectedCourseId, selectedTopicId, promptType, field, systemPrompt, userPrompt]);
-
   const handleSaveResult = async () => {
     if (!testResult || !selectedCourseId) return;
-
     const courseId = Number.parseInt(selectedCourseId, 10);
     if (Number.isNaN(courseId)) return;
 
     let endpoint = `/api/courses/${courseId}/save-prompt-result`;
-
     if (promptType === "topic") {
       if (!selectedTopicId) return;
       const topicId = Number.parseInt(selectedTopicId, 10);
@@ -308,24 +244,13 @@ export default function PromptTester({
 
     setIsSaving(true);
     setSaveSuccess(false);
-
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          field: testResult.field,
-          item: testResult.item,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ field: testResult.field, item: testResult.item }),
       });
-
-      if (!response.ok) {
-        const message = await extractErrorMessage(response, "Не вдалося зберегти результат");
-        throw new Error(message);
-      }
-
+      if (!response.ok) throw new Error(await extractErrorMessage(response, "Не вдалося зберегти результат"));
       setSaveSuccess(true);
     } catch (error) {
       setTestError(error instanceof Error ? error.message : "Сталася невідома помилка при збереженні");
@@ -334,135 +259,97 @@ export default function PromptTester({
     }
   };
 
+  const topicOptions = topics.map((t) => ({ value: String(t.id), label: t.name }));
+
   return (
-    <div className="border-t border-amber-50/20 pt-3">
-      <button
-        type="button"
-        onClick={() => setIsTesterOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between text-left text-amber-50 font-bold px-3 py-2 bg-zinc-900/40 hover:bg-zinc-900/60 rounded-lg transition-colors"
-      >
-        <span>Протестувати промпт</span>
-        <FontAwesomeIcon icon={isTesterOpen ? faChevronUp : faChevronDown} />
-      </button>
-      {isTesterOpen && (
-        <div className="mt-3 flex flex-col gap-3">
-          <div>
-            <label className="block text-amber-50 font-bold mb-2">Дисципліна:</label>
-            <select
-              value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="w-full bg-transparent border border-amber-50/40 text-amber-50 font-mono text-sm py-1.5 px-2 rounded outline-none focus:border-amber-200"
-              disabled={isLoadingCourses}
-            >
-              <option value="">Оберіть дисципліну</option>
-              {courseOptions.map((course) => (
-                <option key={course.id} value={course.id} className="bg-zinc-800 text-amber-50">
-                  {course.name}
-                </option>
-              ))}
-            </select>
-            {isLoadingCourses && (
-              <div className="text-amber-50/60 text-xs mt-1">Завантаження дисциплін...</div>
-            )}
-            {coursesError && (
-              <div className="text-red-400 text-xs mt-1 flex items-center justify-between gap-2">
-                <span>{coursesError}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoursesError(null);
-                    void fetchCourses();
-                  }}
-                  className="text-amber-300 underline text-xs"
-                >
-                  Спробувати знову
-                </button>
-              </div>
-            )}
-          </div>
+    <Stack gap="xs">
+      <Divider />
+      <Button variant="subtle" onClick={toggle} justify="space-between" fullWidth>
+        Протестувати промпт
+      </Button>
+
+      <Collapse in={opened}>
+        <Stack gap="sm">
+          <Select
+            label="Дисципліна"
+            placeholder="Оберіть дисципліну"
+            data={courseOptions}
+            value={selectedCourseId || null}
+            onChange={(v) => setSelectedCourseId(v ?? "")}
+            disabled={isLoadingCourses}
+            searchable
+            rightSection={isLoadingCourses ? <Loader size="xs" /> : undefined}
+          />
+          {coursesError && (
+            <Group gap="xs">
+              <Text size="xs" c="red">{coursesError}</Text>
+              <Anchor size="xs" onClick={() => { setCoursesError(null); void fetchCourses(); }}>
+                Спробувати знову
+              </Anchor>
+            </Group>
+          )}
 
           {promptType === "topic" && (
-            <div>
-              <label className="block text-amber-50 font-bold mb-2">Тема дисципліни:</label>
-              <select
-                value={selectedTopicId}
-                onChange={(e) => setSelectedTopicId(e.target.value)}
-                className="w-full bg-transparent border border-amber-50/40 text-amber-50 font-mono text-sm py-1.5 px-2 rounded outline-none focus:border-amber-200"
+            <>
+              <Select
+                label="Тема дисципліни"
+                placeholder="Оберіть тему"
+                data={topicOptions}
+                value={selectedTopicId || null}
+                onChange={(v) => setSelectedTopicId(v ?? "")}
                 disabled={isLoadingTopics || !selectedCourseId}
-              >
-                <option value="">Оберіть тему</option>
-                {topics.map((topic) => (
-                  <option key={topic.id} value={topic.id} className="bg-zinc-800 text-amber-50">
-                    {topic.name}
-                  </option>
-                ))}
-              </select>
-              {isLoadingTopics && (
-                <div className="text-amber-50/60 text-xs mt-1">Завантаження тем...</div>
-              )}
-              {topicsError && (
-                <div className="text-red-400 text-xs mt-1">{topicsError}</div>
-              )}
+                searchable
+                rightSection={isLoadingTopics ? <Loader size="xs" /> : undefined}
+              />
+              {topicsError && <Text size="xs" c="red">{topicsError}</Text>}
               {!isLoadingTopics && !topicsError && selectedCourseId && topics.length === 0 && (
-                <div className="text-amber-50/60 text-xs mt-1">Для цієї дисципліни немає тем.</div>
+                <Text size="xs" c="dimmed">Для цієї дисципліни немає тем.</Text>
               )}
-            </div>
+            </>
           )}
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <button
-              type="button"
-              onClick={handleTestPrompt}
-              disabled={!canTest}
-              className="bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/40 text-zinc-900 font-bold px-4 py-2 rounded-lg transition-colors"
-            >
-              {isTesting ? "Обробка..." : "Протестувати"}
-            </button>
-
-            {isTesting && (
-              <span className="ml-2 animate-spin">
-                <FontAwesomeIcon icon={faSpinner} />
-              </span>
-            )}
-
-            {testError && <div className="text-red-400 text-sm">{testError}</div>}
-          </div>
+          <Group>
+            <Button onClick={handleTestPrompt} disabled={!canTest} loading={isTesting}>
+              Протестувати
+            </Button>
+            {testError && <Text size="sm" c="red">{testError}</Text>}
+          </Group>
 
           {testResult && (
-            <div className="bg-zinc-900 border border-amber-50/30 rounded-lg p-3 text-left">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-amber-50 font-bold text-sm">Результат</div>
-                <button
-                  type="button"
-                  onClick={handleSaveResult}
-                  disabled={isSaving || saveSuccess}
-                  className={`flex items-center gap-2 px-3 py-1 rounded text-sm font-semibold transition-colors ${
-                    saveSuccess
-                      ? "text-green-600 cursor-default"
-                      : "text-amber-50 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white"
-                  }`}
-                  title={saveSuccess ? "Збережено" : "Зберегти результат до дисципліни/теми"}
-                >
-                  <FontAwesomeIcon icon={isSaving ? faSpinner : faSave } />
-                </button>
-              </div>
-              <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto mb-4">
-                {formatResult(testResult)}
-              </pre>
+            <Paper withBorder p="sm">
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text fw={600} size="sm">Результат</Text>
+                  <Tooltip label={saveSuccess ? "Збережено" : "Зберегти результат до дисципліни/теми"}>
+                    <ActionIcon
+                      variant={saveSuccess ? "filled" : "subtle"}
+                      color={saveSuccess ? "green" : undefined}
+                      onClick={handleSaveResult}
+                      disabled={isSaving || saveSuccess}
+                      loading={isSaving}
+                    >
+                      <FontAwesomeIcon icon={faSave} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+                <Code block mah={256} style={{ overflowY: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {formatResult(testResult)}
+                </Code>
 
-              <div className="text-amber-50 font-bold text-sm mb-2">Системний промпт</div>
-              <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto">
-                {testResult.system_prompt || "Немає"}
-              </pre>
+                <Text fw={600} size="sm">Системний промпт</Text>
+                <Code block mah={256} style={{ overflowY: "auto", whiteSpace: "pre-wrap" }}>
+                  {testResult.system_prompt || "Немає"}
+                </Code>
 
-              <div className="text-amber-50 font-bold text-sm mb-2">Промпт</div>
-              <pre className="text-amber-50 text-xs whitespace-pre-wrap wrap-break-words max-h-64 overflow-auto">
-                {testResult.prompt || "Немає"}
-              </pre>
-            </div>
+                <Text fw={600} size="sm">Промпт</Text>
+                <Code block mah={256} style={{ overflowY: "auto", whiteSpace: "pre-wrap" }}>
+                  {testResult.prompt || "Немає"}
+                </Code>
+              </Stack>
+            </Paper>
           )}
-        </div>
-      )}
-    </div>
+        </Stack>
+      </Collapse>
+    </Stack>
   );
 }

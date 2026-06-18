@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPie } from "@fortawesome/free-solid-svg-icons";
@@ -7,64 +7,80 @@ import toast from "react-hot-toast";
 import type { Course, Specialty } from "@/stores/models";
 import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadCoursesBySpecialty } from "../courses";
 import { loadAllSpecialties } from "../specialties";
+import {
+  Title,
+  Stack,
+  Group,
+  Select,
+  TextInput,
+  ActionIcon,
+  Text,
+  Paper,
+  Box,
+  Tooltip,
+} from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 
 export default function CoursesList() {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<Course[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
-  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number>(1);
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 200);
 
   useEffect(() => {
     loadAllSpecialties()
       .then((data) => {
         setSpecialties(data);
-        const firstSpecialty = data[0];
-        if (firstSpecialty) {
-          setSelectedSpecialtyId(firstSpecialty.id);
-        }
+        if (data[0]) setSelectedSpecialtyId(String(data[0].id));
       })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     if (selectedSpecialtyId) {
-      loadCoursesBySpecialty(selectedSpecialtyId)
+      loadCoursesBySpecialty(Number(selectedSpecialtyId))
         .then(setItems)
         .catch(console.error);
     }
   }, [selectedSpecialtyId]);
 
+  const filteredItems = useMemo(() => {
+    if (!debouncedSearch.trim()) return items;
+    const query = debouncedSearch.toLowerCase().trim();
+    return items.filter((course) => {
+      const name = course.name?.toLowerCase() || "";
+      const okNo = course.data.ok_no?.toLowerCase() || "";
+      const teacher = course.teacher?.toLowerCase() || "";
+      return name.includes(query) || okNo.includes(query) || teacher.includes(query);
+    });
+  }, [items, debouncedSearch]);
+
   const handleFileUpload = async (files: File[]) => {
     setIsUploading(true);
     const uploadPromise = (async () => {
       const results = await uploadMultipleCourses(files);
-      
-      // Count successful uploads
       const successfulUploads = results.filter((r: any) => r.success).length;
       const failedUploads = results.filter((r: any) => !r.success).length;
-      
-      if (successfulUploads > 0) {
-        toast.success(`Успішно оброблено ${successfulUploads} файл${successfulUploads > 1 ? 'и' : ''}`);
-      }
-      
-      if (failedUploads > 0) {
-        toast.error(`Не вдалося обробити ${failedUploads} файл${failedUploads > 1 ? 'и' : ''}`);
-      }
-
+      if (successfulUploads > 0)
+        toast.success(`Успішно оброблено ${successfulUploads} файл${successfulUploads > 1 ? "и" : ""}`);
+      if (failedUploads > 0)
+        toast.error(`Не вдалося обробити ${failedUploads} файл${failedUploads > 1 ? "и" : ""}`);
       return results;
     })();
 
     toast.promise(uploadPromise, {
-      loading: `Завантаження та обробка ${files.length} файл${files.length > 1 ? 'ів' : 'у'}...`,
+      loading: `Завантаження та обробка ${files.length} файл${files.length > 1 ? "ів" : "у"}...`,
       error: "Не вдалося обробити файли",
     });
 
     try {
       const results = await uploadPromise;
-      if (results.length > 0) {
-        const updatedCourses = await loadCoursesBySpecialty(selectedSpecialtyId);
+      if (results.length > 0 && selectedSpecialtyId) {
+        const updatedCourses = await loadCoursesBySpecialty(Number(selectedSpecialtyId));
         setItems(updatedCourses);
       }
     } catch (error) {
@@ -76,39 +92,25 @@ export default function CoursesList() {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: async (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        // Check if any of the dropped items are directories
-        const directoryItems = acceptedFiles.filter(file => file.type === 'application/x-directory');
-        
-        if (directoryItems.length > 0) {
-          // For now, we'll just process the files directly
-          // In a real implementation, you would need browser API support for directory reading
-          toast("Обробка папок ще не підтримується в браузері. Будь ласка, перетягніть файли .docx безпосередньо.");
-          return;
-        }
-        
-        handleFileUpload(acceptedFiles);
+      if (acceptedFiles.length === 0) return;
+      const dirs = acceptedFiles.filter((f) => f.type === "application/x-directory");
+      if (dirs.length > 0) {
+        toast("Обробка папок ще не підтримується. Перетягніть файли .docx безпосередньо.");
+        return;
       }
+      handleFileUpload(acceptedFiles);
     },
-    accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
+    accept: { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] },
     maxFiles: 100,
     disabled: isUploading,
-    onDropRejected: () => {
-      toast.error("Будь ласка, перетягніть файли .docx");
-    }
+    onDropRejected: () => toast.error("Будь ласка, перетягніть файли .docx"),
   });
 
-
   const handleDelete = async (course: Course) => {
-    if (!confirm(`Ви впевнені, що хочете видалити дисципліну "${course.name}"?`)) {
-      return;
-    }
-
+    if (!confirm(`Ви впевнені, що хочете видалити дисципліну "${course.name}"?`)) return;
     try {
       await deleteCourse(course.id);
-      setItems(items.filter(c => c.id !== course.id));
+      setItems(items.filter((c) => c.id !== course.id));
       toast.success("Дисципліну успішно видалено");
     } catch (error) {
       console.error("Error deleting course:", error);
@@ -116,118 +118,110 @@ export default function CoursesList() {
     }
   };
 
+  const specialtyOptions = specialties.map((s) => ({
+    value: String(s.id),
+    label: `${s.code} ${s.name}`,
+  }));
+
   return (
-    <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
-      <div className="mt-8 mx-auto w-full text-left flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-start">
-          <h1 className="font-mono px-2">Дисципліни</h1>
-           <button
-             onClick={() => navigate(`/results/matrix`)}
-             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-             aria-label="Переглянути матрицю результатів"
-             title="Матриця результатів"
-             >
-             <FontAwesomeIcon icon={faTableCells} />
-           </button>
-            <button
-             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/results`)}
-             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-             aria-label="Переглянути дисципліни з результатами"
-             title="Дисципліни з результатами"
-             >
-             <FontAwesomeIcon icon={faListCheck} />
-           </button>
-           <button
-             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/graph`)}
-             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-             aria-label="Переглянути граф залежностей дисциплін"
-             title="Граф залежностей"
-             >
-             <FontAwesomeIcon icon={faSitemap} />
-           </button>
-           <button
-             onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/summary`)}
-             className="text-amber-50 hover:text-amber-200 cursor-pointer px-2 py-1 flex items-center"
-             aria-label="Переглянути зведення годин"
-             title="Зведення годин"
-             >
-             <FontAwesomeIcon icon={faChartPie} />
-           </button>
-           </div>
+    <Stack maw={1200} mx="auto">
+      <Group justify="space-between" align="flex-start">
+        <Group align="center" gap="xs">
+          <Title order={2}>Дисципліни</Title>
+          <Tooltip label="Матриця результатів">
+            <ActionIcon variant="subtle" onClick={() => navigate("/results/matrix")}>
+              <FontAwesomeIcon icon={faTableCells} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Дисципліни з результатами">
+            <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/results`)}>
+              <FontAwesomeIcon icon={faListCheck} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
 
-          <select
-            className="bg-zinc-900 border-2 border-amber-50 text-amber-50 font-mono px-3 py-1 rounded outline-none focus:text-white"
+        <Group gap="sm">
+          <Select
+            data={specialtyOptions}
             value={selectedSpecialtyId}
-            onChange={(e) => setSelectedSpecialtyId(Number(e.target.value))}
-          >
-            {specialties.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedSpecialtyId}
+            searchable
+            w={280}
+          />
+          <TextInput
+            placeholder="Пошук..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.currentTarget.value)}
+            w={160}
+          />
+          <Tooltip label="Нова дисципліна">
+            <ActionIcon variant="default" onClick={() => navigate("/courses/new")}>
+              <FontAwesomeIcon icon={faPlus} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </Group>
 
-          <button
-            onClick={() => navigate("/courses/new")}
-            className="text-amber-50 hover:text-amber-200 cursor-pointer px-4 py-2 font-bold flex items-center"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {items.length === 0 ? (
-            <div className="text-amber-50 font-mono">Немає дисциплін</div>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {items.map(d => (
-                <li key={d.id} className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 text-amber-50 font-mono flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="font-bold">{formatDisciplineCode(d.data.ok_no)}. {d.name}</div>
-                    <div className="text-sm opacity-80">Автор: {d.teacher ?? d.teacher_id}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => navigate(`/courses/${d.id}`)} 
-                      className="text-amber-50 hover:text-amber-200 opacity-60 hover:opacity-100 transition-opacity"
-                      aria-label="Редагувати дисципліну"
-                      title="Редагувати дисципліну"
-                    >
+      <Stack gap="xs">
+        {filteredItems.length === 0 ? (
+          <Text c="dimmed">
+            {searchQuery ? "Немає дисциплін, що відповідають пошуку" : "Немає дисциплін"}
+          </Text>
+        ) : (
+          filteredItems.map((d) => (
+            <Paper key={d.id} withBorder p="sm">
+              <Group justify="space-between" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text fw={600} truncate>
+                    {formatDisciplineCode(d.data.ok_no)}. {d.name}
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Викладач: {d.teacher ?? d.teacher_id}
+                  </Text>
+                </Box>
+                <Group gap="xs" wrap="nowrap">
+                  <Tooltip label="Редагувати">
+                    <ActionIcon variant="subtle" onClick={() => navigate(`/courses/${d.id}`)}>
                       <FontAwesomeIcon icon={faPen} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(d)} 
-                      className="text-amber-50 hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity"
-                      aria-label="Видалити дисципліну"
-                      title="Видалити дисципліну"
-                    >
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Видалити">
+                    <ActionIcon variant="subtle" color="red" onClick={() => handleDelete(d)}>
                       <FontAwesomeIcon icon={faTrash} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+            </Paper>
+          ))
+        )}
+      </Stack>
 
-        <div className="bg-zinc-900 border-2 border-amber-50 rounded-xl p-3 font-mono">
-          <label className="block text-amber-50 font-bold mb-2">Створити з Силабуса чи Робочої програми (.docx):</label>
-          <div
-            {...getRootProps()}
-            className={`border-2 ${isDragActive ? "border-amber-200 border-dashed bg-zinc-800" : "border-transparent"} rounded-lg p-4 text-center transition-colors duration-200 ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
-          >
-            <input {...getInputProps()} />
-             {isUploading ? (<span className="text-amber-50">Завантаження...</span>) : (
-               <span className="text-amber-50">
-                 {isDragActive ? "Відпустіть файли тут" : "Перетягніть файли .docx або натисніть для вибору"}
-               </span>
-             )}
-          </div>
-        </div>
-      </div>
-    </div>
+      <Paper withBorder p="md">
+        <Text fw={500} mb="xs">Створити з Силабуса чи Робочої програми (.docx):</Text>
+        <Box
+          {...getRootProps()}
+          p="xl"
+          style={{
+            border: `2px dashed var(--mantine-color-${isDragActive ? "blue-5" : "default-border"})`,
+            borderRadius: "var(--mantine-radius-sm)",
+            textAlign: "center",
+            cursor: isUploading ? "not-allowed" : "pointer",
+            opacity: isUploading ? 0.5 : 1,
+            backgroundColor: isDragActive ? "var(--mantine-color-blue-light)" : undefined,
+            transition: "all 150ms ease",
+          }}
+        >
+          <input {...getInputProps()} />
+          <Text c="dimmed">
+            {isUploading
+              ? "Завантаження..."
+              : isDragActive
+              ? "Відпустіть файли тут"
+              : "Перетягніть файли .docx або натисніть для вибору"}
+          </Text>
+        </Box>
+      </Paper>
+    </Stack>
   );
 }
-
-

@@ -7,7 +7,7 @@ import generationApi from "@/api/generation-api.ts";
 import resultsApi from "@/api/results-api.ts";
 import templatesApi from "@/api/templates-api.ts";
 import specialtiesApi from "@/api/specialties-api.ts";
-import chatApi from "@/api/chat-api.ts";
+import mcpApi from "@/api/mcp-server.ts";
 import { NotFoundError } from "openai";
 
 const routes = {    
@@ -18,12 +18,11 @@ const routes = {
   ...resultsApi,
   ...templatesApi,
   ...specialtiesApi,
-  ...chatApi
+  ...mcpApi
 };
 
 const server = serve({
   routes: routes,
-
   development: process.env.NODE_ENV !== "production" && {
     hmr: true, // Enable browser hot reloading in development
     console: true, // Echo console logs from the browser to the server

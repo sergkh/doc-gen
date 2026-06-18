@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Select } from "@mantine/core";
 
 interface Option {
   value: number;
@@ -13,54 +13,18 @@ interface InPlaceEditorProps {
   onChange: (newValue: number) => void;
 }
 
-export default function InPlaceEditor({
-  value,
-  options,
-  displayText,
-  title,
-  onChange,
-}: InPlaceEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
-
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = Number(e.target.value);
-    onChange(newValue);
-  };
-
-  const handleBlur = () => {
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <select
-        value={value}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        autoFocus
-        className="bg-zinc-900 border border-amber-50 text-amber-50 font-mono text-xs px-2 py-0.5 rounded outline-none focus:text-white"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
+export default function InPlaceEditor({ value, options, title, onChange }: InPlaceEditorProps) {
   return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsEditing(true);
-      }}
-      className="bg-zinc-900 px-2 py-0.5 rounded hover:bg-zinc-800 transition-colors cursor-pointer"
+    <Select
+      data={options.map((o) => ({ value: String(o.value), label: o.label }))}
+      value={String(value)}
+      onChange={(v) => { if (v) onChange(Number(v)); }}
       title={title}
-    >
-      {displayText}
-    </button>
+      size="xs"
+      w="auto"
+      styles={{ input: { minWidth: 80 } }}
+      withCheckIcon={false}
+      onClick={(e) => e.stopPropagation()}
+    />
   );
 }
-

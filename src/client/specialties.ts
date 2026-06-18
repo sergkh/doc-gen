@@ -28,13 +28,13 @@ export async function loadSpecialty(id: string): Promise<Specialty> {
   const res = await fetch(`/api/specialties/${id}`);
 
   if (!res.ok) {
-    throw new Error(`Помилка завантаження спеціальності: ${res.status}`);
+    throw new Error(`Помилка завантаження спеціальності ${id}: ${res.status}`);
   }
 
   return await res.json() as Specialty;
 }
 
-export async function upsertSpecialty(specialty: Specialty): Promise<void> {
+export async function upsertSpecialty(specialty: Specialty): Promise<Specialty> {
   const method = specialty.id >= 0 ? "PUT" : "POST";
   const url = specialty.id >= 0 ? `/api/specialties/${specialty.id}` : `/api/specialties`;
 
@@ -61,6 +61,8 @@ export async function upsertSpecialty(specialty: Specialty): Promise<void> {
   if (!res.ok) {
     throw new Error(`Помилка збереження спеціальності: ${res.status}`);
   }
+
+  return await res.json() as Specialty;
 }
 
 export async function deleteSpecialty(id: number): Promise<void> {
