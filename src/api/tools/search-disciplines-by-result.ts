@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/server";
+import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { courseResults, courses } from "@/stores/db";
-import { getSessionContext } from "./session-context";
+import { getSessionContext, toolResult } from "./session-context";
 import type { ResultType } from "@/stores/models";
 
 function normalizeResultType(raw: string): ResultType | null {
@@ -26,9 +26,12 @@ export function registerSearchDisciplinesByResult(server: McpServer) {
     "search_disciplines_by_result",
     {
       description:
-        "Шукає дисципліни за результатом (ЗК, СК, ПР/РН). Аргументи: specialtyId (number), result (string на кшталт 'ЗК-3').",
+        "Шукає дисципліни за результатом (ЗК, СК, ПР/РН). Вимагає встановлення спеціальності через set_specialty_context. Аргументи: result (string на кшталт 'ЗК-3').",
+      annotations: {
+        idempotentHint: true,
+        readOnlyHint: true,
+      },
       inputSchema: z.object({
-        specialtyId: z.number().int().positive(),
         result: z.string(),
       }),
       outputSchema: z.object({
@@ -55,22 +58,19 @@ export function registerSearchDisciplinesByResult(server: McpServer) {
           .optional(),
       }),
     },
-    async ({ specialtyId, result }: { specialtyId: number; result: string }, ctx) => {
+    async ({ result }: { result: string }, ctx: ServerContext) => {
+      const current = getSessionContext(ctx.sessionId);
       console.log("MCP tool search_disciplines_by_result called", {
         sessionId: ctx.sessionId,
-        specialtyId,
+        specialtyId: current.specialty?.id,
         result,
       });
+      
       try {
-        const current = getSessionContext(ctx.sessionId);
-        const effectiveSpecialtyId = specialtyId ?? current.specialtyId;
-
-        if (!effectiveSpecialtyId) {
-          const message = "Не вказано specialtyId і не встановлено в контексті.";
-          return {
-            content: [{ type: "text", text: message }],
-            structuredContent: { status: "error", message, result: null, items: [] },
-          };
+        
+        if (!current.specialty) {
+          const message = "Спеціальність не встановлено в контексті. Викличте set_specialty_context для встановлення спеціальності.";
+          return toolResult(message, current, "dependency_not_met");
         }
 
         const parsed = parseResultQuery(result);
@@ -88,7 +88,7 @@ export function registerSearchDisciplinesByResult(server: McpServer) {
           };
         }
 
-        const results = await courseResults.bySpecialty(effectiveSpecialtyId);
+        const results = await courseResults.bySpecialty(current.specialty.id);
         const matchedResult = results.find((r) => r.type === parsed.type && r.no === parsed.no) || null;
 
         if (!matchedResult) {
@@ -99,7 +99,7 @@ export function registerSearchDisciplinesByResult(server: McpServer) {
           };
         }
 
-        const allCourses = (await courses.bySpecialty(effectiveSpecialtyId)).filter(
+        const allCourses = (await courses.bySpecialty(current.specialty.id)).filter(
           (course) => Array.isArray(course.data?.results) && course.data.results.includes(matchedResult.id)
         );
 
@@ -132,12 +132,27 @@ export function registerSearchDisciplinesByResult(server: McpServer) {
             },
             items,
           },
+        } satisfies {
+          content: { type: "text"; text: string }[];
+          structuredContent: {
+            status: string;
+            message: string;
+            result: {
+              id: number;
+              type: ResultType;
+              no: number;
+              name: string;
+            };
+            items: typeof items;
+          };
         };
+        
         console.log("MCP tool search_disciplines_by_result success", {
           sessionId: ctx.sessionId,
-          specialtyId: effectiveSpecialtyId,
+          specialtyId: current.specialty.id,
           items: items.length,
         });
+
         return response;
       } catch (error) {
         console.error("MCP search_disciplines_by_result error:", error);

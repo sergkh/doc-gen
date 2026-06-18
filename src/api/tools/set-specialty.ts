@@ -1,13 +1,18 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { setSessionSpecialty, getSessionContext } from "./session-context";
+import { setSessionSpecialty, getSessionContext, ZodContext, toolResult } from "./session-context";
 import { specialties } from "@/stores/db";
+import type { Specialty } from "@/stores/models";
 
 export function registerSetSpecialty(server: McpServer) {
   server.registerTool(
     "set_specialty_context",
     {
       description: "Встановлює контекст спеціальності для поточної сесії (за id, code або name)",
+      annotations: {
+        idempotentHint: true,
+        readOnlyHint: false,
+      },
       inputSchema: z.object({
         code: z.string().optional(),
         name: z.string().optional(),
@@ -15,17 +20,7 @@ export function registerSetSpecialty(server: McpServer) {
       outputSchema: z.object({
         status: z.string(),
         message: z.string(),
-        context: z.object({
-          specialtyId: z.number().int().positive().optional(),
-          discipline: z
-            .object({
-              id: z.number(),
-              name: z.string().nullable().optional(),
-              okNo: z.string().nullable().optional(),
-              teacher: z.string().nullable().optional(),
-            })
-            .optional(),
-        }),
+        context: ZodContext
       }),
     },
     async (
@@ -38,52 +33,37 @@ export function registerSetSpecialty(server: McpServer) {
           code,
           name,
         });
-      const candidates: Array<() => Promise<number | null>> = [
+      const candidates: Array<() => Promise<Specialty | null>> = [
         async () => {
           if (!code) return null;
-          const found = await specialties.findByCode(code.trim());
-          return found?.id ?? null;
+          return (await specialties.findByCode(code.toUpperCase().trim())) ?? null;
         },
         async () => {
           if (!name) return null;
-          const found = await specialties.findByName(name.trim());
-          return found?.id ?? null;
+          return (await specialties.findByName(name.trim())) ?? null;
         },
       ];
 
-      let resolvedId: number | null = null;
+      let resolvedSpecialty: Specialty | null = null;
       for (const resolver of candidates) {
-        resolvedId = await resolver();
-        if (resolvedId) break;
+        resolvedSpecialty = await resolver();
+        if (resolvedSpecialty) break;
       }
 
-      if (!resolvedId) {
-        const message = "Спеціальність не знайдена: вкажіть назву спеціальності або її код";
-        return {
-          content: [{ type: "text", text: message }],
-          structuredContent: {
-            status: "not_found",
-            message,
-            context: getSessionContext(ctx.sessionId),
-          },
-        };
+      if (!resolvedSpecialty) {
+        const message = "Спеціальність не знайдено: вкажіть назву спеціальності або її код";
+        return toolResult(message, getSessionContext(ctx.sessionId), "not_found");
       }
 
-      setSessionSpecialty(ctx.sessionId, resolvedId);
-      const context = getSessionContext(ctx.sessionId);
-      const message = `Спеціальність встановлена: ${resolvedId}`;
-        console.log("MCP tool set_specialty_context success", {
-          sessionId: ctx.sessionId,
-          resolvedId,
-        });
-      return {
-        content: [{ type: "text", text: message }],
-        structuredContent: {
-          status: "ok",
-          message,
-          context,
-        },
-      };
+      const context = setSessionSpecialty(ctx.sessionId, resolvedSpecialty);
+
+      console.log("MCP tool set_specialty_context success", {
+        sessionId: ctx.sessionId,
+        id: resolvedSpecialty.id,
+        name: resolvedSpecialty.name
+      });
+
+      return toolResult(`Спеціальність встановлено: ${resolvedSpecialty.code} ${resolvedSpecialty.name} (${resolvedSpecialty.id})`, context);
     }
   );
 }
