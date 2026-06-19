@@ -3,6 +3,7 @@ import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { courses, specialties, teachers } from "@/stores/db";
 import { getSessionContext, setSessionCourse, toolResult, type ToolResult } from "./session-context";
 import type { Course, CourseData } from "@/stores/models";
+import { coursesService } from "@/services/courses-service";
 
 const ZodInput = z.object({
   name: z.string().min(1, "Вкажіть назву курсу"),
@@ -110,9 +111,9 @@ export function registerCreateCourse(server: McpServer) {
         version: 1,
       } as Course;
 
-      const created = await courses.add(insertPayload);
+      const created = await coursesService.createCourse(insertPayload, 'Generated using MCP');
 
-      setSessionCourse(ctx.sessionId, created);
+      setSessionCourse(ctx.sessionId, created, []);
 
       console.log("MCP tool create_course success", { sessionId: ctx.sessionId, specialtyId: specialty.id, courseId: created?.id });
 

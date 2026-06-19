@@ -1,14 +1,14 @@
-import mammoth from 'mammoth';
-import fs from 'fs/promises';
+
 import { z } from "zod";
 import type { AcademicTitle, Course, CourseSemesters, CourseTopic, ParsedData, Teacher, TeacherPosition } from '@/stores/models';
-import { PDFParse } from 'pdf-parse';
+
 import path from 'path';
 import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
 import { dropDot, genericNormalize  } from '@/parsing/utils';
+import { docx2text } from "./files";
 
 // Methods to parse syllabuses and programs from .docx and .pdf files
 
@@ -370,7 +370,8 @@ async function parseSylabus(filepath: string, text: string, dryRun: boolean = fa
         type: 'syllabus',
         topics: topics,
         parsed_teacher: teacher,
-        parse_warnings: warnings
+        parse_warnings: warnings,
+        version: 1
       };
 
     return course;
@@ -619,7 +620,8 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
       type: 'program',
       topics: topics,
       parsed_teacher: teacher,
-      parse_warnings: warnings
+      parse_warnings: warnings,
+      version: 1
     };
 
     return course;
@@ -628,33 +630,6 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     return null;
   }
 }
-
-async function docx2text<T>(filepath: string): Promise<string> {
-  const fileBuffer = await fs.readFile(filepath);
-  const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
-  return value;
-}
-
-async function pdf2text(filepath: string): Promise<string> {
-  try {
-  const fileBuffer = await fs.readFile(filepath);
-  const pdf = new PDFParse({ data: fileBuffer });
-    const text = await pdf.getText();
-    return text.text || "";
-  } catch (error) {
-    console.error("Error parsing PDF:", error);
-    return "";
-  }
-}
-
-export async function file2text(filepath: string): Promise<string> {
-  if (filepath.endsWith(".pdf")) {
-    return await pdf2text(filepath);
-  } else {
-    return await docx2text(filepath);
-  }
-}
-
 
 async function parseSylabusOrProgramResults(text: string, specialty_id: number | null): Promise<{ ids: number[], warnings: string[] }> {
   const allResults = specialty_id ? await courseResults.bySpecialty(specialty_id) : [];

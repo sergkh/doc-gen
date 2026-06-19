@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { coursesService } from "./courses-service";
+import mock from "@/stores/db-mock.test";
+const { coursesService } = await import("./courses-service");
 
 describe("coursesService", () => {
   describe("mergeCourseData", () => {

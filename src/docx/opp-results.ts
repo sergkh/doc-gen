@@ -1,11 +1,9 @@
-import type { CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { z } from "zod";
-import { file2text } from "./parse";
+import type { CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { extractInformationAI } from "@/ai/extractor";
-import { specialties } from "@/stores/db";
 import { extractDocTables, findFirstTable, findNextTable, findNextTableRow, findTableRow, type DocTable } from "./structured-parser";
-import { find } from "node_modules/cheerio/dist/esm/api/traversing";
 import { dropDot, normalizeWhitespaces } from "@/parsing/utils";
+import { file2text } from "./files";
 
 export type OPPCourse = {
   name: string;

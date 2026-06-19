@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { courses } from "@/stores/db";
+import { courses, courseTopics } from "@/stores/db";
 import { setSessionCourse, getSessionContext, ZodContext, toolResult } from "./session-context";
 
 export function registerSetActiveCourse(server: McpServer) {
@@ -54,11 +54,11 @@ export function registerSetActiveCourse(server: McpServer) {
         return toolResult(message, context, "not_found");
       }
 
-      const updatedContext = setSessionCourse(ctx.sessionId, found);
+      const topics = await courseTopics.all(found.id);
+
+      const updatedContext = setSessionCourse(ctx.sessionId, found, topics);
 
       const message = `Курс встановлений: (${found.data?.ok_no ?? ""}) ${found.name} `;
-
-      const response = { status: "ok", message, context: updatedContext };
 
       console.log("MCP tool set_course_context success", 
         { sessionId: ctx.sessionId, id: found.id, name: found.name }

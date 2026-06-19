@@ -267,6 +267,7 @@ export const coursesService = {
   createCourse,
   getCourses,
   mergeCourseData,
+  mergeCourseTopics,
   mergeCourseTopic,
   updateCourse,
   parseCourseDataUpload,

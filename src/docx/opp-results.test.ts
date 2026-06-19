@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect } from "bun:test";
+import mock from "@/stores/db-mock.test";
 import { parseOPPResults, parseOPP } from "./opp-results";
 
 describe("parseOPPResults", () => {
@@ -87,7 +88,7 @@ describe("parseOPPResults", () => {
     });
   });
 
- describe("Edge cases", () => {
+  describe("Edge cases", () => {
     it("should handle empty text", () => {
       const results = parseOPPResults("", "ЗК");
       expect(results).toHaveLength(0);

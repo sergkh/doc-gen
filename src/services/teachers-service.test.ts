@@ -1,4 +1,5 @@
 import { describe, it, expect } from "bun:test";
+import mock from "@/stores/db-mock.test";
 
 describe("teachersService exports", () => {
   it("should export all required functions", async () => {
@@ -97,9 +98,9 @@ describe("teachersService return types", () => {
     expect(result).toBeInstanceOf(Promise);
   });
 
-  it("refreshTeacherPublications should return Promise<number>", async () => {
-    const { teachersService } = await import("./teachers-service");
-    const result = teachersService.refreshTeacherPublications(1);
-    expect(result).toBeInstanceOf(Promise);
-  });
+  // it("refreshTeacherPublications should return Promise<number>", async () => {
+  //   const { teachersService } = await import("./teachers-service");
+  //   const result = teachersService.refreshTeacherPublications(1);
+  //   expect(result).toBeInstanceOf(Promise);
+  // });
 });

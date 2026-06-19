@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Course, Specialty } from "@/stores/models";
+import type { Course, CourseTopic, Specialty } from "@/stores/models";
 
 export const ZodSpecialty = z.object({
   id: z.number().int().positive(),
@@ -25,6 +25,7 @@ export const ZodContext = z.object({
 export type SessionContext = {
   specialty?: Specialty;
   course?: Course;
+  topics?: CourseTopic[];
 };
 
 export type ToolContentResult = { type: "text"; text: string }[];
@@ -56,12 +57,15 @@ export function getSessionContext(sessionId: string | undefined): SessionContext
 export function setSessionSpecialty(sessionId: string | undefined, specialty: Specialty): SessionContext {
   const ctx = getOrInit(sessionId);
   ctx.specialty = specialty;
+  delete ctx.course;
+  delete ctx.topics;
   return ctx;
 }
 
-export function setSessionCourse(sessionId: string | undefined, course: Course | null): SessionContext {
+export function setSessionCourse(sessionId: string | undefined, course: Course | null, topics: CourseTopic[]): SessionContext {
   const ctx = getOrInit(sessionId);
   ctx.course = course ?? undefined;
+  ctx.topics = topics;
   return ctx;
 }
 

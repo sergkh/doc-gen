@@ -6,6 +6,8 @@ import { registerCreateCourse } from "./tools/create-course";
 import { registerListSpecialties } from "./tools/list-specialties";
 import { registerListCourses } from "./tools/list-courses";
 import { registerUpdateCourseTopics } from "./tools/update-course-topics";
+import { registerGetCurrentSpecialtyFullInfo } from "./tools/get-current-specialty-full-info";
+import { registerGetCurrentCourseFullInfo } from "./tools/get-current-course-full-info";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -30,6 +32,8 @@ const server = new McpServer(SERVER_INFO, {
     - search_disciplines_by_result (пошук курсів за результатом)
     - list_courses (список курсів за specialtyId)
     - list_specialties (список спеціальностей і кодів)
+    - get_current_specialty_full_info (повна інформація про поточну спеціальність: дані спеціальності, результати, дисципліни з ОК)
+    - get_current_course_full_info (повна інформація про поточний курс: дані курсу і список тем)
     - create_course (створення курсу для поточної спеціальності; потребує підтвердження користувача, робить дисципліну активною після створення)
     - update_course_topics (оновлення тем активної дисципліни; потребує confirm=true)
     `
@@ -42,6 +46,8 @@ registerSetActiveCourse(server);
 registerCreateCourse(server);
 registerListSpecialties(server);
 registerUpdateCourseTopics(server);
+registerGetCurrentSpecialtyFullInfo(server);
+registerGetCurrentCourseFullInfo(server);
 
 export async function handleMcpRequest(req: Request): Promise<Response> {
   const sessionId = req.headers.get("mcp-session-id");

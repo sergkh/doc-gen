@@ -9,11 +9,11 @@ describe("formatPrompt", () => {
     });
 
     it("should return null as-is", () => {
-      expect(formatPrompt(null as any, {})).toBe(null);
+      expect(formatPrompt(null as any, {})).toBe(null as any);
     });
 
     it("should return undefined as-is", () => {
-      expect(formatPrompt(undefined as any, {})).toBe(undefined);
+      expect(formatPrompt(undefined as any, {})).toBe(undefined as any);
     });
 
     it("should return template without placeholders unchanged", () => {

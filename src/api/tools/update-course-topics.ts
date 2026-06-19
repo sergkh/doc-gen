@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
-import { courseTopics } from "@/stores/db";
+import { coursesService } from "@/services/courses-service";
 import { getSessionContext, toolResult, type ToolResult } from "./session-context";
 import type { CourseTopicData } from "@/stores/models";
 
@@ -62,32 +62,19 @@ export function registerUpdateCourseTopics(server: McpServer) {
       }
 
       let updated = 0;
-
-      // Upsert pattern: update when id present, else insert
-      for (const topic of args.topics) {
-        if (topic.id) {
-          await courseTopics.update({
-            id: topic.id,
-            course_id: current.course.id,
-            index: topic.index,
-            name: topic.name,
-            lection: topic.lection,
-            data: topic.data,
-            generated: {},
-          } as any);
-          updated += 1;
-        } else {
-          await courseTopics.add({
-            course_id: current.course.id,
-            index: topic.index,
-            name: topic.name,
-            lection: topic.lection,
-            data: topic.data,
-            generated: {},
-          } as any);
-          updated += 1;
-        }
-      }
+      await coursesService.mergeCourseTopics(
+        current.course.id,
+        args.topics.map((topic) => ({
+          id: topic.id ?? 0,
+          course_id: current.course!.id,
+          index: topic.index,
+          name: topic.name,
+          lection: topic.lection,
+          data: topic.data,
+          generated: {},
+        })) as any
+      );
+      updated = args.topics.length;
 
       console.log("MCP tool update_course_topics success", { sessionId: ctx.sessionId, courseId: current.course.id, updated });
 
