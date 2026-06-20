@@ -35,8 +35,7 @@ const ZodInput = z.object({
 
 const ZodOutput = z.object({
   status: z.string(),
-  message: z.string(),
-  updated: z.number(),
+  message: z.string()
 });
 
 type Input = z.infer<typeof ZodInput>;
@@ -45,9 +44,17 @@ export function registerUpdateCourseTopics(server: McpServer) {
   server.registerTool(
     "update_course_topics",
     {
-      description: "Оновлює теми для активної дисципліни в контексті. Потрібно підтвердження confirm=true.",
+      description: "Оновлює теми для активної дисципліни в контексті. Потрібно підтвердження confirm=true. " +
+        "Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних. " +
+        "Дисципліна має або практичні або лабораторні занняття, але не одночасно. Тому одна з цих категорій буде завжди 0." +
+        "Загальну кількість годин можна взяти з дисципліни (курсу) і сумарно всі години тем мають відповідати загальній кількості годин дисципліни.",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,
+      annotations: {
+        idempotentHint: true,
+        destructiveHint: true,
+        readOnlyHint: false
+      }
     },
     async (args: Input, ctx: ServerContext): Promise<ToolResult> => {
       const current = getSessionContext(ctx.sessionId);
@@ -60,8 +67,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
       if (!args.confirm) {
         return toolResult("Підтвердіть оновлення тем: confirm=true", current, "missing_input");
       }
-
-      let updated = 0;
+    
       await coursesService.mergeCourseTopics(
         current.course.id,
         args.topics.map((topic) => ({
@@ -74,18 +80,10 @@ export function registerUpdateCourseTopics(server: McpServer) {
           generated: {},
         })) as any
       );
-      updated = args.topics.length;
 
-      console.log("MCP tool update_course_topics success", { sessionId: ctx.sessionId, courseId: current.course.id, updated });
+      console.log("MCP tool update_course_topics success", { sessionId: ctx.sessionId, courseId: current.course.id });
 
-      return {
-        content: [{ type: "text", text: `Оновлено тем: ${updated}` }],
-        structuredContent: {
-          status: "ok",
-          message: "Теми оновлено",
-          context: current,
-        },
-      };
+      return toolResult("Оновлено ${args.topics.length} тем", current);
     }
   );
 }

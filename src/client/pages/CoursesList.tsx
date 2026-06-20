@@ -21,6 +21,8 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 
+const LAST_SELECTED_SPECIALTY_KEY = "courses:lastSelectedSpecialtyId";
+
 export default function CoursesList() {
   const navigate = useNavigate();
 
@@ -35,10 +37,23 @@ export default function CoursesList() {
     loadAllSpecialties()
       .then((data) => {
         setSpecialties(data);
-        if (data[0]) setSelectedSpecialtyId(String(data[0].id));
+        if (!data[0]) return;
+
+        const savedSpecialtyId = localStorage.getItem(LAST_SELECTED_SPECIALTY_KEY);
+        const hasSavedSpecialty = savedSpecialtyId
+          ? data.some((specialty) => String(specialty.id) === savedSpecialtyId)
+          : false;
+
+        setSelectedSpecialtyId(hasSavedSpecialty ? savedSpecialtyId : String(data[0].id));
       })
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (selectedSpecialtyId) {
+      localStorage.setItem(LAST_SELECTED_SPECIALTY_KEY, selectedSpecialtyId);
+    }
+  }, [selectedSpecialtyId]);
 
   useEffect(() => {
     if (selectedSpecialtyId) {

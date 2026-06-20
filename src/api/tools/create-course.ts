@@ -34,11 +34,16 @@ export function registerCreateCourse(server: McpServer) {
   server.registerTool(
     "create_course",
     {
-      description: "Створює курс для поточної спеціальності. Потрібні: назва, ОК/ВК номер, ПІБ викладача, години (лекції, СРС, практика/лабораторні), опис. Потребує підтвердження.",
+      description: "Створює курс для поточної спеціальності. " +
+      "Потрібні: назва, ОК/ВК номер, ПІБ викладача, години (лекції, СРС, практика/лабораторні), опис. Потребує підтвердження." + 
+      "Замість точної кількості годин можна вказати кількість кредитів. Зазвичай 5 кредитів це 150 годин з яких 26 год лекцій, 24 год практичних чи лабораторних, 100 год – СРС. " +
+      "якщо 3 кредити то це 16 год лекцій, 14 год практичних чи лабораторних та 90 год – СРС",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,
       annotations: {
-        destructiveHint: true
+        destructiveHint: true,
+        idempotentHint: false,
+        readOnlyHint: false
       }
     },
     async (args: Input, ctx: ServerContext): Promise<ToolResult> => {
