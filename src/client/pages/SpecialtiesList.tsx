@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faUpload } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faUpload, faBook } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { Specialty } from "@/stores/models";
@@ -91,6 +91,11 @@ export default function SpecialtiesList() {
                   </Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">
+                  <Tooltip label="Дисципліни">
+                    <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${s.id}/courses`)}>
+                      <FontAwesomeIcon icon={faBook} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Редагувати">
                     <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${s.id}`)}>
                       <FontAwesomeIcon icon={faPen} />

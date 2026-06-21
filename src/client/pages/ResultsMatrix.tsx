@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExclamationTriangle, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
@@ -43,6 +44,9 @@ function formatResultCode(result: CourseResult): string {
 }
 
 export default function ResultsMatrix() {
+  const navigate = useNavigate();
+  const { specialtyId: urlSpecialtyId } = useParams<{ specialtyId: string }>();
+
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
@@ -55,7 +59,13 @@ export default function ResultsMatrix() {
     loadAllSpecialties()
       .then((list) => {
         setSpecialties(list);
-        if (list[0]) setSelectedSpecialtyId(String(list[0].id));
+        if (!list[0]) return;
+
+        const idFromUrl = urlSpecialtyId && list.some((s) => String(s.id) === urlSpecialtyId)
+          ? urlSpecialtyId
+          : null;
+
+        setSelectedSpecialtyId(idFromUrl ?? String(list[0].id));
       })
       .catch(() => toast.error("Не вдалося завантажити спеціальності"));
   }, []);
@@ -144,7 +154,10 @@ export default function ResultsMatrix() {
         <Select
           data={specialtyOptions}
           value={selectedSpecialtyId}
-          onChange={setSelectedSpecialtyId}
+          onChange={(value) => {
+            setSelectedSpecialtyId(value);
+            if (value) navigate(`/specialties/${value}/results/matrix`);
+          }}
           placeholder="Виберіть спеціальність"
           searchable
           w={360}

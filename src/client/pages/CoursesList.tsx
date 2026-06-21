@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPie } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
@@ -25,6 +25,7 @@ const LAST_SELECTED_SPECIALTY_KEY = "courses:lastSelectedSpecialtyId";
 
 export default function CoursesList() {
   const navigate = useNavigate();
+  const { specialtyId: urlSpecialtyId } = useParams<{ specialtyId: string }>();
 
   const [items, setItems] = useState<Course[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -39,12 +40,19 @@ export default function CoursesList() {
         setSpecialties(data);
         if (!data[0]) return;
 
-        const savedSpecialtyId = localStorage.getItem(LAST_SELECTED_SPECIALTY_KEY);
-        const hasSavedSpecialty = savedSpecialtyId
-          ? data.some((specialty) => String(specialty.id) === savedSpecialtyId)
-          : false;
+        const idFromUrl = urlSpecialtyId && data.some((s) => String(s.id) === urlSpecialtyId)
+          ? urlSpecialtyId
+          : null;
 
-        setSelectedSpecialtyId(hasSavedSpecialty ? savedSpecialtyId : String(data[0].id));
+        if (idFromUrl) {
+          setSelectedSpecialtyId(idFromUrl);
+        } else {
+          const savedSpecialtyId = localStorage.getItem(LAST_SELECTED_SPECIALTY_KEY);
+          const hasSavedSpecialty = savedSpecialtyId
+            ? data.some((specialty) => String(specialty.id) === savedSpecialtyId)
+            : false;
+          setSelectedSpecialtyId(hasSavedSpecialty ? savedSpecialtyId : String(data[0].id));
+        }
       })
       .catch(console.error);
   }, []);
@@ -144,7 +152,7 @@ export default function CoursesList() {
         <Group align="center" gap="xs">
           <Title order={2}>Дисципліни</Title>
           <Tooltip label="Матриця результатів">
-            <ActionIcon variant="subtle" onClick={() => navigate("/results/matrix")}>
+              <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/results/matrix`)}>
               <FontAwesomeIcon icon={faTableCells} />
             </ActionIcon>
           </Tooltip>
@@ -159,8 +167,10 @@ export default function CoursesList() {
           <Select
             data={specialtyOptions}
             value={selectedSpecialtyId}
-            onChange={setSelectedSpecialtyId}
-            searchable
+            onChange={(value) => {
+              setSelectedSpecialtyId(value);
+              if (value) navigate(`/specialties/${value}/courses`);
+            }}
             w={280}
           />
           <TextInput

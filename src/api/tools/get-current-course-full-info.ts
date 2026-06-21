@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
+import { courses, courseTopics } from "@/stores/db";
 import { getSessionContext, toolResult, ZodContext, type ToolContentResult } from "./session-context";
 
 const ZodOutput = z.object({
@@ -64,15 +65,23 @@ export function registerGetCurrentCourseFullInfo(server: McpServer) {
           );
         }
 
-        const topics = current.topics ?? [];
-        const message = `Повернуто повну інформацію про курс: ${current.course.name}. Кількість тем: ${topics.length}.`;
+        const [course, topics] = await Promise.all([
+          courses.get(current.course.id),
+          courseTopics.all(current.course.id),
+        ]);
+
+        if (!course) {
+          return toolResult("Дисципліну не знайдено в базі даних.", current, "not_found");
+        }
+
+        const message = `Повернуто повну інформацію про курс: ${course.name}. Кількість тем: ${topics.length}.`;
 
         return {
           content: [{ type: "text", text: message }] as ToolContentResult,
           structuredContent: {
             status: "ok",
             message,
-            course: current.course,
+            course,
             topics,
             count: {
               topics: topics.length,

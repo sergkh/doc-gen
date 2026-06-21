@@ -1,20 +1,13 @@
 import { z } from "zod";
-import type { Course, CourseTopic, Specialty } from "@/stores/models";
 
 export const ZodSpecialty = z.object({
   id: z.number().int().positive(),
-  code: z.string(),
-  name: z.string(),
-  area: z.string()
+  name: z.string()
 });
 
 export const ZodCourse = z.object({
   id: z.number().int().positive(),
-  name: z.string(),
-  teacher_id: z.number().int().positive(),
-  data: z.object({
-    ok_no: z.string().nullable().optional()
-  })
+  name: z.string()
 });
 
 export const ZodContext = z.object({
@@ -23,9 +16,8 @@ export const ZodContext = z.object({
 });
 
 export type SessionContext = {
-  specialty?: Specialty;
-  course?: Course;
-  topics?: CourseTopic[];
+  specialty?: { id: number; name: string };
+  course?: { id: number; name: string };
 };
 
 export type ToolContentResult = { type: "text"; text: string }[];
@@ -54,18 +46,16 @@ export function getSessionContext(sessionId: string | undefined): SessionContext
   return getOrInit(sessionId);
 }
 
-export function setSessionSpecialty(sessionId: string | undefined, specialty: Specialty): SessionContext {
+export function setSessionSpecialty(sessionId: string | undefined, specialty: { id: number; name: string }): SessionContext {
   const ctx = getOrInit(sessionId);
-  ctx.specialty = specialty;
+  ctx.specialty = { id: specialty.id, name: specialty.name };
   delete ctx.course;
-  delete ctx.topics;
   return ctx;
 }
 
-export function setSessionCourse(sessionId: string | undefined, course: Course | null, topics: CourseTopic[]): SessionContext {
+export function setSessionCourse(sessionId: string | undefined, course: { id: number; name: string } | null): SessionContext {
   const ctx = getOrInit(sessionId);
   ctx.course = course ?? undefined;
-  ctx.topics = topics;
   return ctx;
 }
 

@@ -118,7 +118,7 @@ export function registerCreateCourse(server: McpServer) {
 
       const created = await coursesService.createCourse(insertPayload, 'Generated using MCP');
 
-      setSessionCourse(ctx.sessionId, created, []);
+      setSessionCourse(ctx.sessionId, created);
 
       console.log("MCP tool create_course success", { sessionId: ctx.sessionId, specialtyId: specialty.id, courseId: created?.id });
 

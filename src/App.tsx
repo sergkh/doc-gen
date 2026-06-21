@@ -79,6 +79,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<GeneratorPage />} />
             <Route path="/courses" element={<CoursesList />} />
+            <Route path="/specialties/:specialtyId/courses" element={<CoursesList />} />
             <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
             <Route path="/courses/:id" element={<CourseEdit />} />
             <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
@@ -87,7 +88,7 @@ export function App() {
             <Route path="/teachers/:id" element={<TeacherEdit />} />
             <Route path="/specialties" element={<SpecialtiesList />} />
             <Route path="/specialties/:id" element={<SpecialtyEdit />} />
-            <Route path="/results/matrix" element={<ResultsMatrix />} />
+            <Route path="/specialties/:specialtyId/results/matrix" element={<ResultsMatrix />} />
             <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
             <Route path="/results/:id" element={<ResultEdit />} />
             <Route path="/templates" element={<TemplatesList />} />

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/server";
-import { courses, courseTopics } from "@/stores/db";
+import { courses } from "@/stores/db";
 import { setSessionCourse, getSessionContext, ZodContext, toolResult } from "./session-context";
 
 export function registerSetActiveCourse(server: McpServer) {
@@ -54,9 +54,7 @@ export function registerSetActiveCourse(server: McpServer) {
         return toolResult(message, context, "not_found");
       }
 
-      const topics = await courseTopics.all(found.id);
-
-      const updatedContext = setSessionCourse(ctx.sessionId, found, topics);
+      const updatedContext = setSessionCourse(ctx.sessionId, found);
 
       const message = `Курс встановлений: (${found.data?.ok_no ?? ""}) ${found.name} `;
 
