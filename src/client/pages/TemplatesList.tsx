@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen, faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faDownload, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
 import type { Template } from "@/stores/models";
 import { loadAllTemplates, deleteTemplate } from "../templates";
 import {
@@ -76,7 +76,16 @@ export default function TemplatesList() {
             <Paper key={t.id} withBorder p="sm">
               <Group justify="space-between" wrap="nowrap">
                 <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw={600} truncate>{t.name}</Text>
+                  <Group gap="xs" wrap="nowrap">
+                    {t.file_exists === false && (
+                      <Tooltip label="Файл шаблону не знайдено на диску">
+                        <Text c="orange" component="span">
+                          <FontAwesomeIcon icon={faTriangleExclamation} />
+                        </Text>
+                      </Tooltip>
+                    )}
+                    <Text fw={600} truncate>{t.name}</Text>
+                  </Group>
                 </Box>
                 <Group gap="xs" wrap="nowrap">
                   <Tooltip label="Завантажити">

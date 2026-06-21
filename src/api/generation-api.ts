@@ -1,5 +1,5 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
-import { courses, courseTopics, specialties, templates } from "@/stores/db";
+import { courses, specialties, templates } from "@/stores/db";
 import type { Course, GeneratedTopicData, Prompt, Template } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
@@ -41,7 +41,7 @@ async function runGenerationJob(job: Job, course: Course, template: Template, ap
     job.status = "generating";
     job.progress = 1;
 
-    const topics = await courseTopics.all(course.id);
+    const topics = course.topics ?? [];
     if (topics.length === 0) {
       throw new Error("No topics found");
     }
@@ -94,7 +94,7 @@ const generationApi = {
         return jsonError("Шаблон не знайдено", 404);
       }
 
-      const topics = await courseTopics.all(courseId);
+      const topics = course?.topics ?? [];
       if (topics.length === 0) {
         return jsonError("У дисципліни немає тем", 404);
       }
@@ -160,12 +160,11 @@ const generationApi = {
         return jsonError("Дисципліну не знайдено", 404);
       }
 
-      const topic = await courseTopics.get(Number(topicId));
+      const allTopics = course.topics ?? [];
+      const topic = allTopics.find(t => t.id === Number(topicId));
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }
-
-      const allTopics = await courseTopics.all(Number(courseId));
 
       console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
 
@@ -213,19 +212,24 @@ const generationApi = {
         return jsonError("Поле field є обов'язковим", 400);
       }
 
-      const topic = await courseTopics.get(Number(topicId));
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) {
+        return jsonError("Дисципліну не знайдено", 404);
+      }
+
+      const allTopics = course.topics ?? [];
+      const topic = allTopics.find(t => t.id === Number(topicId));
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }
-
-      console.log(`Saving prompt result for topic: ${topic.name} / course: ${courseId}, field: ${body.field}, item:`, body.item);
 
       const generated: GeneratedTopicData = {
         ...(topic.generated || {}),
         [body.field]: body.item
       };
 
-      await courseTopics.update({ ...topic, generated });
+      course.topics = allTopics.map(t => t.id === topic.id ? { ...t, generated } : t);
+      await courses.update(course);
 
       return Response.json({ success: true, field: body.field });
     }

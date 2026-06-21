@@ -77,9 +77,49 @@ const history = {
   }
 };
 
+// Migration helper: populate course.topics from the old course_topics table
+async function attachTopics(course: Course | null): Promise<Course | null> {
+  if (!course) return null;
+  if (!course.topics) {
+    course.topics = await courseTopics.all(course.id);
+  }
+  return course;
+}
+
+async function attachTopicsMany(courses: Course[]): Promise<Course[]> {
+  const withTopics = await courseTopics.byCourseIds(courses.map(c => c.id));
+  const grouped = new Map<number, CourseTopic[]>();
+  for (const t of withTopics) {
+    if (!grouped.has(t.course_id)) grouped.set(t.course_id, []);
+    grouped.get(t.course_id)!.push(t);
+  }
+  for (const c of courses) {
+    if (!c.topics) {
+      c.topics = grouped.get(c.id) ?? [];
+    }
+  }
+  return courses;
+}
+
+// Migration helper: persist course.topics to the old course_topics table
+async function syncTopics(course: Course) {
+  if (!course.topics) return;
+  const existing = await courseTopics.all(course.id);
+  const existingMap = new Map(existing.map(t => [t.index, t]));
+  for (const topic of course.topics) {
+    const existingTopic = existingMap.get(topic.index);
+    if (existingTopic) {
+      await courseTopics.update({ ...existingTopic, ...topic });
+    } else {
+      await courseTopics.add({ ...topic, id: 0, course_id: course.id });
+    }
+  }
+}
+
 const courses = {
   all: async (): Promise<Course[]> => {
-    return await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id ORDER BY name`;
+    const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id ORDER BY name` as Course[];
+    return await attachTopicsMany(result);
   },
 
   brief: async (): Promise<KeyValue[]> => {
@@ -87,13 +127,14 @@ const courses = {
   },
 
   bySpecialty: async (specialtyId: number): Promise<Course[]> => {
-    return await sql`
+    const result = await sql`
       SELECT c.*, t.name as teacher
       FROM courses c
       LEFT JOIN teachers t ON c.teacher_id = t.id
       WHERE c.specialty_id = ${specialtyId}
       ORDER BY c.name
     ` as Course[];
+    return await attachTopicsMany(result);
   },
 
   bySpecialtyBrief: async (specialtyId: number): Promise<KeyValue[]> => {
@@ -107,17 +148,17 @@ const courses = {
 
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
-      (name, teacher_id, specialty_id, data, generated) VALUES (${c.name}, ${c.teacher_id}, ${c.specialty_id}, ${c.data}, ${c.generated}) RETURNING *`;
+      (name, teacher_id, specialty_id, data, generated, topics) VALUES (${c.name}, ${c.teacher_id}, ${c.specialty_id}, ${c.data}, ${c.generated}, ${c.topics ?? null}) RETURNING *`;
   },
   
   get: async (id: number): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id = ${id}`;
-    return result[0] || null;
+    return await attachTopics(result[0] || null);
   },
 
   findByName: async (name: string): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
-    return result[0] || null;
+    return await attachTopics(result[0] || null);
   },
 
   getShortInfos: async(list: number[]): Promise<ShortCourseInfo[]> => {
@@ -131,6 +172,7 @@ const courses = {
           teacher_id = ${course.teacher_id}, 
           data = ${course.data}, 
           generated = ${course.generated},
+          topics = ${course.topics ?? null},
           version = ${course.version + 1},
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ${course.id} AND version = ${course.version}

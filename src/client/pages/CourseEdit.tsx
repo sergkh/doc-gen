@@ -2,7 +2,7 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faEdit, faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import {
   loadCourse, upsertCourse, loadAllCourses, normalizeCourseName,
   formatDisciplineCode, autofillCourseResults
@@ -342,9 +342,14 @@ export default function CourseEdit() {
         <Group gap="xs">
           <Title order={2}>Редагувати курс</Title>
           {item.id > 0 && (
-            <Anchor component={Link} to={`/courses/${item.id}/generated`} size="sm">
-              <FontAwesomeIcon icon={faEdit} /> Згенеровані дані
-            </Anchor>
+            <>
+              <Anchor component={Link} to={`/courses/${item.id}/generated`} size="sm">
+                <FontAwesomeIcon icon={faEdit} /> Згенеровані дані
+              </Anchor>
+              <Anchor component={Link} to={`/courses/${item.id}/history`} size="sm">
+                <FontAwesomeIcon icon={faClockRotateLeft} /> Історія
+              </Anchor>
+            </>
           )}
         </Group>
         <Group gap="xs">
@@ -477,7 +482,11 @@ export default function CourseEdit() {
         </Stack>
       </Paper>
 
-      {item.id > 0 && <CourseTopicsEditor courseId={item.id} />}
+      <CourseTopicsEditor
+        courseId={item.id}
+        topics={item.topics ?? []}
+        onChange={(topics) => setItem({ ...item, topics })}
+      />
 
       <Paper withBorder p="md">
         <Stack>

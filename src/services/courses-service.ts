@@ -1,4 +1,4 @@
-import { courses, courseTopics, history, teachers } from "@/stores/db";
+import { courses, history, teachers } from "@/stores/db";
 import type { Course, CourseTopic, DocVersionRecord, GeneratedCourseData, ParsedData, Prompt, PromptResult } from "@/stores/models";
 import { dropEmpty } from "@/client/util/util";
 import { CourseNotFoundError } from "./errors";
@@ -21,12 +21,10 @@ async function getCourses(
     loadedCourses = brief ? await courses.brief() as unknown as Course[] : await courses.all();
   }
 
-  // not nice, but works for now
-  if (topics) {
+  if (topics && loadedCourses.length > 0 && !loadedCourses[0].topics) {
     await Promise.all(
       loadedCourses.map(async (course) => {
-        const courseTopicsList = await courseTopics.all(course.id);
-        (course as Course & { topics: CourseTopic[] }).topics = courseTopicsList;
+        course.topics = (await courses.get(course.id))?.topics ?? [];
       })
     );
   }
@@ -76,27 +74,35 @@ function mergeCourseData(original: Course, parsed: Course & ParsedData): Course 
 }
 
 async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) {
-  if (parsedTopics.length === 0) return ;
-  const existingTopics = await courseTopics.all(courseId);
+  if (parsedTopics.length === 0) return;
+  const course = await courses.get(courseId);
+  if (!course) return;
+  const existingTopics = course.topics ?? [];
   const existingTopicsMap = new Map(existingTopics.map(t => [t.index, t]));
 
-  if (existingTopics.length === 0) {
-    await Promise.all(
-      parsedTopics
-        .map(c => Object.assign(c, { course_id: courseId }))
-        .map(c => courseTopics.add(c))
-    );
-    return;
-  } else {    
-    for (const parsedTopic of parsedTopics) {
-      const existingTopic = existingTopicsMap.get(parsedTopic.index);
-      if (existingTopic) {
-        await courseTopics.update(mergeCourseTopic(existingTopic, parsedTopic));
-      } else {
-        await courseTopics.add(Object.assign(parsedTopic, { course_id: courseId }));
-      }
+  const merged: CourseTopic[] = [];
+  const seen = new Set<number>();
+
+  for (const parsedTopic of parsedTopics) {
+    const existingTopic = existingTopicsMap.get(parsedTopic.index);
+    if (existingTopic) {
+      merged.push(mergeCourseTopic(existingTopic, parsedTopic));
+      seen.add(existingTopic.index);
+    } else {
+      merged.push({ ...parsedTopic, id: 0, course_id: courseId });
+      seen.add(parsedTopic.index);
     }
   }
+
+  for (const t of existingTopics) {
+    if (!seen.has(t.index)) {
+      merged.push(t);
+    }
+  }
+
+  merged.sort((a, b) => a.index - b.index);
+  course.topics = merged;
+  await courses.update(course);
 }
 
 function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
@@ -175,16 +181,11 @@ async function updateCourseFromParsed(course: Course & ParsedData, dbCourse: Cou
   let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
   
   if (dbCourse) {
+    updated.topics = course.topics;
     await updateCourseInt(updated, dbCourse, `Doc upload`);
-    mergeCourseTopics(dbCourse.id, course.topics);
   } else {
-    const stored = await createCourse(updated, 'Doc upload') 
-
-    await Promise.all(
-      course.topics
-        .map(c => Object.assign(c, { course_id: stored.id }))
-        .map(c => courseTopics.add(c))
-    );
+    updated.topics = course.topics;
+    const stored = await createCourse(updated, 'Doc upload');
   }
 
   return course;
@@ -204,7 +205,22 @@ async function deleteCourse(id: number) {
 }
 
 async function getCourseById(id: number) {
-  return courses.get(id);
+  const course = await courses.get(id);
+  // TODO: migration - remove after all courses have initial history entries
+  if (course) {
+    const historyEntries = await history.forObject("course", id, 1);
+    if (historyEntries.length === 0) {
+      await history.save({
+        object_id: id,
+        object_type: "course",
+        type: "snapshot",
+        stamp: new Date(),
+        comment: "Initial history entry (migration)",
+        data: course,
+      } as Partial<DocVersionRecord>);
+    }
+  }
+  return course;
 }
 
 async function parseCourseDataUpload(filepath: string, okNo: string | null): Promise<Course | null> {
@@ -233,7 +249,7 @@ async function runPrompt(id: number, prompt: Prompt, apiKey?: string): Promise<P
     throw new CourseNotFoundError(id);
   }
 
-  const topics = await courseTopics.all(id);
+  const topics = course.topics ?? [];
   if (topics.length === 0) {
     throw new Error("У дисципліни немає тем");
   }
@@ -263,6 +279,10 @@ async function savePromptResult(id: number, field: string, value: any) {
 }
 
 
+async function getCourseHistory(courseId: number) {
+  return history.forObject("course", courseId);
+}
+
 export const coursesService = {
   createCourse,
   getCourses,
@@ -273,6 +293,7 @@ export const coursesService = {
   parseCourseDataUpload,
   deleteCourse,
   getCourseById,
+  getCourseHistory,
   runPrompt,
   savePromptResult
 };

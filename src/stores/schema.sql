@@ -17,22 +17,14 @@ CREATE TABLE IF NOT EXISTS courses(
   specialty_id INTEGER,
   data JSONB,
   generated JSONB,
+  topics JSONB,
   version INTEGER DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS course_topics(
-  id SERIAL PRIMARY KEY,
-  course_id INTEGER NOT NULL,
-  index INTEGER NOT NULL,
-  name VARCHAR(512) NOT NULL,
-  lection TEXT NOT NULL,
-  generated JSONB not null default '{}'::jsonb,
-  data JSONB not null default '{}'::jsonb,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Topics are now stored in the courses.topics JSONB column
+-- The old course_topics table is removed; migration handled in the db layer
 
 CREATE TABLE IF NOT EXISTS teachers(
   id SERIAL PRIMARY KEY,

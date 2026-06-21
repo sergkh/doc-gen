@@ -1,5 +1,5 @@
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
-import { courses, courseTopics } from "@/stores/db.ts";
+import { courses } from "@/stores/db.ts";
 import { createOpenAIClient, fixAItext, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
@@ -185,8 +185,6 @@ export async function generateCourseInfo(
         await courses.update(curCourse);
       }
     } else if (prompt.type == 'topic') {
-      const updatedTopics = [];
-
       for (const topic of curTopics) {
         const prompts = packIntoObject(await runTopicPrompts([prompt], curCourse, topic, curTopics, key));
 
@@ -200,14 +198,17 @@ export async function generateCourseInfo(
         
         if (!deepEqual(updated, topic)) {
           console.log(`\n\n\nSaving updated topic with generated fields ${Object.keys(updated.generated).join(", ")}\n\n\n`);
-          await courseTopics.update(updated);
+          const idx = curTopics.indexOf(topic);
+          curTopics[idx] = updated;
         }
-
-        updatedTopics.push(updated);
       }
-
-      curTopics = updatedTopics;      
     } else throw new Error('Unknown prompt type');
+  }
+
+  // Persist updated topics back to course
+  if (curTopics.length > 0) {
+    curCourse.topics = curTopics;
+    await courses.update(curCourse);
   }
 
   return { course: curCourse, topics: curTopics };

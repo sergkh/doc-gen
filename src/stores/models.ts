@@ -93,7 +93,8 @@ export type Course = {
   teacher?: string,
   data: CourseData,
   generated: GeneratedCourseData | null,
-  version: number
+  version: number,
+  topics?: CourseTopic[]
 };
 
 export type TeacherPosition = "аспірант" | "асистент" | "старший викладач" | "доцент" | "професор";
@@ -210,6 +211,7 @@ export type Template = {
   id: number,
   name: string,
   file: string,
+  file_exists?: boolean,
   data: {
     parameters?: TemplateParameter[]
   },

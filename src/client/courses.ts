@@ -198,6 +198,16 @@ export type AIGeneratedTopic = {
   subtopics: string[];
 };
 
+export async function loadCourseHistory(courseId: number): Promise<any[]> {
+  const res = await fetch(`/api/courses/${courseId}/history`);
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження історії: ${res.status}`);
+  }
+
+  return await res.json();
+}
+
 export async function generateCourseTopics(courseId: number): Promise<AIGeneratedTopic[]> {
   const res = await fetch(`/api/courses/${courseId}/topics/generate`, {
     method: "POST"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
@@ -23,6 +23,8 @@ import {
 
 interface CourseTopicsEditorProps {
   courseId: number;
+  topics: CourseTopic[];
+  onChange: (topics: CourseTopic[]) => void;
 }
 
 interface TopicItemProps {
@@ -245,8 +247,7 @@ function TopicForm({
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps) {
-  const [topics, setTopics] = useState<CourseTopic[]>([]);
+export default function CourseTopicsEditor({ courseId, topics, onChange }: CourseTopicsEditorProps) {
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [topicName, setTopicName] = useState("");
   const [topicSubtopics, setTopicSubtopics] = useState("");
@@ -262,15 +263,6 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
-  useEffect(() => { if (courseId) fetchTopics(courseId); }, [courseId]);
-
-  const fetchTopics = async (id: number) => {
-    try {
-      const r = await fetch(`/api/courses/${id}/topics`);
-      if (r.ok) setTopics(await r.json() as CourseTopic[]);
-    } catch (e) { console.error(e); }
-  };
-
   const resetForm = () => {
     setEditingTopic(null);
     setTopicName(""); setTopicSubtopics(""); setTopicLection("");
@@ -280,7 +272,6 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
   };
 
   const handleAddTopic = () => {
-    setEditingTopic({ id: 0, course_id: courseId, index: topics.length + 1, name: "", lection: "", data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } }, generated: {} });
     resetForm();
     setEditingTopic({ id: 0, course_id: courseId, index: topics.length + 1, name: "", lection: "", data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } }, generated: {} });
   };
@@ -299,13 +290,13 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     setTopicInabscentiaSrsHours(topic.data?.inabscentia?.srs_hours || 0);
   };
 
-  const handleSaveTopic = async () => {
+  const handleSaveTopic = () => {
     if (!editingTopic) return;
     if (!topicName.trim()) { alert("Назва теми обов'язкова"); return; }
 
     const subtopicsArray = topicSubtopics.split("\n").map((s) => s.trim()).filter(Boolean);
     const existingGenerated = editingTopic.generated;
-    const topicData: CourseTopic = {
+    const saved: CourseTopic = {
       ...editingTopic,
       name: topicName.trim(),
       lection: topicLection.trim(),
@@ -317,41 +308,26 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
       generated: { subtopics: subtopicsArray, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(existingGenerated || {}) },
     };
 
-    try {
-      const isNew = editingTopic.id === 0;
-      const url = isNew ? `/api/courses/${courseId}/topics` : `/api/courses/${courseId}/topics/${editingTopic.id}`;
-      const r = await fetch(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(topicData) });
-      if (!r.ok) throw new Error("Failed to save");
-      await fetchTopics(courseId);
-      resetForm();
-    } catch (e) { console.error(e); alert("Не вдалося зберегти тему"); }
+    const updated = editingTopic.id === 0
+      ? [...topics, saved]
+      : topics.map((t) => (t.id === editingTopic.id ? saved : t));
+
+    onChange(updated);
+    resetForm();
   };
 
-  const handleDeleteTopic = async (topicId: number) => {
+  const handleDeleteTopic = (topicId: number) => {
     if (!confirm("Ви впевнені, що хочете видалити цю тему?")) return;
-    try {
-      const r = await fetch(`/api/courses/${courseId}/topics/${topicId}`, { method: "DELETE" });
-      if (!r.ok) throw new Error();
-      await fetchTopics(courseId);
-    } catch { alert("Не вдалося видалити тему"); }
+    onChange(topics.filter((t) => t.id !== topicId));
   };
 
-  const handleReorder = async (newOrder: CourseTopic[]) => {
-    setTopics(newOrder);
-    try {
-      const r = await fetch(`/api/courses/${courseId}/topics/order`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newOrder.map((t) => t.id)) });
-      if (!r.ok) throw new Error();
-      await fetchTopics(courseId);
-    } catch { await fetchTopics(courseId); alert("Не вдалося зберегти порядок тем"); }
+  const handleReorder = (newOrder: CourseTopic[]) => {
+    onChange(newOrder.map((t, i) => ({ ...t, index: i + 1 })));
   };
 
-  const patchTopic = async (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
+  const patchTopic = (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
     const updated: CourseTopic = { ...topic, data: { ...topic.data, ...patch } };
-    try {
-      const r = await fetch(`/api/courses/${courseId}/topics/${topic.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
-      if (!r.ok) throw new Error();
-      await fetchTopics(courseId);
-    } catch { alert("Не вдалося оновити тему"); }
+    onChange(topics.map((t) => (t.id === topic.id ? updated : t)));
   };
 
   const handleUpdateAttestation = (topic: CourseTopic, v: number) => patchTopic(topic, { attestation: v });
@@ -369,18 +345,14 @@ export default function CourseTopicsEditor({ courseId }: CourseTopicsEditorProps
     finally { setAiTopicsLoading(false); }
   };
 
-  const handleAddGeneratedTopic = async (gen: AIGeneratedTopic) => {
+  const handleAddGeneratedTopic = (gen: AIGeneratedTopic) => {
     const topicData: CourseTopic = {
       id: 0, course_id: courseId, index: topics.length + 1, name: gen.name, lection: "",
       data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
       generated: { subtopics: gen.subtopics, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [] },
     };
-    try {
-      const r = await fetch(`/api/courses/${courseId}/topics`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(topicData) });
-      if (!r.ok) throw new Error();
-      await fetchTopics(courseId);
-      setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
-    } catch { alert("Не вдалося додати тему"); }
+    onChange([...topics, topicData]);
+    setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
   };
 
   const formProps = {

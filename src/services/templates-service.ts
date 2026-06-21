@@ -4,7 +4,14 @@ import path from "path";
 import { deleteOldFile, saveUploadedFile } from "@/api/utils/files";
 
 async function getAllTemplates(): Promise<Template[]> {
-  return templates.all();
+  const list = await templates.all();
+  return await Promise.all(
+    list.map(async (t) => {
+      const fullPath = path.join(process.cwd(), t.file);
+      const fileExists = await Bun.file(fullPath).exists();
+      return { ...t, file_exists: fileExists };
+    })
+  );
 }
 
 async function getTemplateById(id: number): Promise<Template | null> {

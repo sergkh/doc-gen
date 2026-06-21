@@ -17,6 +17,7 @@ import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
 import TeacherEdit from "./client/pages/TeacherEdit";
 import CourseEdit from "./client/pages/CourseEdit";
+import CourseHistory from "./client/pages/CourseHistory";
 import ResultEdit from "./client/pages/ResultEdit";
 import ResultsMatrix from "./client/pages/ResultsMatrix";
 import CoursesWithResults from "./client/pages/CoursesWithResults";
@@ -83,6 +84,7 @@ export function App() {
             <Route path="/specialties/:specialtyId/courses/results" element={<CoursesWithResults />} />
             <Route path="/courses/:id" element={<CourseEdit />} />
             <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
+            <Route path="/courses/:courseId/history" element={<CourseHistory />} />
             <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
             <Route path="/teachers" element={<TeachersList />} />
             <Route path="/teachers/:id" element={<TeacherEdit />} />
