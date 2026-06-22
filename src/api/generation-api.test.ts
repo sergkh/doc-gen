@@ -78,6 +78,7 @@ mock.module("@/stores/db", () => {
       save: nullVal,
       saveHistory: nullVal,
       createTombstone: nullVal,
+      forObject: emptyArr,
     },
   };
 });

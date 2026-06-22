@@ -14,17 +14,14 @@ try {
 
 function drop(obj: Record<string, any>, ...fields: string[]) {
   const result = { ...obj };
+
   for (const field of fields) {
     delete result[field];
   }
+
   return result;
 }
 
-function loggedSql(strings: TemplateStringsArray, ...values: any[]) {
-  console.log("SQL: ", strings.join("?"));
-  console.log("Params: ", values);
-  return sql(strings, ...values);
-}
 
 const history = {
   _diffpatcher: create(),
@@ -77,64 +74,20 @@ const history = {
   }
 };
 
-// Migration helper: populate course.topics from the old course_topics table
-async function attachTopics(course: Course | null): Promise<Course | null> {
-  if (!course) return null;
-  if (!course.topics) {
-    course.topics = await courseTopics.all(course.id);
-  }
-  return course;
-}
-
-async function attachTopicsMany(courses: Course[]): Promise<Course[]> {
-  const withTopics = await courseTopics.byCourseIds(courses.map(c => c.id));
-  const grouped = new Map<number, CourseTopic[]>();
-  for (const t of withTopics) {
-    if (!grouped.has(t.course_id)) grouped.set(t.course_id, []);
-    grouped.get(t.course_id)!.push(t);
-  }
-  for (const c of courses) {
-    if (!c.topics) {
-      c.topics = grouped.get(c.id) ?? [];
-    }
-  }
-  return courses;
-}
-
-// Migration helper: persist course.topics to the old course_topics table
-async function syncTopics(course: Course) {
-  if (!course.topics) return;
-  const existing = await courseTopics.all(course.id);
-  const existingMap = new Map(existing.map(t => [t.index, t]));
-  for (const topic of course.topics) {
-    const existingTopic = existingMap.get(topic.index);
-    if (existingTopic) {
-      await courseTopics.update({ ...existingTopic, ...topic });
-    } else {
-      await courseTopics.add({ ...topic, id: 0, course_id: course.id });
-    }
-  }
-}
-
 const courses = {
-  all: async (): Promise<Course[]> => {
-    const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id ORDER BY name` as Course[];
-    return await attachTopicsMany(result);
-  },
+  all: async (): Promise<Course[]> => 
+    await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id ORDER BY name` as Course[],
 
-  brief: async (): Promise<KeyValue[]> => {
-    return await sql`SELECT c.id, c.name FROM courses c ORDER BY name`;
-  },
+  brief: async (): Promise<KeyValue[]> => await sql`SELECT c.id, c.name FROM courses c ORDER BY name`,
 
   bySpecialty: async (specialtyId: number): Promise<Course[]> => {
-    const result = await sql`
+    return await sql`
       SELECT c.*, t.name as teacher
       FROM courses c
       LEFT JOIN teachers t ON c.teacher_id = t.id
       WHERE c.specialty_id = ${specialtyId}
       ORDER BY c.name
-    ` as Course[];
-    return await attachTopicsMany(result);
+    ` as Course[];    
   },
 
   bySpecialtyBrief: async (specialtyId: number): Promise<KeyValue[]> => {
@@ -153,12 +106,12 @@ const courses = {
   
   get: async (id: number): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.id = ${id}`;
-    return await attachTopics(result[0] || null);
+    return result[0] || null;
   },
 
   findByName: async (name: string): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
-    return await attachTopics(result[0] || null);
+    return result[0] || null;
   },
 
   getShortInfos: async(list: number[]): Promise<ShortCourseInfo[]> => {

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import type { DocVersionRecord } from "@/stores/models";
-import { loadCourseHistory } from "../courses";
+import { loadCourseHistory, revertCourseToHistory } from "../courses";
 import {
   Title,
   Stack,
@@ -15,6 +15,7 @@ import {
   Center,
   Box,
   Badge,
+  Tooltip,
 } from "@mantine/core";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ export default function CourseHistory() {
   const navigate = useNavigate();
   const [records, setRecords] = useState<DocVersionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reverting, setReverting] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -52,9 +54,11 @@ export default function CourseHistory() {
         <Text c="dimmed">Немає записів історії</Text>
       ) : (
         <Stack gap="xs">
-          {records.map((r) => (
+          {records.map((r, index) => {
+            const isCurrent = index === 0;
+            return (
             <Paper key={r.id} withBorder p="sm">
-              <Group justify="space-between" wrap="nowrap">
+              <Group justify="space-between" wrap="nowrap" align="flex-start">
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <Group gap="xs" mb={4}>
                     <Badge color={TYPE_COLORS[r.type] ?? "gray"}>{r.type}</Badge>
@@ -63,10 +67,41 @@ export default function CourseHistory() {
                     </Text>
                   </Group>
                   <Text size="sm">{r.comment}</Text>
+                  {r.type === "patch" && r.data && (
+                    <Text size="xs" c="dimmed">
+                      Змінено: {Object.keys(r.data).join(", ")}
+                    </Text>
+                  )}
                 </Box>
+                <Tooltip label={isCurrent ? "Поточний стан" : "Відновити курс до цього стану"}>
+                  <Button
+                    size="compact-xs"
+                    variant="outline"
+                    color="red"
+                    loading={reverting === r.id}
+                    disabled={isCurrent}
+                    onClick={async () => {
+                      if (!confirm("Відновити курс до цього стану?")) return;
+                      setReverting(r.id);
+                      try {
+                        await revertCourseToHistory(Number(id), r.id);
+                        const updated = await loadCourseHistory(Number(id));
+                        setRecords(updated);
+                      } catch (e) {
+                        console.error(e);
+                        alert(e instanceof Error ? e.message : "Помилка відновлення");
+                      } finally {
+                        setReverting(null);
+                      }
+                    }}
+                  >
+                    Відновити
+                  </Button>
+                </Tooltip>
               </Group>
             </Paper>
-          ))}
+          );
+        })}
         </Stack>
       )}
     </Stack>

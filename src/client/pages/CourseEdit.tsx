@@ -2,7 +2,7 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import {
   loadCourse, upsertCourse, loadAllCourses, normalizeCourseName,
   formatDisciplineCode, autofillCourseResults
@@ -33,6 +33,7 @@ import {
   Loader,
   Center,
   Anchor,
+  ThemeIcon,
 } from "@mantine/core";
 
 const RESULT_TYPES = {
@@ -77,7 +78,8 @@ export default function CourseEdit() {
   type CourseWithOk = ShortCourseInfo & { okNo: string | null; displayName: string };
   const [allCoursesList, setAllCoursesList] = useState<CourseWithOk[]>([]);
 
-  const clonedCourse = (location.state as { clonedCourse?: Course } | null)?.clonedCourse;
+  const locationState = location.state as { clonedCourse?: Course; specialtyId?: string } | null;
+  const clonedCourse = locationState?.clonedCourse;
 
   useEffect(() => {
     if (clonedCourse) {
@@ -90,7 +92,12 @@ export default function CourseEdit() {
       return;
     }
 
-    loadCourse(id || "new").then(setItem).catch(console.error);
+    loadCourse(id || "new").then(c => {
+      if (id === 'new' && locationState?.specialtyId) {
+        c.specialty_id = Number(locationState.specialtyId);
+      }
+      setItem(c);
+    }).catch(console.error);
   }, [id, clonedCourse]);
   useEffect(() => {
     loadAllTeachers().then(setTeachers).catch(console.error);
@@ -120,7 +127,7 @@ export default function CourseEdit() {
     // Load selected results
     const selected = allResults.filter(r => item.data.results.includes(r.id));
     setSelectedResults(selected);
-  }, [item?.data.results, allResults, item?.id]);
+  }, [item?.data?.results, allResults, item?.id]);
 
   const update = (json: any) => { if (!item) return; setItem({ ...item, ...json } as Course); };
   const updateData = (json: any) => {
@@ -373,12 +380,22 @@ export default function CourseEdit() {
               value={item.data.credits || ""}
               onChange={(v) => updateData({ credits: Number(v) || 0 })}
             />
-            <NumberInput
-              label="Години"
-              min={0}
-              value={item.data.hours || ""}
-              onChange={(v) => updateData({ hours: Number(v) || 0 })}
-            />
+            <Group gap={4} align="flex-end">
+              <NumberInput
+                label="Години"
+                min={0}
+                value={item.data.hours || ""}
+                onChange={(v) => updateData({ hours: Number(v) || 0 })}
+                style={{ flex: 1 }}
+              />
+              {item.data.credits > 0 && item.data.hours > 0 && item.data.hours !== item.data.credits * 30 && (
+                <Tooltip label={`Очікувано ${item.data.credits * 30} годин (${item.data.credits} кредитів × 30)`}>
+                  <ThemeIcon color="yellow" variant="light" size="sm" style={{ marginBottom: 2 }}>
+                    <FontAwesomeIcon icon={faExclamationTriangle} size="xs" />
+                  </ThemeIcon>
+                </Tooltip>
+              )}
+            </Group>
             <TextInput
               label="Номер ОК"
               placeholder="Наприклад 1 або 1.3"

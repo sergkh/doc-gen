@@ -105,7 +105,7 @@ export async function loadCourse(id: string): Promise<Course> {
         prerequisites: [],
         postrequisites: [],
         results: [],
-        attestations: [],        
+        attestations: [],
         fulltime: {
           semesters: [],
           study_year: 1
@@ -118,8 +118,9 @@ export async function loadCourse(id: string): Promise<Course> {
           main: [],
           additional: [],
           internet: []
-        }        
-      }
+        },
+      },
+      version: 1
     };
   }
 
@@ -203,6 +204,19 @@ export async function loadCourseHistory(courseId: number): Promise<any[]> {
 
   if (!res.ok) {
     throw new Error(`Помилка завантаження історії: ${res.status}`);
+  }
+
+  return await res.json();
+}
+
+export async function revertCourseToHistory(courseId: number, historyId: number): Promise<any> {
+  const res = await fetch(`/api/courses/${courseId}/history/${historyId}/revert`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || `Помилка відновлення: ${res.status}`);
   }
 
   return await res.json();

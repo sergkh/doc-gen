@@ -185,8 +185,24 @@ export default function CoursesWithResults() {
                           </Tooltip>
                         )}
                       </Group>
-                      <Text size="sm" c="dimmed">Викладач: {course.teacher ?? course.teacher_id}</Text>
-                    </Stack>
+<Text size="sm" c="dimmed">Викладач: {course.teacher ?? course.teacher_id}</Text>
+                      <Group gap="xs" wrap="wrap">
+                        <Badge variant="outline" size="sm" color="violet">{course.data.credits} Кр</Badge>
+                        {course.data.hours_detailed ? (
+                          <>
+                            <Badge variant="outline" size="sm" color="blue">Лек: {course.data.hours_detailed.fulltime.hours}</Badge>
+                            {course.data.hours_detailed.fulltime.lab_hours > 0 ? (
+                              <Badge variant="outline" size="sm" color="teal">Лаб: {course.data.hours_detailed.fulltime.lab_hours}</Badge>
+                            ) : (
+                              <Badge variant="outline" size="sm" color="teal">Прак: {course.data.hours_detailed.fulltime.practical_hours}</Badge>
+                            )}
+                            <Badge variant="outline" size="sm" color="orange">СРС: {course.data.hours_detailed.fulltime.srs_hours}</Badge>
+                          </>
+                        ) : (
+                          <Badge variant="outline" size="sm" color="blue">{course.data.hours} год</Badge>
+                        )}
+                      </Group>
+                     </Stack>
                     <Tooltip label="Редагувати">
                       <ActionIcon variant="subtle" onClick={() => navigate(`/courses/${course.id}`)}>
                         <FontAwesomeIcon icon={faPen} />
