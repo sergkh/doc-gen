@@ -16,19 +16,11 @@ async function getCourses(
   let loadedCourses: Course[];
 
   if (specialtyId) {
-    loadedCourses = brief ? await courses.bySpecialtyBrief(specialtyId) as unknown as Course[] : await courses.bySpecialty(specialtyId);
+    loadedCourses = brief ? await courses.bySpecialtyBrief(specialtyId) as Course[] : await courses.bySpecialty(specialtyId);
   } else {
-    loadedCourses = brief ? await courses.brief() as unknown as Course[] : await courses.all();
+    loadedCourses = brief ? await courses.brief() as Course[] : await courses.all();
   }
 
-  if (topics && loadedCourses.length > 0 && !loadedCourses[0].topics) {
-    await Promise.all(
-      loadedCourses.map(async (course) => {
-        course.topics = (await courses.get(course.id))?.topics ?? [];
-      })
-    );
-  }
-  
   return loadedCourses;
 }
 
@@ -206,20 +198,7 @@ async function deleteCourse(id: number) {
 
 async function getCourseById(id: number) {
   const course = await courses.get(id);
-  // TODO: migration - remove after all courses have initial history entries
-  if (course) {
-    const historyEntries = await history.forObject("course", id, 1);
-    if (historyEntries.length === 0) {
-      await history.save({
-        object_id: id,
-        object_type: "course",
-        type: "snapshot",
-        stamp: new Date(),
-        comment: "Initial history entry (migration)",
-        data: course,
-      } as Partial<DocVersionRecord>);
-    }
-  }
+  console.log(`Getting course by ID: ${id}, Course found: ${!!course}`);
   return course;
 }
 
@@ -278,48 +257,105 @@ async function savePromptResult(id: number, field: string, value: any) {
   );
 }
 
-
 async function getCourseHistory(courseId: number) {
   return history.forObject("course", courseId);
 }
 
 async function revertToHistory(courseId: number, historyId: number): Promise<Course> {
   const records = await history.forObject("course", courseId);
-  // Sort ASC (oldest first)
-  const sorted = records.sort((a, b) => new Date(a.stamp).getTime() - new Date(b.stamp).getTime());
 
-  const targetIdx = sorted.findIndex(r => r.id === historyId);
-  if (targetIdx === -1) {
-    throw new Error("Запис історії не знайдено");
+  if (records.length === 0) {
+    throw new Error("Немає записів історії для цієї дисципліни");
   }
 
-  // Start from current course state
   const current = await courses.get(courseId);
+
   if (!current) {
     throw new Error("Дисципліну не знайдено");
   }
-  let state = JSON.parse(JSON.stringify(current)) as Course;
 
+  const ordered = [...records].sort(
+    (a, b) => new Date(a.stamp).getTime() - new Date(b.stamp).getTime()
+  );
+
+  const targetIdx = ordered.findIndex((r) => r.id === historyId);
+
+  if (targetIdx === -1) {
+    console.log(`Failed to revert to history for ${current?.name || 'Unknown Course'} (${courseId}): Target history record ${historyId} not found`);
+    throw new Error("Запис історії не знайдено");
+  }
+  
   const diffpatcher = create();
 
-  // Walk backwards from the newest history entry to the one just after target,
-  // reversing patches to undo changes.
-  for (let i = sorted.length - 1; i > targetIdx; i--) {
-    const entry = sorted[i];
-    if (entry.type === "patch") {
-      try {
-        state = diffpatcher.unpatch(state, entry.data) as Course;
-      } catch (e) {
-        console.error("Unpatch failed at index", i, ":", (e as Error).message);
-        throw new Error(`Помилка скасування зміни: ${(e as Error).message}`);
+  const getSnapshotState = (record: DocVersionRecord): Course => {
+    if (!record.data) throw new Error("Снапшот не містить даних");
+    return record.data as Course;
+  };
+
+  let restoredState: Course;
+  const targetRecord = ordered[targetIdx]!;
+
+  if (targetRecord.type === "snapshot") {
+    restoredState = getSnapshotState(targetRecord);
+    console.log(`Reverting course ${current?.name || 'Unknown Course'} (${courseId}): to snapshot: ${targetRecord.id}`, restoredState);
+  } else if (targetRecord.type === "patch") {    
+    let snapshotIdx = -1;
+
+    // find nearest snapshot
+    for (let i = targetIdx - 1; i >= 0; i--) {
+      if (ordered[i]!.type === "snapshot") {
+        snapshotIdx = i;
+        break;
       }
     }
-    // snapshots are skipped — the forward patches between them and
-    // the current state are what we reverse via unpatch above
+
+    if (snapshotIdx === -1) {
+      throw new Error("Не знайдено попередній snapshot для цього запису");
+    }
+
+    let state = getSnapshotState(ordered[snapshotIdx]!);
+    
+    console.log(`Reverting course ${current?.name || 'Unknown Course'} (${courseId}): to patch: ${targetRecord.id}`, state);
+
+    // apply patches on top of snapshot
+    for (let i = snapshotIdx + 1; i <= targetIdx; i++) {
+      const entry = ordered[i]!;
+
+      console.log("applying patch: ", entry.data)
+
+      if (entry.type === "patch") {
+        if (!entry.data) {
+          throw new Error(`Патч #${entry.id} не містить даних`);
+        }
+        try {
+          state = diffpatcher.patch(state, entry.data) as Course;
+        } catch (e) {
+          console.error("Patch failed at index", i, ":", (e as Error).message);
+          throw new Error(`Не вдалося застосувати патч: ${(e as Error).message}`);
+        }
+      }
+    }
+
+    restoredState = state;
+  } else {
+    throw new Error(`Відновлення підтримується лише для snapshot або patch записів. Знайдено: ${targetRecord.type}`);
   }
 
-  state.id = courseId;
-  await courses.update(state);
+  console.log(`Restored course ${current?.name || 'Unknown Course'} (${courseId}):`, restoredState);
+
+  const courseToSave: Course = {
+    ...current,
+    ...restoredState,
+    id: courseId,
+    version: current.version,
+  };
+
+  await courses.update(courseToSave);
+
+  const persisted = await courses.get(courseId);
+  if (!persisted) {
+    throw new Error("Не вдалося оновити дисципліну після відновлення");
+  }
 
   await history.save({
     object_id: courseId,
@@ -327,10 +363,10 @@ async function revertToHistory(courseId: number, historyId: number): Promise<Cou
     type: "snapshot",
     stamp: new Date(),
     comment: `Відновлено до запису історії #${historyId}`,
-    data: state,
+    data: persisted,
   } as Partial<DocVersionRecord>);
 
-  return state;
+  return persisted;
 }
 
 export const coursesService = {

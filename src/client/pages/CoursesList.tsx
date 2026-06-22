@@ -180,7 +180,7 @@ export default function CoursesList() {
             w={160}
           />
           <Tooltip label="Нова дисципліна">
-            <ActionIcon variant="default" onClick={() => navigate("/courses/new")}>
+            <ActionIcon variant="default" onClick={() => navigate("/courses/new", { state: { specialtyId: selectedSpecialtyId } })}>
               <FontAwesomeIcon icon={faPlus} />
             </ActionIcon>
           </Tooltip>

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { coursesService } from "@/services/courses-service";
 import { getSessionContext, toolResult, type ToolResult } from "./session-context";
-import type { CourseTopicData } from "@/stores/models";
+import type { CourseTopicData, GeneratedTopicData } from "@/stores/models";
 
 const TopicInput = z.object({
   id: z.number().int().positive().optional(),
@@ -26,6 +26,10 @@ const TopicInput = z.object({
       })
       .optional(),
   }) as z.ZodType<CourseTopicData>,
+  generated: z.object({
+    subtopics: z.array(z.string()).default([]),
+    keywords: z.array(z.string()).default([])
+  }) as z.ZodType<GeneratedTopicData>,
 });
 
 const ZodInput = z.object({
@@ -45,9 +49,10 @@ export function registerUpdateCourseTopics(server: McpServer) {
     "update_course_topics",
     {
       description: "Оновлює теми для активної дисципліни в контексті. Потрібно підтвердження confirm=true. " +
-        "Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних. " +
+        "Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 чи 4 години практичних. " +
         "Дисципліна має або практичні або лабораторні занняття, але не одночасно. Тому одна з цих категорій буде завжди 0." +
-        "Загальну кількість годин можна взяти з дисципліни (курсу) і сумарно всі години тем мають відповідати загальній кількості годин дисципліни.",
+        "Загальну кількість годин можна взяти з дисципліни (курсу) і сумарно всі години тем мають відповідати загальній кількості годин дисципліни." +
+        "Використовуючи назву теми та опис від користувача, додай підтеми (subtopics) та ключові слова (keywords).",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,
       annotations: {

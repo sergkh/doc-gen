@@ -54,7 +54,9 @@ export default function CourseHistory() {
         <Text c="dimmed">Немає записів історії</Text>
       ) : (
         <Stack gap="xs">
-          {records.map((r) => (
+          {records.map((r, index) => {
+            const isCurrent = index === 0;
+            return (
             <Paper key={r.id} withBorder p="sm">
               <Group justify="space-between" wrap="nowrap" align="flex-start">
                 <Box style={{ flex: 1, minWidth: 0 }}>
@@ -71,12 +73,13 @@ export default function CourseHistory() {
                     </Text>
                   )}
                 </Box>
-                <Tooltip label="Відновити курс до цього стану">
+                <Tooltip label={isCurrent ? "Поточний стан" : "Відновити курс до цього стану"}>
                   <Button
                     size="compact-xs"
                     variant="outline"
                     color="red"
                     loading={reverting === r.id}
+                    disabled={isCurrent}
                     onClick={async () => {
                       if (!confirm("Відновити курс до цього стану?")) return;
                       setReverting(r.id);
@@ -97,7 +100,8 @@ export default function CourseHistory() {
                 </Tooltip>
               </Group>
             </Paper>
-          ))}
+          );
+        })}
         </Stack>
       )}
     </Stack>
