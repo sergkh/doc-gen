@@ -208,6 +208,19 @@ export async function loadCourseHistory(courseId: number): Promise<any[]> {
   return await res.json();
 }
 
+export async function revertCourseToHistory(courseId: number, historyId: number): Promise<any> {
+  const res = await fetch(`/api/courses/${courseId}/history/${historyId}/revert`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const body = await res.json();
+    throw new Error(body.error || `Помилка відновлення: ${res.status}`);
+  }
+
+  return await res.json();
+}
+
 export async function generateCourseTopics(courseId: number): Promise<AIGeneratedTopic[]> {
   const res = await fetch(`/api/courses/${courseId}/topics/generate`, {
     method: "POST"

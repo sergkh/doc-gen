@@ -330,6 +330,19 @@ const coursesApi = {
       const history = await coursesService.getCourseHistory(Number(id));
       return Response.json(history);
     }
+  },
+  "/api/courses/:id/history/:historyId/revert": {
+    async POST(req: BunRequest) {
+      const { id, historyId } = req.params as { id: string; historyId: string };
+      console.log("Reverting course ID:", id, "to history entry:", historyId);
+      try {
+        const course = await coursesService.revertToHistory(Number(id), Number(historyId));
+        return Response.json({ success: true, course });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Невідома помилка";
+        return new Response(JSON.stringify({ error: message }), { status: 400 });
+      }
+    }
   }
 };
 

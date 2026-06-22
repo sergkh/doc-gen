@@ -4,9 +4,9 @@ import { dropEmpty } from "@/client/util/util";
 import { CourseNotFoundError } from "./errors";
 import { parseSylabusOrProgram } from "@/docx/parse";
 import { verifyCourse } from "@/docx/verification";
-import { deepEqual } from "assert";
 import { deepEquals } from "bun";
 import { runCoursePrompts } from "@/ai/generator";
+import { create } from "jsondiffpatch";
 
 async function getCourses(
   specialtyId?: number,
@@ -283,6 +283,56 @@ async function getCourseHistory(courseId: number) {
   return history.forObject("course", courseId);
 }
 
+async function revertToHistory(courseId: number, historyId: number): Promise<Course> {
+  const records = await history.forObject("course", courseId);
+  // Sort ASC (oldest first)
+  const sorted = records.sort((a, b) => new Date(a.stamp).getTime() - new Date(b.stamp).getTime());
+
+  const targetIdx = sorted.findIndex(r => r.id === historyId);
+  if (targetIdx === -1) {
+    throw new Error("Запис історії не знайдено");
+  }
+
+  // Start from current course state
+  const current = await courses.get(courseId);
+  if (!current) {
+    throw new Error("Дисципліну не знайдено");
+  }
+  let state = JSON.parse(JSON.stringify(current)) as Course;
+
+  const diffpatcher = create();
+
+  // Walk backwards from the newest history entry to the one just after target,
+  // reversing patches to undo changes.
+  for (let i = sorted.length - 1; i > targetIdx; i--) {
+    const entry = sorted[i];
+    if (entry.type === "patch") {
+      try {
+        state = diffpatcher.unpatch(state, entry.data) as Course;
+      } catch (e) {
+        console.error("Unpatch failed at index", i, ":", (e as Error).message);
+        throw new Error(`Помилка скасування зміни: ${(e as Error).message}`);
+      }
+    }
+    // snapshots are skipped — the forward patches between them and
+    // the current state are what we reverse via unpatch above
+  }
+
+  state.id = courseId;
+  await courses.update(state);
+
+  await history.save({
+    object_id: courseId,
+    object_type: "course",
+    type: "snapshot",
+    stamp: new Date(),
+    comment: `Відновлено до запису історії #${historyId}`,
+    data: state,
+  } as Partial<DocVersionRecord>);
+
+  return state;
+}
+
 export const coursesService = {
   createCourse,
   getCourses,
@@ -294,6 +344,7 @@ export const coursesService = {
   deleteCourse,
   getCourseById,
   getCourseHistory,
+  revertToHistory,
   runPrompt,
   savePromptResult
 };
