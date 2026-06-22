@@ -88,7 +88,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
 
       console.log("MCP tool update_course_topics success", { sessionId: ctx.sessionId, courseId: current.course.id });
 
-      return toolResult("Оновлено ${args.topics.length} тем", current);
+      return toolResult(`Оновлено ${args.topics.length} тем`, current);
     }
   );
 }

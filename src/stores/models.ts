@@ -179,9 +179,12 @@ export type CourseGenerationData = {
   generalResults:CourseResult[],
   specialResults:CourseResult[],
   programResults:CourseResult[],
+  prerequisites: ShortCourseInfo[],
+  postrequisites: ShortCourseInfo[],
   // same data grouped by semester or plain attestations for easy access
   semesters: CourseSemester[],
   attestations: CourseAttestation[],
+  teacher: Teacher,
   oneSemesterOnly: boolean,
   hours: {
     total: number,

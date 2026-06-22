@@ -8,6 +8,8 @@ import { registerListCourses } from "./tools/list-courses";
 import { registerUpdateCourseTopics } from "./tools/update-course-topics";
 import { registerGetCurrentSpecialtyFullInfo } from "./tools/get-current-specialty-full-info";
 import { registerGetCurrentCourseFullInfo } from "./tools/get-current-course-full-info";
+import { registerUpdateCourseResults } from "./tools/update-course-results";
+import { registerUpdateCourseRequisites } from "./tools/update-course-requisites";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -36,6 +38,8 @@ const server = new McpServer(SERVER_INFO, {
     - get_current_course_full_info (повна інформація про поточний курс: дані курсу і список тем)
     - create_course (створення курсу для поточної спеціальності; потребує підтвердження користувача, робить дисципліну активною після створення)
     - update_course_topics (оновлення тем активної дисципліни; потребує confirm=true). Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних
+    - update_course_results (оновлення результатів активної дисципліни за номерами окремо для ЗК/СК/РН; ІК додається автоматично)
+    - update_course_requisites (оновлення пререквізитів/постреквізитів активної дисципліни; усі реквізити мають бути з тієї ж спеціальності)
     `
 });
 
@@ -48,6 +52,8 @@ registerListSpecialties(server);
 registerUpdateCourseTopics(server);
 registerGetCurrentSpecialtyFullInfo(server);
 registerGetCurrentCourseFullInfo(server);
+registerUpdateCourseResults(server);
+registerUpdateCourseRequisites(server);
 
 export async function handleMcpRequest(req: Request): Promise<Response> {
   const sessionId = req.headers.get("mcp-session-id");

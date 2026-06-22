@@ -1,9 +1,10 @@
 import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
-import { courses } from "@/stores/db.ts";
+import { courses, history } from "@/stores/db.ts";
 import { createOpenAIClient, fixAItext, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
 import { formatPrompt } from "./prompt";
+import { deepEquals } from "bun";
 
 function deepEqual(a: any, b: any): boolean {
   try {
@@ -148,6 +149,13 @@ export function runCoursePrompts(
   }));
 }
 
+async function updateCourse(old: Course, newCourse: Course, reason: string): Promise<Course> {
+  if (deepEquals(newCourse, old)) return newCourse;
+  await courses.update(newCourse);
+  await history.saveHistory(old, newCourse, reason, "course");
+  return (await courses.get(newCourse.id))!;
+}
+
 // Runs set of prompts for course and topics
 export async function generateCourseInfo(
   template: Template, 
@@ -181,8 +189,9 @@ export async function generateCourseInfo(
       } as Course;
 
       if (!deepEqual(curCourse, prevCourse)) {
-        console.log(`\n\n\nSaving updated course with generated fields ${Object.keys(curCourse.generated ?? {}).join(", ")}\n\n\n`);
-        await courses.update(curCourse);
+        const fields = Object.keys(curCourse.generated ?? {});
+        console.log(`\n\n\nSaving updated course with generated fields ${fields.join(", ")}\n\n\n`);
+        curCourse = await updateCourse(prevCourse, curCourse, `Updated course with generated fields ${fields.join(", ")}`);
       }
     } else if (prompt.type == 'topic') {
       for (const topic of curTopics) {
@@ -207,8 +216,8 @@ export async function generateCourseInfo(
 
   // Persist updated topics back to course
   if (curTopics.length > 0) {
-    curCourse.topics = curTopics;
-    await courses.update(curCourse);
+    const updated = {...curCourse, topics: curTopics};
+    curCourse = await updateCourse(curCourse, updated, "Generated course topics data");
   }
 
   return { course: curCourse, topics: curTopics };

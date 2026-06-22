@@ -1,5 +1,5 @@
 import { generateCourseInfo } from "@/ai/generator";
-import { courseResults, courses } from "@/stores/db";
+import { courseResults, courses, teachers } from "@/stores/db";
 import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, QuizQuestion, Specialty, Template } from "@/stores/models";
 
 declare global {
@@ -40,9 +40,9 @@ function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAtte
         total_hours: 0
       },
       inabscentia: {
-        hours: topics.map(t => t.data.inabscentia.hours).sum(),
-        practical_hours: topics.map(t => t.data.inabscentia.practical_hours).sum(),
-        srs_hours: topics.map(t => t.data.inabscentia.srs_hours).sum(),
+        hours: topics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
+        practical_hours: topics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+        srs_hours: topics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
         total_hours: 0
       }
     }
@@ -122,14 +122,15 @@ export async function loadFullCourseInfo(
   onProgress?.(70);
 
   // TODO: add back prerequisites/postrequisites fetching if needed
-  // const prerequisites = await courses.getShortInfos(course.data.prerequisites);
-  // onProgress?.(80);
-  // const postrequisites = await courses.getShortInfos(course.data.postrequisites);
-  // onProgress?.(85);
+  const prerequisites = await courses.getShortInfos(course.data.prerequisites.filter((id) => typeof id === 'number').map((id) => id as number));
+  onProgress?.(80);
+  const postrequisites = await courses.getShortInfos(course.data.postrequisites.filter((id) => typeof id === 'number').map((id) => id as number));
+  onProgress?.(85);
+
+  const teacher = await teachers.get(course.teacher_id);
 
   const results = await courseResults.list(course.data.results);
   onProgress?.(90);
-
 
   const attestations = buildAttestations(course, updatedTopics);
   const semesters: CourseSemester[] = buildSemesters(attestations);
@@ -146,9 +147,9 @@ export async function loadFullCourseInfo(
       srs: updatedTopics.map(t => t.data.fulltime.srs_hours).sum(),
     },
     inabscentia: {
-      lectures: updatedTopics.map(t => t.data.inabscentia.hours).sum(),
-      practicals: updatedTopics.map(t => t.data.inabscentia.practical_hours).sum(),
-      srs: updatedTopics.map(t => t.data.inabscentia.srs_hours).sum(),
+      lectures: updatedTopics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
+      practicals: updatedTopics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+      srs: updatedTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
     }
   }
 
@@ -161,6 +162,9 @@ export async function loadFullCourseInfo(
     attestations,
     oneSemesterOnly,
     semesters,
+    teacher,
+    prerequisites,
+    postrequisites,
     hours,
     ...params, // parameters input by the user for the template
 
