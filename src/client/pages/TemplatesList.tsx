@@ -76,23 +76,22 @@ export default function TemplatesList() {
             <Paper key={t.id} withBorder p="sm">
               <Group justify="space-between" wrap="nowrap">
                 <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap="xs" wrap="nowrap">
-                    {t.file_exists === false && (
-                      <Tooltip label="Файл шаблону не знайдено на диску">
-                        <Text c="orange" component="span">
-                          <FontAwesomeIcon icon={faTriangleExclamation} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                    <Text fw={600} truncate>{t.name}</Text>
-                  </Group>
+                  <Text fw={600} truncate>{t.name}</Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">
-                  <Tooltip label="Завантажити">
-                    <ActionIcon variant="subtle" color="blue" onClick={() => handleDownload(t)}>
-                      <FontAwesomeIcon icon={faDownload} />
-                    </ActionIcon>
-                  </Tooltip>
+                  {t.file_exists === false ? (
+                    <Tooltip label="Файл шаблону не знайдено на диску">
+                      <ActionIcon variant="subtle" color="orange">
+                        <FontAwesomeIcon icon={faTriangleExclamation} />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip label="Завантажити">
+                      <ActionIcon variant="subtle" color="blue" onClick={() => handleDownload(t)}>
+                        <FontAwesomeIcon icon={faDownload} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                   <Tooltip label="Редагувати">
                     <ActionIcon variant="subtle" onClick={() => navigate(`/templates/${t.id}`)}>
                       <FontAwesomeIcon icon={faPen} />

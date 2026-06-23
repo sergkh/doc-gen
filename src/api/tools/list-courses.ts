@@ -29,10 +29,9 @@ export function registerListCourses(server: McpServer) {
         idempotentHint: true,
         readOnlyHint: true,
       },
-      inputSchema: z.object({}),
       outputSchema: ZodOutput,
     },
-    async (_ignore: object, ctx: ServerContext) => {
+    async (ctx: ServerContext) => {
       console.log("MCP tool list_disciplines called", { sessionId: ctx.sessionId });
       try {
         const current = getSessionContext(ctx.sessionId);

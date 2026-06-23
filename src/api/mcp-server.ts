@@ -10,6 +10,7 @@ import { registerGetCurrentSpecialtyFullInfo } from "./tools/get-current-special
 import { registerGetCurrentCourseFullInfo } from "./tools/get-current-course-full-info";
 import { registerUpdateCourseResults } from "./tools/update-course-results";
 import { registerUpdateCourseRequisites } from "./tools/update-course-requisites";
+import { registerSpecialtiesCoursesResources } from "./resources/specialties-courses-resources";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -36,7 +37,7 @@ const server = new McpServer(SERVER_INFO, {
     - list_specialties (список спеціальностей і кодів)
     - get_current_specialty_full_info (повна інформація про поточну спеціальність: дані спеціальності, результати, дисципліни з ОК)
     - get_current_course_full_info (повна інформація про поточний курс: дані курсу і список тем)
-    - create_course (створення курсу для поточної спеціальності; потребує підтвердження користувача, робить дисципліну активною після створення)
+    - create_course (створення курсу для поточної спеціальності - необхідно попередньо встановити спеціальність; потребує підтвердження користувача, робить дисципліну активною після створення)
     - update_course_topics (оновлення тем активної дисципліни; потребує confirm=true). Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних
     - update_course_results (оновлення результатів активної дисципліни за номерами окремо для ЗК/СК/РН; ІК додається автоматично)
     - update_course_requisites (оновлення пререквізитів/постреквізитів активної дисципліни; усі реквізити мають бути з тієї ж спеціальності)
@@ -54,6 +55,7 @@ registerGetCurrentSpecialtyFullInfo(server);
 registerGetCurrentCourseFullInfo(server);
 registerUpdateCourseResults(server);
 registerUpdateCourseRequisites(server);
+registerSpecialtiesCoursesResources(server);
 
 export async function handleMcpRequest(req: Request): Promise<Response> {
   const sessionId = req.headers.get("mcp-session-id");
@@ -77,7 +79,7 @@ export async function handleMcpRequest(req: Request): Promise<Response> {
     await server.connect(transport);
   }
 
-  return transport.handleRequest(req);
+  return await transport.handleRequest(req);
 }
 
 const mcpApi = {

@@ -8,7 +8,7 @@ export function registerSetSpecialty(server: McpServer) {
   server.registerTool(
     "set_specialty_context",
     {
-      description: "Встановлює контекст спеціальності для поточної сесії (за id, code або name)",
+      description: "Встановлює контекст спеціальності для поточної сесії за кодом (наприклад F3) або назвою (наприклад Комп'ютерні науки)",
       annotations: {
         idempotentHint: true,
         readOnlyHint: false,
@@ -40,7 +40,7 @@ export function registerSetSpecialty(server: McpServer) {
         },
         async () => {
           if (!name) return null;
-          return (await specialties.findByName(name.trim())) ?? null;
+          return (await specialties.findByName(name.trim().toLowerCase())) ?? null;
         },
       ];
 

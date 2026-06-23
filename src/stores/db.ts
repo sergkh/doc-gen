@@ -381,13 +381,14 @@ const specialties = {
   },
 
   findByName: async (name: string): Promise<Specialty | null> => {
-    const result = await sql`SELECT * FROM specialties WHERE name=${name} or old_name=${name}`;
+    // ignore case
+    const result = await sql`SELECT * FROM specialties WHERE LOWER(name) = LOWER(${name}) OR LOWER(old_name) = LOWER(${name})`;
     return result[0] || null;
   },
 
   findByCode: async (code: string): Promise<Specialty | null> => {
-    console.log("Searching specialty by code:", code);
-    const result = await sql`SELECT * FROM specialties WHERE code=${code} or old_code=${code}`;
+    // ignore case
+    const result = await sql`SELECT * FROM specialties WHERE LOWER(code)=LOWER(${code}) or LOWER(old_code)=LOWER(${code})`;
     return result[0] || null;
   },
   

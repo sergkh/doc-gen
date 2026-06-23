@@ -7,7 +7,7 @@ import { coursesService } from "@/services/courses-service";
 
 const ZodInput = z.object({
   name: z.string().min(1, "Вкажіть назву курсу"),
-  code: z.string().min(1, "Вкажіть ОК/ВК номер"),
+  code: z.string().min(1, "Вкажіть код. Формат 1 або 1.1").regex(/^(?:\d+|\d+\.\d+)$/),
   optional: z.boolean().optional(),
   teacherName: z.string().min(1, "Вкажіть ПІБ викладача"),
   hours: z.object({
@@ -17,7 +17,9 @@ const ZodInput = z.object({
     labs: z.number().int().nonnegative().optional(),
   }),
   controlType: z.enum(["exam", "credit", "both"]).default("credit"),
-  studyYear: z.number().int().positive().default(1),
+  year: z.number().int().positive().default(1),
+  semesters: z.array(z.number().int().positive()).min(1).default([1]),
+  attestationsCount: z.number().int().positive().default(2),
   confirm: z.boolean().default(false),
   description: z.string().min(1, "Вкажіть опис курсу")
 });
@@ -34,9 +36,10 @@ export function registerCreateCourse(server: McpServer) {
   server.registerTool(
     "create_course",
     {
-      description: "Створює курс для поточної спеціальності. " +
-      "Потрібні: назва, ОК/ВК номер, ПІБ викладача, години (лекції, СРС, практика/лабораторні), опис. Потребує підтвердження." + 
-      "Замість точної кількості годин можна вказати кількість кредитів. Кожен кредит це 30 годин курсу. Зазвичай 5 кредитів це 150 годин з яких 26 год лекцій, 24 год практичних чи лабораторних, 100 год – СРС. " +
+      description: "Створює курс для поточної спеціальності. Перед викликом необхідно встановити поточну спеціальність через set_specialty_context." +
+      "Потрібні: назва, ОК/ВК номер, ПІБ викладача, рік навчання (year), семестри (semesters), години (лекції, СРС, практика/лабораторні), опис. Потребує підтвердження." + 
+      "За замовчуванням створюються 2 атестації: 'Атестація 1' і 'Атестація 2'. За потреби можна передати attestationsCount." +
+      "Замість точної кількості годин можна вказати кількість кредитів. Кожен кредит це 30 годин курсу. Одне заняття – 2 години. Тому 16 год лекцій це 8 лекцій, тому 8 лекційних тем. Зазвичай 5 кредитів це 150 годин з яких 26 год лекцій, 24 год практичних чи лабораторних, 100 год – СРС. " +
       "4 кредити це 120 годин з яких 16 год лекцій, 14 год практичних чи лабораторних та 90 год – СРС, якщо 3 кредити то це 16 год лекцій, 14 год практичних чи лабораторних та 60 год – СРС." +
       "Якщо кредити та години не сходяться, перепитай у користувача",
       inputSchema: ZodInput,
@@ -52,18 +55,21 @@ export function registerCreateCourse(server: McpServer) {
       console.log("MCP tool create_course called", { sessionId: ctx.sessionId, specialtyId: current.specialty?.id, name: args.name, code: args.code, teacherName: args.teacherName });
 
       if (!current.specialty) {
+        console.log(`Specialty not set for session: ${ctx.sessionId}`);
         const message = "Спеціальність не встановлено. Викличте set_specialty_context.";
         return toolResult(message, current, "dependency_not_met");
       }
 
       const specialty = await specialties.get(current.specialty.id);
       if (!specialty) {
+        console.log(`Specialty not found for id: ${current.specialty.id}. Session: ${ctx.sessionId}`);
         return toolResult("Спеціальність не знайдена.", current, "not_found");
       }
 
       // Find teacher by name (supports partial/like via findByName)
       const teacher = await teachers.findByName(args.teacherName);
       if (!teacher) {
+        console.log(`Teacher not found for name: ${args.teacherName}. Session: ${ctx.sessionId}`);
         return toolResult(`Викладача не знайдено за вказаним ПІБ: ${args.teacherName}`, current, "not_found");
       }
 
@@ -74,12 +80,18 @@ export function registerCreateCourse(server: McpServer) {
       const optional = args.optional ?? /(^вк|вибір|^vk)/i.test(args.code.trim());
       const hasLabs = (args.hours.labs ?? 0) > 0;
       const hasPractice = (args.hours.practice ?? 0) > 0;
+      const year = args.year;
+      const semesters = Array.from(new Set(args.semesters)).sort((a, b) => a - b);
+      const attestations = Array.from({ length: args.attestationsCount }, (_, idx) => ({
+        name: `Атестація ${idx + 1}`,
+        semester: semesters[idx % semesters.length],
+      }));
 
       const totalHours = (args.hours.lections ?? 0) + (args.hours.srs ?? 0) + (hasLabs ? args.hours.labs ?? 0 : args.hours.practice ?? 0);
       const credits = Math.max(1, Math.round(totalHours / 30));
 
       const courseData = {
-        ok_no: args.code.trim(),
+        ok_no: args.code,
         practice: hasPractice || !hasLabs,
         optional,
         type: hasLabs ? "practice" : "lesson",
@@ -101,9 +113,9 @@ export function registerCreateCourse(server: McpServer) {
         prerequisites: [],
         postrequisites: [],
         results: [],
-        attestations: [],
-        fulltime: { semesters: [args.studyYear], study_year: args.studyYear },
-        inabscentia: { semesters: [args.studyYear], study_year: args.studyYear },
+        attestations,
+        fulltime: { semesters, study_year: year },
+        inabscentia: { semesters, study_year: year },
         literature: { main: [], additional: [], internet: [] },
         warnings: [],
       } as CourseData;
