@@ -145,7 +145,20 @@ export function runCoursePrompts(
     courseDescription: course.data.description ?? "",
     topics: courseTopics.map(t => t.name).join(", "),
     subtopics: courseTopics.flatMap(t => t.generated?.subtopics || []).join(", "),
-    course: course
+    course: course,
+    hours: {
+      total: course.data.hours,
+      fulltime: {
+        lectures: courseTopics.map(t => t.data.fulltime.hours).sum(),
+        practicals: courseTopics.map(t => t.data.fulltime.practical_hours).sum(),
+        srs: courseTopics.map(t => t.data.fulltime.srs_hours).sum(),
+      },
+      inabscentia: {
+        lectures: courseTopics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
+        practicals: courseTopics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+        srs: courseTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
+      }
+    }
   }));
 }
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSave } from "@fortawesome/free-solid-svg-icons";
-import type { Prompt, KeyValue, CourseTopic, PromptResult } from "@/stores/models";
-import { loadAllCoursesBrief } from "@/client/courses";
+import type { Prompt, KeyValue, CourseTopic, PromptResult, Specialty } from "@/stores/models";
+import { loadCoursesBySpecialty } from "@/client/courses";
+import { loadAllSpecialties } from "@/client/specialties";
 import {
   Stack,
   Group,
@@ -64,10 +65,15 @@ export default function PromptTester({
 }: PromptTesterProps) {
   const [opened, { toggle }] = useDisclosure(false);
 
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [specialtiesError, setSpecialtiesError] = useState<string | null>(null);
+  const [isLoadingSpecialties, setIsLoadingSpecialties] = useState(false);
+  const [hasRequestedSpecialties, setHasRequestedSpecialties] = useState(false);
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string>("");
+
   const [courses, setCourses] = useState<KeyValue[]>([]);
   const [coursesError, setCoursesError] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
-  const [hasRequestedCourses, setHasRequestedCourses] = useState(false);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [topics, setTopics] = useState<CourseTopic[]>([]);
@@ -82,11 +88,17 @@ export default function PromptTester({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
+    const savedSpecialtyId = localStorage.getItem("prompt_tester_specialty_id");
+    if (savedSpecialtyId) setSelectedSpecialtyId(savedSpecialtyId);
     const savedCourseId = localStorage.getItem("prompt_tester_course_id");
     if (savedCourseId) setSelectedCourseId(savedCourseId);
     const savedTopicId = localStorage.getItem("prompt_tester_topic_id");
     if (savedTopicId) setSelectedTopicId(savedTopicId);
   }, []);
+
+  useEffect(() => {
+    if (selectedSpecialtyId) localStorage.setItem("prompt_tester_specialty_id", selectedSpecialtyId);
+  }, [selectedSpecialtyId]);
 
   useEffect(() => {
     if (selectedCourseId) localStorage.setItem("prompt_tester_course_id", selectedCourseId);
@@ -107,28 +119,70 @@ export default function PromptTester({
     [courses]
   );
 
-  const fetchCourses = useCallback(async () => {
-    setIsLoadingCourses(true);
-    setCoursesError(null);
+  const specialtyOptions = useMemo(
+    () => specialties.map((s) => ({ value: String(s.id), label: `${s.code} ${s.name}` })),
+    [specialties]
+  );
+
+  const fetchSpecialties = useCallback(async () => {
+    setIsLoadingSpecialties(true);
+    setSpecialtiesError(null);
     try {
-      const data = await loadAllCoursesBrief();
-      setCourses(data);
-      setSelectedCourseId((prev) => {
-        if (prev) return prev;
+      const data = await loadAllSpecialties();
+      setSpecialties(data);
+      setSelectedSpecialtyId((prev) => {
+        if (prev && data.some((s) => String(s.id) === prev)) return prev;
         return data[0] ? String(data[0].id) : "";
       });
     } catch (error) {
+      setSpecialtiesError(error instanceof Error ? error.message : "Не вдалося завантажити список спеціальностей");
+    } finally {
+      setIsLoadingSpecialties(false);
+    }
+  }, []);
+
+  const fetchCourses = useCallback(async (specialtyId: string) => {
+    const parsedSpecialtyId = Number.parseInt(specialtyId, 10);
+    if (Number.isNaN(parsedSpecialtyId)) {
+      setCourses([]);
+      setSelectedCourseId("");
+      setCoursesError("ID спеціальності має бути числом");
+      return;
+    }
+
+    setIsLoadingCourses(true);
+    setCoursesError(null);
+    try {
+      const data = await loadCoursesBySpecialty(parsedSpecialtyId);
+      const brief = data.map((c) => ({ id: c.id, name: c.name }));
+      setCourses(brief);
+      setSelectedCourseId((prev) => {
+        if (prev && brief.some((c) => String(c.id) === prev)) return prev;
+        return brief[0] ? String(brief[0].id) : "";
+      });
+    } catch (error) {
       setCoursesError(error instanceof Error ? error.message : "Не вдалося завантажити список дисциплін");
+      setCourses([]);
+      setSelectedCourseId("");
     } finally {
       setIsLoadingCourses(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!opened || hasRequestedCourses) return;
-    setHasRequestedCourses(true);
-    void fetchCourses();
-  }, [opened, hasRequestedCourses, fetchCourses]);
+    if (!opened || hasRequestedSpecialties) return;
+    setHasRequestedSpecialties(true);
+    void fetchSpecialties();
+  }, [opened, hasRequestedSpecialties, fetchSpecialties]);
+
+  useEffect(() => {
+    if (!opened || !selectedSpecialtyId) {
+      setCourses([]);
+      setSelectedCourseId("");
+      return;
+    }
+    void fetchCourses(selectedSpecialtyId);
+  }, [opened, selectedSpecialtyId, fetchCourses]);
 
   useEffect(() => {
     if (!opened) return;
@@ -271,19 +325,50 @@ export default function PromptTester({
       <Collapse in={opened}>
         <Stack gap="sm">
           <Select
+            label="Спеціальність"
+            placeholder="Оберіть спеціальність"
+            data={specialtyOptions}
+            value={selectedSpecialtyId || null}
+            onChange={(v) => {
+              setSelectedSpecialtyId(v ?? "");
+              setSelectedCourseId("");
+              setTopics([]);
+              setSelectedTopicId("");
+              setTopicsError(null);
+            }}
+            disabled={isLoadingSpecialties}
+            searchable
+            rightSection={isLoadingSpecialties ? <Loader size="xs" /> : undefined}
+          />
+          {specialtiesError && (
+            <Group gap="xs">
+              <Text size="xs" c="red">{specialtiesError}</Text>
+              <Anchor size="xs" onClick={() => { setSpecialtiesError(null); void fetchSpecialties(); }}>
+                Спробувати знову
+              </Anchor>
+            </Group>
+          )}
+
+          <Select
             label="Дисципліна"
-            placeholder="Оберіть дисципліну"
+            placeholder={!selectedSpecialtyId ? "Спочатку оберіть спеціальність" : "Оберіть дисципліну"}
             data={courseOptions}
             value={selectedCourseId || null}
             onChange={(v) => setSelectedCourseId(v ?? "")}
-            disabled={isLoadingCourses}
+            disabled={isLoadingCourses || !selectedSpecialtyId}
             searchable
             rightSection={isLoadingCourses ? <Loader size="xs" /> : undefined}
           />
           {coursesError && (
             <Group gap="xs">
               <Text size="xs" c="red">{coursesError}</Text>
-              <Anchor size="xs" onClick={() => { setCoursesError(null); void fetchCourses(); }}>
+              <Anchor
+                size="xs"
+                onClick={() => {
+                  setCoursesError(null);
+                  if (selectedSpecialtyId) void fetchCourses(selectedSpecialtyId);
+                }}
+              >
                 Спробувати знову
               </Anchor>
             </Group>

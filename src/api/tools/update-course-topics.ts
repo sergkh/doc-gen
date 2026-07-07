@@ -28,7 +28,8 @@ const TopicInput = z.object({
   }) as z.ZodType<CourseTopicData>,
   generated: z.object({
     subtopics: z.array(z.string()).default([]),
-    keywords: z.array(z.string()).default([])
+    keywords: z.array(z.string()).default([]),
+    lection_plan: z.array(z.string()).default([]),
   }) as z.ZodType<GeneratedTopicData>,
 });
 
@@ -53,7 +54,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
         "Тому 16 годин лекцій це 8 лекцій, тому 8 лекційних тем. " +
         "Дисципліна має або практичні або лабораторні занняття, але не одночасно. Тому одна з цих категорій буде завжди 0." +
         "Загальну кількість годин можна взяти з дисципліни (курсу) і сумарно всі години тем мають відповідати загальній кількості годин дисципліни." +
-        "Використовуючи назву теми та опис від користувача, додай підтеми (subtopics) та ключові слова (keywords).",
+        "Використовуючи назву теми та опис від користувача, додай підтеми (subtopics) та ключові слова (keywords). Можливість створення плану лекції (lection_plan).",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,
       annotations: {
