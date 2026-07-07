@@ -45,6 +45,10 @@ const parser = expressionParser.configure({
         if (isNaN(num)) return input;
         return Array.from({ length: num }, (_, i) => i + 1);
       },
+      at(array, index) {
+        if (!Array.isArray(array)) return undefined;
+        return array[index];
+      },
       uppercase(input) {
           if (!input) return input;
           if (Array.isArray(input)) return input.map(i => i.toUpperCase());
