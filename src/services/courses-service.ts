@@ -112,6 +112,8 @@ function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
     }
   }
 
+  const mergedGenerated = {...existing.generated, ...parsed.generated}
+
   return {
     id: existing.id,
     course_id: existing.course_id,
@@ -119,7 +121,7 @@ function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
     name: parsed.name ?? existing.name,
     lection: parsed.lection ?? existing.lection,
     data: mergedData,
-    generated: existing.generated
+    generated: mergedGenerated
   } as CourseTopic;
 }
 

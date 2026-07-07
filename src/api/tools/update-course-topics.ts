@@ -64,7 +64,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
     },
     async (args: Input, ctx: ServerContext): Promise<ToolResult> => {
       const current = getSessionContext(ctx.sessionId);
-      console.log("MCP tool update_course_topics called", { sessionId: ctx.sessionId, courseId: current.course?.id, topics: args.topics.length });
+      console.log("MCP tool update_course_topics called", { sessionId: ctx.sessionId, courseId: current.course?.id, topics: args.topics });
 
       if (!current.course) {
         return toolResult("Дисципліну не встановлено. Викличте set_discipline_context.", current, "dependency_not_met");
