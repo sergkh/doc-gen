@@ -83,7 +83,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
           name: topic.name,
           lection: topic.lection,
           data: topic.data,
-          generated: {},
+          generated: topic.generated
         })) as any
       );
 
