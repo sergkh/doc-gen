@@ -27,6 +27,7 @@ import TopicGeneratedDataEdit from "./client/pages/TopicGeneratedDataEdit";
 import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
 import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
+import SpecialtyHistory from "./client/pages/SpecialtyHistory";
 import { theme } from "./theme";
 
 const navItems = [
@@ -90,6 +91,7 @@ export function App() {
             <Route path="/teachers/:id" element={<TeacherEdit />} />
             <Route path="/specialties" element={<SpecialtiesList />} />
             <Route path="/specialties/:id" element={<SpecialtyEdit />} />
+            <Route path="/specialties/:specialtyId/history" element={<SpecialtyHistory />} />
             <Route path="/specialties/:specialtyId/results/matrix" element={<ResultsMatrix />} />
             <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
             <Route path="/results/:id" element={<ResultEdit />} />

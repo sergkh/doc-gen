@@ -40,6 +40,27 @@ const specialtiesApi = {
       const results = await specialtiesService.getSpecialtyResults(Number(id));
       return Response.json(results);
     }
+  },
+  "/api/specialties/:id/history": {
+    async GET(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      console.log("Fetching history for specialty ID:", id);
+      const entries = await specialtiesService.getSpecialtyHistory(Number(id));
+      return Response.json(entries);
+    }
+  },
+  "/api/specialties/:id/history/:historyId/revert": {
+    async POST(req: BunRequest) {
+      const { id, historyId } = req.params as { id: string; historyId: string };
+      console.log("Reverting specialty ID:", id, "to history entry:", historyId);
+      try {
+        const specialty = await specialtiesService.revertToHistory(Number(id), Number(historyId));
+        return Response.json({ success: true, specialty });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Невідома помилка";
+        return new Response(JSON.stringify({ error: message }), { status: 400 });
+      }
+    }
   }
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import type { CourseResult, Specialty } from "@/stores/models";
 import { deleteResult, loadResultsBySpecialty } from "../results";
@@ -108,6 +108,16 @@ export default function SpecialtyEdit() {
       <Group justify="space-between">
         <Title order={2}>{specialty.id >= 0 ? "Редагувати спеціальність" : "Додати спеціальність"}</Title>
         <Group gap="xs">
+          {specialty.id >= 0 && (
+            <Button
+              size="compact-sm"
+              variant="subtle"
+              leftSection={<FontAwesomeIcon icon={faClockRotateLeft} />}
+              onClick={() => navigate(`/specialties/${specialty.id}/history`)}
+            >
+              Історія
+            </Button>
+          )}
           <Button variant="default" onClick={() => navigate("/specialties")}>Скасувати</Button>
           <Button onClick={handleSave} disabled={!isValid}>Зберегти</Button>
         </Group>

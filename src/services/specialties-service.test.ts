@@ -74,7 +74,7 @@ describe("specialtiesService return types", () => {
 
   it("updateSpecialty should return Promise<Specialty>", async () => {
     const { specialtiesService } = await import("./specialties-service");
-    const result = specialtiesService.updateSpecialty(1, {} as any);
+    const result = specialtiesService.updateSpecialty(1, {} as any).catch(() => null);
     expect(result).toBeInstanceOf(Promise);
   });
 

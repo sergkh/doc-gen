@@ -1,4 +1,4 @@
-import type { Specialty } from "@/stores/models";
+import type { DocVersionRecord, Specialty } from "@/stores/models";
 
 export async function loadAllSpecialties() {
   const res = await fetch(`/api/specialties`);
@@ -75,3 +75,32 @@ export async function deleteSpecialty(id: number): Promise<void> {
   }
 }
 
+export async function loadSpecialtyHistory(id: number): Promise<DocVersionRecord[]> {
+  const res = await fetch(`/api/specialties/${id}/history`);
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження історії спеціальності: ${res.status}`);
+  }
+
+  return await res.json() as DocVersionRecord[];
+}
+
+export async function revertSpecialtyToHistory(id: number, historyId: number): Promise<Specialty> {
+  const res = await fetch(`/api/specialties/${id}/history/${historyId}/revert`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    let message = `Помилка відновлення спеціальності: ${res.status}`;
+    try {
+      const body = await res.json() as { error?: string };
+      if (body?.error) message = body.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  const data = await res.json() as { specialty: Specialty };
+  return data.specialty;
+}
