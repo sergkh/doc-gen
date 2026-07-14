@@ -123,6 +123,7 @@ const courses = {
     const update = await sql`UPDATE courses 
       SET name = ${course.name}, 
           teacher_id = ${course.teacher_id}, 
+          specialty_id = ${course.specialty_id},
           data = ${course.data}, 
           generated = ${course.generated},
           topics = ${course.topics ?? null},
@@ -386,9 +387,11 @@ const specialties = {
     return result[0] || null;
   },
 
-  findByCode: async (code: string): Promise<Specialty | null> => {
+  findByCode: async (code: string, degree?: Specialty["degree"]): Promise<Specialty | null> => {
     // ignore case
-    const result = await sql`SELECT * FROM specialties WHERE LOWER(code)=LOWER(${code}) or LOWER(old_code)=LOWER(${code})`;
+    const result = degree
+      ? await sql`SELECT * FROM specialties WHERE (LOWER(code)=LOWER(${code}) or LOWER(old_code)=LOWER(${code})) AND degree = ${degree}`
+      : await sql`SELECT * FROM specialties WHERE LOWER(code)=LOWER(${code}) or LOWER(old_code)=LOWER(${code})`;
     return result[0] || null;
   },
   

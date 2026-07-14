@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS templates(
 CREATE TABLE IF NOT EXISTS specialties(
   id SERIAL PRIMARY KEY,
   code VARCHAR(64),
-  name VARCHAR(512) NOT NULL UNIQUE,
+  name VARCHAR(512) NOT NULL,
   old_code VARCHAR(64),
   old_name VARCHAR(512),
   area_code VARCHAR(64),
@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS specialties(
 );
 
 ALTER TABLE specialties ADD COLUMN IF NOT EXISTS degree VARCHAR(32) NOT NULL DEFAULT 'bachelor';
+
+ALTER TABLE specialties DROP CONSTRAINT IF EXISTS specialties_name_key;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_specialties_name_degree ON specialties (name, degree);
 
 CREATE TABLE IF NOT EXISTS teacher_publications(
   id SERIAL PRIMARY KEY,
