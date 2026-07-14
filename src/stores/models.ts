@@ -248,6 +248,8 @@ export type SpecialtyData = {
   disciplines: SpecialtyDisciplineConfig[]
 }
 
+export type SpecialtyDegree = "bachelor" | "master";
+
 export type Specialty = {
   id: number,
   code: string,
@@ -256,6 +258,7 @@ export type Specialty = {
   old_name: string,
   area_code: string,
   area: string,
+  degree: SpecialtyDegree,
   qualification: string;
   data: SpecialtyData
 }

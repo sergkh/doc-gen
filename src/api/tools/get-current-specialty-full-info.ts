@@ -15,6 +15,7 @@ const ZodOutput = z.object({
       old_name: z.string(),
       area_code: z.string(),
       area: z.string(),
+      degree: z.enum(["bachelor", "master"]),
       qualification: z.string(),
       data: z.object({
         disciplines: z

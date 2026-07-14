@@ -20,6 +20,7 @@ export async function loadSpecialty(id: string): Promise<Specialty> {
       old_name: "",
       area_code: "",
       area: "",
+      degree: "bachelor",
       qualification: "",
       data: { disciplines: [] }
     };
@@ -46,6 +47,7 @@ export async function upsertSpecialty(specialty: Specialty): Promise<Specialty> 
     old_name: specialty.old_name,
     area_code: specialty.area_code,
     area: specialty.area,
+    degree: specialty.degree,
     qualification: specialty.qualification,
     data: specialty.data
   };

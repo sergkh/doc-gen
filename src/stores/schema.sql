@@ -55,11 +55,14 @@ CREATE TABLE IF NOT EXISTS specialties(
   old_name VARCHAR(512),
   area_code VARCHAR(64),
   area VARCHAR(512) NOT NULL,
+  degree VARCHAR(32) NOT NULL DEFAULT 'bachelor',
   qualification VARCHAR(512) NOT NULL,
   data JSONB not null default '{}'::jsonb,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE specialties ADD COLUMN IF NOT EXISTS degree VARCHAR(32) NOT NULL DEFAULT 'bachelor';
 
 CREATE TABLE IF NOT EXISTS teacher_publications(
   id SERIAL PRIMARY KEY,

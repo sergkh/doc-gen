@@ -9,6 +9,11 @@ import { loadAllSpecialties, deleteSpecialty } from "../specialties";
 import { uploadResultsFromDocx } from "../results";
 import { Title, Stack, Group, Paper, Text, ActionIcon, Tooltip, Box } from "@mantine/core";
 
+const DEGREE_LABELS: Record<Specialty["degree"], string> = {
+  bachelor: "Бакалавр",
+  master: "Магістр",
+};
+
 export default function SpecialtiesList() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Specialty[]>([]);
@@ -87,7 +92,7 @@ export default function SpecialtiesList() {
                     {s.code} {s.name}
                   </Text>
                   <Text size="sm" c="dimmed" truncate>
-                    {s.area} ({s.qualification})
+                    {DEGREE_LABELS[s.degree]} - {s.area} ({s.qualification})
                   </Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">

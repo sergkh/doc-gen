@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
-import type { CourseResult, Specialty } from "@/stores/models";
+import type { CourseResult, Specialty, SpecialtyDegree } from "@/stores/models";
 import { deleteResult, loadResultsBySpecialty } from "../results";
 import { loadSpecialty, upsertSpecialty } from "../specialties";
 import {
@@ -12,6 +12,7 @@ import {
   Group,
   Paper,
   TextInput,
+  Select,
   Text,
   ActionIcon,
   Tooltip,
@@ -26,6 +27,11 @@ const RESULT_TYPES: Record<string, string> = {
   ЗК: "Загальні компетентності",
   СК: "Спеціальні компетентності",
   РН: "Результати навчання",
+};
+
+const DEGREE_LABELS: Record<SpecialtyDegree, string> = {
+  bachelor: "Бакалавр",
+  master: "Магістр",
 };
 
 export default function SpecialtyEdit() {
@@ -52,7 +58,7 @@ export default function SpecialtyEdit() {
         })
         .catch(console.error);
     } else {
-      setSpecialty({ id: -1, code: "", name: "", old_code: "", old_name: "", area_code: "", area: "", qualification: "", data: { disciplines: [] } });
+      setSpecialty({ id: -1, code: "", name: "", old_code: "", old_name: "", area_code: "", area: "", degree: "bachelor", qualification: "", data: { disciplines: [] } });
     }
   }, [id]);
 
@@ -131,6 +137,16 @@ export default function SpecialtyEdit() {
           <TextInput label="Стара назва" value={specialty.old_name} onChange={(e) => update({ old_name: e.currentTarget.value })} style={{ gridColumn: "span 2" }} />
           <TextInput label="Код галузі" value={specialty.area_code} onChange={(e) => update({ area_code: e.currentTarget.value })} />
           <TextInput label="Галузь" value={specialty.area} onChange={(e) => update({ area: e.currentTarget.value })} />
+          <Select
+            label="Рівень освіти"
+            data={[
+              { value: "bachelor", label: DEGREE_LABELS.bachelor },
+              { value: "master", label: DEGREE_LABELS.master },
+            ]}
+            value={specialty.degree}
+            onChange={(value) => update({ degree: (value as SpecialtyDegree | null) ?? "bachelor" })}
+            allowDeselect={false}
+          />
           <TextInput label="Кваліфікація" value={specialty.qualification} onChange={(e) => update({ qualification: e.currentTarget.value })} style={{ gridColumn: "span 2" }} />
         </SimpleGrid>
       </Paper>

@@ -126,8 +126,11 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
       id: -1,
       name: extractedSpecialty.specialty || "",
       code: extractedSpecialty.code || "",
+      old_code: "",
+      old_name: "",
       area_code: extractedSpecialty.area_code || "",
       area: extractedSpecialty.area || "",
+      degree: "bachelor",
       qualification: extractedSpecialty.qualification || "",
       data: { disciplines }
     } as Specialty

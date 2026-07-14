@@ -26,6 +26,7 @@ export function registerSpecialtiesCoursesResources(server: McpServer) {
           id: spec.id,
           code: spec.code,
           name: spec.name,
+          degree: spec.degree,
           area: spec.area,
           coursesUri: `docgen:///specialty/${spec.id}/courses`,
           coursesPath: `/specialty/${spec.id}/courses`,
@@ -102,6 +103,7 @@ export function registerSpecialtiesCoursesResources(server: McpServer) {
           id: specialty.id,
           code: specialty.code,
           name: specialty.name,
+          degree: specialty.degree,
         },
         items: list.map((course) => ({
           id: course.id,
@@ -179,6 +181,7 @@ export function registerSpecialtiesCoursesResources(server: McpServer) {
           id: specialty.id,
           code: specialty.code,
           name: specialty.name,
+          degree: specialty.degree,
         },
         items: results.map((result) => ({
           id: result.id,
