@@ -143,7 +143,7 @@ export default function CoursesList() {
 
   const specialtyOptions = specialties.map((s) => ({
     value: String(s.id),
-    label: `${s.code} ${s.name}`,
+    label: `${s.code} ${s.name} (${s.degree === "master" ? "маг" : "бак"})`,
   }));
 
   return (

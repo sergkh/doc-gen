@@ -308,7 +308,7 @@ export default function GeneratorPage() {
 
   const specialtyOptions = specialties.map((s) => ({
     value: s.id.toString(),
-    label: `${s.code} ${s.name}`,
+    label: `${s.code} ${s.name} (${s.degree === "master" ? "маг" : "бак"})`,
   }));
 
   const courseOptions = courses.map((c) => ({

@@ -144,7 +144,7 @@ export default function ResultsMatrix() {
 
   const specialtyOptions = specialties.map((s) => ({
     value: String(s.id),
-    label: `${s.code ? `${s.code} — ` : ""}${s.name} (${s.area})`,
+    label: `${s.code ? `${s.code} — ` : ""}${s.name} (${s.degree === "master" ? "маг" : "бак"}) (${s.area})`,
   }));
 
   return (

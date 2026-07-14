@@ -408,7 +408,10 @@ export default function CourseEdit() {
             <Select
               label="Спеціальність"
               placeholder="-- Виберіть спеціальність --"
-              data={specialties.map((s) => ({ value: String(s.id), label: `${s.code} ${s.name}` }))}
+              data={specialties.map((s) => ({
+                value: String(s.id),
+                label: `${s.code} ${s.name} (${s.degree === "master" ? "маг" : "бак"})`,
+              }))}
               value={item.specialty_id ? String(item.specialty_id) : null}
               onChange={(v) => update({ specialty_id: Number(v) })}
               searchable

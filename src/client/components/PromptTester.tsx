@@ -120,7 +120,10 @@ export default function PromptTester({
   );
 
   const specialtyOptions = useMemo(
-    () => specialties.map((s) => ({ value: String(s.id), label: `${s.code} ${s.name}` })),
+    () => specialties.map((s) => ({
+      value: String(s.id),
+      label: `${s.code} ${s.name} (${s.degree === "master" ? "маг" : "бак"})`,
+    })),
     [specialties]
   );
 
