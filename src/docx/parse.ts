@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import type { AcademicTitle, Course, CourseSemesters, CourseTopic, ParsedData, Teacher, TeacherPosition } from '@/stores/models';
+import type { AcademicTitle, Course, CourseSemesters, CourseTopic, ParsedData, Specialty, SpecialtyDegree, Teacher, TeacherPosition } from '@/stores/models';
 
 import path from 'path';
 import { courseResults, specialties, teachers } from '@/stores/db';
@@ -22,10 +22,21 @@ type SpecialtyInfo = {
   specialtyCode: string | null, 
   specialtyOldCode: string | null, 
   specialtyOldName: string | null, 
+  specialtyDegree: SpecialtyDegree,
   specialtyMode: 'new_only' | 'old_only' | 'both' | 'unknown',
   specialtyFormatted: string,
   area: string | null,
   warnings: string[]
+}
+
+function parseSpecialtyDegree(text: string): SpecialtyDegree {
+  const normalized = text.toLowerCase();
+
+  if (/магістр|магiстр|магістер|master\b/.test(normalized)) {
+    return "master";
+  }
+
+  return "bachelor";
 }
 
 function validateInitialInfo(initialInfo: CourseInitialInfo | null) {
@@ -658,6 +669,7 @@ export async function parseSpecialtyAndArea(text: string): Promise<SpecialtyInfo
   let oldSpecialtyName: string | null = null;
   let area: string | null = null;
   let warnings: string[] = [];
+  const specialtyDegree = parseSpecialtyDegree(text);
 
   const areaMatch = text.match(/Галузь\s+знань\s+([^\n]+)/i);
 
@@ -714,8 +726,37 @@ export async function parseSpecialtyAndArea(text: string): Promise<SpecialtyInfo
     }    
   }
 
-  let spec = specialtyCode ? await specialties.findByCode(specialtyCode) : null;
-  if (!spec && oldCode) spec = await specialties.findByCode(oldCode);
+  const allSpecialties = await specialties.all();
+  const byDegree = allSpecialties.filter((s) => s.degree === specialtyDegree);
+  const eq = (a?: string | null, b?: string | null) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+
+  let spec: Specialty | null = null;
+
+  if (specialtyCode) {
+    spec = byDegree.find((s) => eq(s.code, specialtyCode)) ?? null;
+  }
+
+  if (!spec && oldCode) {
+    spec = byDegree.find((s) => eq(s.code, oldCode) || eq(s.old_code, oldCode)) ?? null;
+  }
+
+  if (!spec && specialtyName) {
+    spec = byDegree.find((s) => eq(s.name, specialtyName) || eq(s.old_name, specialtyName)) ?? null;
+  }
+
+  if (!spec) {
+    const anyDegreeMatch = allSpecialties.find((s) =>
+      (specialtyCode && (eq(s.code, specialtyCode) || eq(s.old_code, specialtyCode))) ||
+      (oldCode && (eq(s.code, oldCode) || eq(s.old_code, oldCode))) ||
+      (specialtyName && (eq(s.name, specialtyName) || eq(s.old_name, specialtyName)))
+    );
+
+    if (anyDegreeMatch) {
+      warnings.push(
+        `Спеціальність знайдена, але з іншим рівнем освіти: очікувався ${specialtyDegree}, у базі ${anyDegreeMatch.degree}`
+      );
+    }
+  }
 
   if (!spec) {
     warnings.push(`Спеціальність не знайдена: ${specialtyCode || '???'} ${specialtyName || ''}`.trim());
@@ -739,6 +780,7 @@ export async function parseSpecialtyAndArea(text: string): Promise<SpecialtyInfo
     specialtyCode, 
     specialtyOldCode: oldCode, 
     specialtyOldName: oldSpecialtyName, 
+    specialtyDegree,
     specialtyId: spec?.id ?? null,
     specialtyMode,
     specialtyFormatted: formatted,

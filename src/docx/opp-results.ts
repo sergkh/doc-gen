@@ -121,6 +121,7 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
     const disciplinesTablePt2 = findNextTable(docTables, disciplinesTable, "Компоненти освітньої програми", "Обов’язкові компоненти");
 
     const disciplines = parseDisciplinesTable(disciplinesTable).concat(parseDisciplinesTable(disciplinesTablePt2));
+    const degree = header.toLowerCase().includes("магістр") ? "master" : "bachelor";
 
     const specialty = {
       id: -1,
@@ -130,7 +131,7 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
       old_name: "",
       area_code: extractedSpecialty.area_code || "",
       area: extractedSpecialty.area || "",
-      degree: "bachelor",
+      degree,
       qualification: extractedSpecialty.qualification || "",
       data: { disciplines }
     } as Specialty
