@@ -163,8 +163,6 @@ export async function loadFullCourseInfo(
 
   const countedTopics = buildTopicHours(course, updatedTopics);
 
-  console.log("Topic hours: ", countedTopics.map(t => t.data));
-
   const attestations = buildAttestations(course, countedTopics);
   const semesters: CourseSemester[] = buildSemesters(attestations);
   

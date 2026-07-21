@@ -52,6 +52,7 @@ export function registerListTemplates(server: McpServer) {
           );
         }
         const courseId = context.course.id;
+        const baseUrl = (process.env.BASE_URL ?? "").replace(/\/+$/, "");
         const items = allTemplates.map((t) => ({
           id: t.id,
           name: t.name,
@@ -60,7 +61,7 @@ export function registerListTemplates(server: McpServer) {
             type: p.type,
             subtype: p.subtype,
           })),
-          url: `/api/courses/${courseId}/generate/${t.id}/download`,
+          url: `${baseUrl}/api/courses/${courseId}/generate/${t.id}/download`,
         }));
 
         const message = `Знайдено ${items.length} шаблонів.`;

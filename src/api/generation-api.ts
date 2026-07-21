@@ -259,16 +259,18 @@ const generationApi = {
       }
 
       try {
-        const renderData = await loadFullCourseInfo(template, course, specialty, topics, {});
+        console.log(`Synchronously generating template ${template.name} for ${course.name}`);
+        const queryParameters = Object.fromEntries(new URL(req.url).searchParams.entries());
+        const renderData = await loadFullCourseInfo(template, course, specialty, topics, queryParameters);
         const ext = template.file.split(".").pop() ?? "docx";
         const filename = `${template.name}.${ext}`;
 
         if (template.file.endsWith(".docx")) {
           const result = await renderDoc(template.file, renderData);
-          return wordResp(result, filename);
+          return wordResp(result);
         } else {
           const result = await renderHandlebarsText(template.file, renderData);
-          return wordResp(result, filename);
+          return wordResp(result);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Невідома помилка";
