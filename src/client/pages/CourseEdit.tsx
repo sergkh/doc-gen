@@ -508,6 +508,8 @@ export default function CourseEdit() {
           </SimpleGrid>
 
           <AttestationsEditor
+            courseId={item.id}
+            topics={item.topics ?? []}
             attestations={item.data.attestations}
             onAdd={handleAddAttestation}
             onUpdateName={handleUpdateAttestationName}

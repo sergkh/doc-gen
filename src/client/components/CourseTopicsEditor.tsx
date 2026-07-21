@@ -6,6 +6,7 @@ import { Reorder, useDragControls } from "motion/react";
 import type { CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
 import { generateCourseTopics, type AIGeneratedTopic } from "../courses";
+import { addGeneratedTopicsToCourseTopics } from "./courseTopicsEditor.utils";
 import {
   Stack,
   Group,
@@ -154,7 +155,7 @@ function TopicItem({
             <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
             {topic.generated && (
               <Tooltip label="Згенеровані дані">
-                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${getTopicNo(topic)}/generated`)}>
+                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/generated`)}>
                   <FontAwesomeIcon icon={faEdit} />
                 </ActionIcon>
               </Tooltip>
@@ -356,14 +357,25 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
   };
 
   const handleAddGeneratedTopic = (gen: AIGeneratedTopic) => {
-    const topicData: CourseTopic = {
-      course_id: courseId, index: topics.length + 1, name: gen.name, lection: "",
-      data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
-      generated: { subtopics: gen.subtopics, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [] },
-    };
-    (topicData as TopicWithNo).no = getNextTopicNo(topics);
-    onChange([...topics, topicData]);
+    const result = addGeneratedTopicsToCourseTopics({
+      topics,
+      generatedTopics: [gen],
+      courseId,
+    });
+    onChange(result.topics);
     setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
+  };
+
+  const handleAddAllGeneratedTopics = () => {
+    if (!generatedTopics?.length) return;
+
+    const result = addGeneratedTopicsToCourseTopics({
+      topics,
+      generatedTopics,
+      courseId,
+    });
+    onChange(result.topics);
+    setGeneratedTopics(null);
   };
 
   const formProps = { form, setForm: setForm, isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm };
@@ -418,7 +430,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text fw={600} size="sm">Згенеровані теми</Text>
-                <Button size="xs" color="green" onClick={() => generatedTopics.forEach(handleAddGeneratedTopic)}>
+                <Button size="xs" color="green" onClick={handleAddAllGeneratedTopics}>
                   Додати всі
                 </Button>
               </Group>

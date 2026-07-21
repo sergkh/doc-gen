@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { extractInformationAI } from "./extractor";
-import type { Course, CourseResult } from "@/stores/models.ts";
+import type { Course, CourseResult, CourseTopic } from "@/stores/models.ts";
 
 const autofillResultSchema = z.object({
   matchedResults: z.array(z.object({
@@ -65,6 +65,57 @@ export type GeneratedTopic = {
   name: string,
   subtopics: string[]
 };
+
+const attestationRenameSchema = z.object({
+  name: z.string()
+});
+
+export function buildAttestationRenamePrompt(courseName: string, attestationIndex: number, topics: CourseTopic[]): string {
+  const topicLines = topics.length > 0
+    ? topics.map((topic) => {
+        const keywords = (topic.generated?.keywords || []).filter(Boolean);
+        const keywordText = keywords.length > 0 ? `; ключові слова: ${keywords.join(", ")}` : "";
+        return `- ${topic.name}${keywordText}`;
+      }).join("\n")
+    : "Теми не вказані";
+
+  return `Ти - експерт з розробки освітніх програм для університетських дисциплін.
+Твоя задача - придумати коротку, узагальнюючу назву атестації за темами дисципліни.
+
+Дисципліна: ${courseName}
+Атестація №${attestationIndex}
+
+Тематика цієї атестації:
+${topicLines}
+
+Завдання: на основі наведених тем і ключових слів придумай одну коротку назву українською мовою, яка узагальнює весь зміст атестації. Назва має бути максимально короткою (2–4 слова), загальною, але зрозумілою. Відповідай без пояснень і без лапок.`;
+}
+
+export function normalizeAttestationName(name: string, fallback: string): string {
+  const trimmed = name.replace(/^['"`]+|['"`]+$/g, "").trim();
+  if (!trimmed) return fallback;
+  return trimmed.replace(/\s+/g, " ").slice(0, 60);
+}
+
+export async function renameAttestationName(
+  course: Course,
+  attestationIndex: number,
+  topics: CourseTopic[],
+  model: string = "gpt-5-2025-08-07",
+  apiKey?: string
+): Promise<string> {
+  const prompt = buildAttestationRenamePrompt(course.name, attestationIndex, topics);
+  const response = await extractInformationAI(
+    "Ти допомагаєш створювати назви освітніх атестацій для навчальних дисциплін.",
+    prompt,
+    attestationRenameSchema,
+    model,
+    apiKey ?? null
+  );
+
+  const suggestedName = response?.name ?? "";
+  return normalizeAttestationName(suggestedName, `Атестація ${attestationIndex}`);
+}
 
 export async function generateCourseTopics(
   disciplineName: string,

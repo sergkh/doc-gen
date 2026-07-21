@@ -96,7 +96,7 @@ export function App() {
             <Route path="/courses/:id" element={<CourseEdit />} />
             <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
             <Route path="/courses/:courseId/history" element={<CourseHistory />} />
-            <Route path="/courses/:courseId/topics/:topicId/generated" element={<TopicGeneratedDataEdit />} />
+            <Route path="/courses/:courseId/topics/:topicIndex/generated" element={<TopicGeneratedDataEdit />} />
             <Route path="/teachers" element={<TeachersList />} />
             <Route path="/teachers/:id" element={<TeacherEdit />} />
             <Route path="/specialties" element={<SpecialtiesList />} />

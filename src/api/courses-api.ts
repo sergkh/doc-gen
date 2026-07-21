@@ -4,7 +4,7 @@ import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/sto
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
-import { autofillCourseResults, generateCourseTopics } from "@/ai/autofill";
+import { autofillCourseResults, generateCourseTopics, renameAttestationName } from "@/ai/autofill";
 import { coursesService } from "@/services/courses-service";
 
 let _nextTopicId = -1;
@@ -39,7 +39,6 @@ async function addTopicToCourse(courseId: number, topic: CourseTopic): Promise<C
 
   const stored: CourseTopic = {
     ...topic,
-    id: _nextTopicId--,
     course_id: courseId,
     index: course.topics.length + 1,
   };
@@ -168,43 +167,43 @@ const coursesApi = {
       return Response.json(stored);
     }
   },
-  "/api/courses/:courseId/topics/:id": {
+  "/api/courses/:courseId/topics/:index": {
     async GET(req: BunRequest) {
-      const { courseId, id } = req.params as { courseId: string; id: string };
-      console.log("Fetching topic with ID:", id);
+      const { courseId, index } = req.params as { courseId: string; index: string };
+      console.log("Fetching topic with index:", index);
       const topics = await getCourseTopics(Number(courseId));
-      const topic = topics.find(t => t.id === Number(id));
+      const topic = topics.find((t) => t.index === Number(index));
       if (!topic) {
         return new Response("Topic not found", { status: 404 });
       }
       return Response.json(topic);
     },
     async PUT(req: BunRequest) {
-      const { courseId, id } = req.params as { courseId: string; id: string };
+      const { courseId, index } = req.params as { courseId: string; index: string };
       const updatedTopic = await req.json() as CourseTopic;
       const course = await courses.get(Number(courseId));
       if (!course) {
         return new Response("Course not found", { status: 404 });
       }
       const topics = course.topics ?? [];
-      const idx = topics.findIndex(t => t.id === Number(id));
+      const idx = topics.findIndex((t) => t.index === Number(index));
       if (idx === -1) {
         return new Response("Topic not found", { status: 404 });
       }
-      topics[idx] = { ...topics[idx], ...updatedTopic, id: Number(id), course_id: Number(courseId) };
+      topics[idx] = { ...topics[idx], ...updatedTopic, index: Number(index), course_id: Number(courseId) };
       course.topics = topics;
-      console.log("Updating topic with ID:", id, updatedTopic);
+      console.log("Updating topic with index:", index, updatedTopic);
       await courses.update(course);
       return Response.json(topics[idx]);
     },
     async DELETE(req: BunRequest) {
-      const { courseId, id } = req.params as { courseId: string; id: string };
-      console.log("Deleting topic with ID:", id);
+      const { courseId, index } = req.params as { courseId: string; index: string };
+      console.log("Deleting topic with index:", index);
       const course = await courses.get(Number(courseId));
       if (!course) {
         return new Response("Course not found", { status: 404 });
       }
-      course.topics = (course.topics ?? []).filter(t => t.id !== Number(id));
+      course.topics = (course.topics ?? []).filter((t) => t.index !== Number(index));
       await courses.update(course);
       return Response.json({ success: true });
     }
@@ -232,7 +231,7 @@ const coursesApi = {
       const topics = course.topics ?? [];
       const ordered = topicIds
         .map((id, index) => {
-          const t = topics.find(t => t.id === id);
+          const t = topics.find((topic) => topic.index === id);
           if (t) return { ...t, index: index + 1 };
           return null;
         })
@@ -276,6 +275,31 @@ const coursesApi = {
       } catch (error) {
         console.error("Error autofilling results:", error);
         return new Response(`Error autofilling results: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+      }
+    }
+  },
+  "/api/courses/:id/attestations/:index/ai-rename": {
+    async POST(req: BunRequest) {
+      const { id, index } = req.params as { id: string; index: string };
+      const courseId = Number(id);
+      const attestationIndex = Number(index);
+      const body = await req.json() as { topics: CourseTopic[] };
+
+      if (!Number.isInteger(attestationIndex) || attestationIndex < 1) {
+        return new Response("Invalid attestation index", { status: 400 });
+      }
+
+      try {
+        const course = await courses.get(courseId);
+        if (!course) {
+          return new Response("Course not found", { status: 404 });
+        }
+
+        const name = await renameAttestationName(course, attestationIndex, body.topics ?? [], "gpt-5-2025-08-07");
+        return Response.json({ name });
+      } catch (error) {
+        console.error("Error renaming attestation:", error);
+        return new Response(`Error renaming attestation: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
       }
     }
   },

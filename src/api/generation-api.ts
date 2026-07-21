@@ -141,7 +141,8 @@ const generationApi = {
   },
   "/api/courses/:courseId/topics/:topicId/run-prompt": {
     async POST(req: BunRequest) {
-      const { courseId, topicId } = req.params as { courseId: string, topicId: string };
+      const { courseId, topicId, topicIndex } = req.params as { courseId: string, topicId?: string, topicIndex?: string };
+      const resolvedTopicIndex = topicIndex ?? topicId;
       let rawBody;
       try {
         rawBody = await req.json() as { prompt: Prompt; apiKey?: string };
@@ -161,7 +162,13 @@ const generationApi = {
       }
 
       const allTopics = course.topics ?? [];
-      const topic = allTopics.find(t => t.id === Number(topicId));
+      const topic = allTopics.find((t) => {
+        const numericIdentifier = Number(resolvedTopicIndex);
+        if (!Number.isNaN(numericIdentifier)) {
+          return t.index === numericIdentifier || ((t as CourseTopic & { id?: number }).id === numericIdentifier);
+        }
+        return false;
+      });
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }
@@ -200,7 +207,8 @@ const generationApi = {
   },
   "/api/courses/:courseId/topics/:topicId/save-prompt-result": {
     async POST(req: BunRequest) {
-      const { courseId, topicId } = req.params as { courseId: string, topicId: string };
+      const { courseId, topicIndex, topicId } = req.params as { courseId: string, topicIndex?: string, topicId?: string };
+      const resolvedTopicIndex = topicIndex ?? topicId;
       let body;
       try {
         body = await req.json() as { field: string; item: any };
@@ -218,7 +226,13 @@ const generationApi = {
       }
 
       const allTopics = course.topics ?? [];
-      const topic = allTopics.find(t => t.id === Number(topicId));
+      const topic = allTopics.find((t) => {
+        const numericIdentifier = Number(resolvedTopicIndex);
+        if (!Number.isNaN(numericIdentifier)) {
+          return t.index === numericIdentifier || ((t as CourseTopic & { id?: number }).id === numericIdentifier);
+        }
+        return false;
+      });
       if (!topic) {
         return jsonError("Тему не знайдено", 404);
       }
@@ -228,7 +242,7 @@ const generationApi = {
         [body.field]: body.item
       };
 
-      course.topics = allTopics.map(t => t.id === topic.id ? { ...t, generated } : t);
+      course.topics = allTopics.map((t) => (t.index === topic.index ? { ...t, generated } : t));
       await courses.update(course);
 
       return Response.json({ success: true, field: body.field });

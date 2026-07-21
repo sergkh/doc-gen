@@ -22,7 +22,7 @@ const inferFormat = (value: unknown): Prompt["format"] => {
 };
 
 export default function TopicGeneratedDataEdit() {
-  const { courseId, topicId } = useParams<{ courseId: string; topicId: string }>();
+  const { courseId, topicIndex } = useParams<{ courseId: string; topicIndex: string }>();
   const navigate = useNavigate();
 
   const [topic, setTopic] = useState<CourseTopic | null>(null);
@@ -34,16 +34,16 @@ export default function TopicGeneratedDataEdit() {
   const [templatesError, setTemplatesError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!courseId || !topicId) return;
+    if (!courseId || !topicIndex) return;
     let cancelled = false;
     setIsLoadingTopic(true);
-    fetch(`/api/courses/${courseId}/topics/${topicId}`)
+    fetch(`/api/courses/${courseId}/topics/${topicIndex}`)
       .then((r) => { if (!r.ok) throw new Error(); return r.json() as Promise<CourseTopic>; })
       .then((data) => { if (!cancelled) { setTopic(data); setGeneratedValues((data.generated || {}) as GeneratedTopicData); } })
       .catch(() => { if (!cancelled) { toast.error("Помилка завантаження теми"); setTopic(null); } })
       .finally(() => { if (!cancelled) setIsLoadingTopic(false); });
     return () => { cancelled = true; };
-  }, [courseId, topicId]);
+  }, [courseId, topicIndex]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,9 +83,9 @@ export default function TopicGeneratedDataEdit() {
   };
 
   const saveTopicData = async (): Promise<boolean> => {
-    if (!topic || !courseId || !topicId) return false;
+    if (!topic || !courseId || !topicIndex) return false;
     const updated: CourseTopic = { ...topic, generated: buildPayload() };
-    const r = await fetch(`/api/courses/${courseId}/topics/${topicId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
+    const r = await fetch(`/api/courses/${courseId}/topics/${topicIndex}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
     if (!r.ok) throw new Error("Failed to save");
     setTopic(updated);
     setGeneratedValues((updated.generated || {}) as GeneratedTopicData);
@@ -108,7 +108,7 @@ export default function TopicGeneratedDataEdit() {
       if (!r.ok) throw new Error();
       const all = await r.json() as CourseTopic[];
       const next = all.find((t) => t.index === topic.index + 1);
-      if (next) { toast.success("Дані збережено, перехід до наступної теми"); navigate(`/courses/${courseId}/topics/${next.id}/generated`); }
+      if (next) { toast.success("Дані збережено, перехід до наступної теми"); navigate(`/courses/${courseId}/topics/${next.index}/generated`); }
       else { toast.success("Дані збережено. Це остання тема"); navigate(`/courses/${courseId}`); }
     } catch { toast.error("Помилка збереження даних"); }
     finally { setIsSaving(false); }
@@ -138,7 +138,7 @@ export default function TopicGeneratedDataEdit() {
                 value={value as string | string[] | QuizQuestion[] | undefined}
                 onChange={(val) => handleFieldChange(field, val)}
                 courseId={courseId ? parseInt(courseId) : undefined}
-                topicId={topicId ? parseInt(topicId) : undefined}
+                topicId={topicIndex ? parseInt(topicIndex) : undefined}
                 prompt={prompt}
               />
             ))

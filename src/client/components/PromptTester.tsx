@@ -79,7 +79,7 @@ export default function PromptTester({
   const [topics, setTopics] = useState<CourseTopic[]>([]);
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
-  const [selectedTopicId, setSelectedTopicId] = useState<string>("");
+  const [selectedTopicIndex, setSelectedTopicIndex] = useState<string>("");
 
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<PromptResult | null>(null);
@@ -92,8 +92,8 @@ export default function PromptTester({
     if (savedSpecialtyId) setSelectedSpecialtyId(savedSpecialtyId);
     const savedCourseId = localStorage.getItem("prompt_tester_course_id");
     if (savedCourseId) setSelectedCourseId(savedCourseId);
-    const savedTopicId = localStorage.getItem("prompt_tester_topic_id");
-    if (savedTopicId) setSelectedTopicId(savedTopicId);
+    const savedTopicIndex = localStorage.getItem("prompt_tester_topic_index");
+    if (savedTopicIndex) setSelectedTopicIndex(savedTopicIndex);
   }, []);
 
   useEffect(() => {
@@ -105,8 +105,8 @@ export default function PromptTester({
   }, [selectedCourseId]);
 
   useEffect(() => {
-    if (selectedTopicId) localStorage.setItem("prompt_tester_topic_id", selectedTopicId);
-  }, [selectedTopicId]);
+    if (selectedTopicIndex) localStorage.setItem("prompt_tester_topic_index", selectedTopicIndex);
+  }, [selectedTopicIndex]);
 
   useEffect(() => {
     setTestResult(null);
@@ -191,13 +191,13 @@ export default function PromptTester({
     if (!opened) return;
     if (promptType !== "topic") {
       setTopics([]);
-      setSelectedTopicId("");
+      setSelectedTopicIndex("");
       setTopicsError(null);
       return;
     }
     if (!selectedCourseId) {
       setTopics([]);
-      setSelectedTopicId("");
+      setSelectedTopicIndex("");
       setTopicsError(null);
       return;
     }
@@ -220,15 +220,15 @@ export default function PromptTester({
       .then((data) => {
         if (aborted) return;
         setTopics(data);
-        setSelectedTopicId((prev) => {
-          if (prev && data.some((t) => t.id === Number(prev))) return prev;
-          return data[0] ? String(data[0].id) : "";
+        setSelectedTopicIndex((prev) => {
+          if (prev && data.some((t) => t.index === Number(prev))) return prev;
+          return data[0] ? String(data[0].index) : "";
         });
       })
       .catch((error) => {
         if (aborted) return;
         setTopics([]);
-        setSelectedTopicId("");
+        setSelectedTopicIndex("");
         setTopicsError(error instanceof Error ? error.message : "Не вдалося завантажити теми");
       })
       .finally(() => { if (!aborted) setIsLoadingTopics(false); });
@@ -238,9 +238,9 @@ export default function PromptTester({
 
   const canTest = useMemo(() => {
     if (isTesting || !selectedCourseId) return false;
-    if (promptType === "topic" && !selectedTopicId) return false;
+    if (promptType === "topic" && !selectedTopicIndex) return false;
     return !!(field.trim() && systemPrompt.trim() && userPrompt.trim());
-  }, [isTesting, selectedCourseId, selectedTopicId, promptType, field, systemPrompt, userPrompt]);
+  }, [isTesting, selectedCourseId, selectedTopicIndex, promptType, field, systemPrompt, userPrompt]);
 
   const handleTestPrompt = async () => {
     const courseId = Number.parseInt(selectedCourseId, 10);
@@ -248,10 +248,10 @@ export default function PromptTester({
 
     let endpoint = `/api/courses/${courseId}/run-prompt`;
     if (promptType === "topic") {
-      if (!selectedTopicId) { setTestError("Оберіть тему для тестування"); return; }
-      const topicId = Number.parseInt(selectedTopicId, 10);
-      if (Number.isNaN(topicId)) { setTestError("ID теми має бути числом"); return; }
-      endpoint = `/api/courses/${courseId}/topics/${topicId}/run-prompt`;
+      if (!selectedTopicIndex) { setTestError("Оберіть тему для тестування"); return; }
+      const topicIndex = Number.parseInt(selectedTopicIndex, 10);
+      if (Number.isNaN(topicIndex)) { setTestError("Індекс теми має бути числом"); return; }
+      endpoint = `/api/courses/${courseId}/topics/${topicIndex}/run-prompt`;
     }
 
     const payload: Prompt = {
@@ -293,10 +293,10 @@ export default function PromptTester({
 
     let endpoint = `/api/courses/${courseId}/save-prompt-result`;
     if (promptType === "topic") {
-      if (!selectedTopicId) return;
-      const topicId = Number.parseInt(selectedTopicId, 10);
-      if (Number.isNaN(topicId)) return;
-      endpoint = `/api/courses/${courseId}/topics/${topicId}/save-prompt-result`;
+      if (!selectedTopicIndex) return;
+      const topicIndex = Number.parseInt(selectedTopicIndex, 10);
+      if (Number.isNaN(topicIndex)) return;
+      endpoint = `/api/courses/${courseId}/topics/${topicIndex}/save-prompt-result`;
     }
 
     setIsSaving(true);
@@ -316,7 +316,7 @@ export default function PromptTester({
     }
   };
 
-  const topicOptions = topics.map((t) => ({ value: String(t.id), label: t.name }));
+  const topicOptions = topics.map((t) => ({ value: String(t.index), label: t.name }));
 
   return (
     <Stack gap="xs">
@@ -336,7 +336,7 @@ export default function PromptTester({
               setSelectedSpecialtyId(v ?? "");
               setSelectedCourseId("");
               setTopics([]);
-              setSelectedTopicId("");
+              setSelectedTopicIndex("");
               setTopicsError(null);
             }}
             disabled={isLoadingSpecialties}
@@ -383,8 +383,8 @@ export default function PromptTester({
                 label="Тема дисципліни"
                 placeholder="Оберіть тему"
                 data={topicOptions}
-                value={selectedTopicId || null}
-                onChange={(v) => setSelectedTopicId(v ?? "")}
+                value={selectedTopicIndex || null}
+                onChange={(v) => setSelectedTopicIndex(v ?? "")}
                 disabled={isLoadingTopics || !selectedCourseId}
                 searchable
                 rightSection={isLoadingTopics ? <Loader size="xs" /> : undefined}

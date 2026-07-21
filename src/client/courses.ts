@@ -194,6 +194,23 @@ export async function autofillCourseResults(courseId: number, type: "ЗК" | "С
   return await res.json();
 }
 
+export async function renameAttestation(courseId: number, attestationIndex: number, topics: CourseTopic[]): Promise<string> {
+  const res = await fetch(`/api/courses/${courseId}/attestations/${attestationIndex}/ai-rename`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ attestationIndex, topics })
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка перейменування атестації: ${res.status}`);
+  }
+
+  const body = await res.json() as { name: string };
+  return body.name;
+}
+
 export type AIGeneratedTopic = {
   name: string;
   subtopics: string[];
