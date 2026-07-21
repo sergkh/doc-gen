@@ -247,6 +247,15 @@ export default function CourseEdit() {
     updateData({ attestations: [...item.data.attestations, { name: trimmed, semester }] });
   };
 
+  const handleUpdateAttestationName = (index: number, name: string) => {
+    if (!item) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const duplicate = item.data.attestations.find((a, i) => i !== index && a.name === trimmed);
+    if (duplicate) return;
+    updateData({ attestations: item.data.attestations.map((a, i) => i === index ? { ...a, name: trimmed } : a) });
+  };
+
   const handleUpdateAttestationSemester = (index: number, semester: number) => {
     if (!item) return;
     updateData({ attestations: item.data.attestations.map((a, i) => i === index ? { ...a, semester } : a) });
@@ -501,6 +510,7 @@ export default function CourseEdit() {
           <AttestationsEditor
             attestations={item.data.attestations}
             onAdd={handleAddAttestation}
+            onUpdateName={handleUpdateAttestationName}
             onUpdateSemester={handleUpdateAttestationSemester}
             onRemove={handleRemoveAttestation}
           />
@@ -509,6 +519,8 @@ export default function CourseEdit() {
 
       <CourseTopicsEditor
         courseId={item.id}
+        coursePractType={item.data.practice_type ?? 'practice'}
+        courseTotalHours={item.data.hours}
         topics={item.topics ?? []}
         onChange={(topics) => setItem({ ...item, topics })}
       />

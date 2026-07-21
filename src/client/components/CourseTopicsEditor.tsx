@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
@@ -23,11 +23,39 @@ import {
 
 interface CourseTopicsEditorProps {
   courseId: number;
+  courseTotalHours: number;
+  coursePractType: "practice" | "lab",
   topics: CourseTopic[];
   onChange: (topics: CourseTopic[]) => void;
 }
 
 type TopicWithNo = CourseTopic & { no?: number };
+
+type TopicFormState = {
+  name: string;
+  subtopics: string;
+  lection: string;
+  hours: number;
+  attestation: number;
+  practicalHours: number;
+  srsHours: number;
+  inabscentiaHours: number;
+  inabscentiaPracticalHours: number;
+  inabscentiaSrsHours: number;
+};
+
+const createTopicFormState = (): TopicFormState => ({
+  name: "",
+  subtopics: "",
+  lection: "",
+  hours: 2,
+  attestation: 1,
+  practicalHours: 0,
+  srsHours: 0,
+  inabscentiaHours: 0,
+  inabscentiaPracticalHours: 0,
+  inabscentiaSrsHours: 0,
+});
 
 function getTopicNo(topic: CourseTopic): number {
   const no = (topic as TopicWithNo).no;
@@ -45,6 +73,7 @@ function getNextTopicNo(items: CourseTopic[]): number {
 interface TopicItemProps {
   topic: CourseTopic;
   courseId: number;
+  coursePractType: "practice" | "lab";
   onEdit: (topic: CourseTopic) => void;
   onDelete: (topic: CourseTopic) => void;
   onUpdateAttestation: (topic: CourseTopic, v: number) => void;
@@ -65,6 +94,7 @@ const ATTESTATION_COLORS: Record<number, string> = {
 
 function TopicItem({
   topic, courseId,
+  coursePractType,
   onEdit, onDelete,
   onUpdateAttestation, onUpdateFulltimeHours, onUpdatePracticalHours,
   onUpdateFulltimeSrsHours, onUpdateInabscentiaHours,
@@ -108,12 +138,11 @@ function TopicItem({
               </Text>
               <Group gap={4} wrap="wrap">
                 <InPlaceEditor value={hours} options={[2,4,6,8].map(v=>({value:v,label:`${v} год.`}))} displayText={`${hours} год.`} title="Години (денна)" onChange={(v)=>onUpdateFulltimeHours(topic,v)} />
-                <InPlaceEditor value={practicalHours} options={[0,2,4,6,8].map(v=>({value:v,label:`${v} пр.`}))} displayText={`${practicalHours} пр.`} title="Практичні (денна)" onChange={(v)=>onUpdatePracticalHours(topic,v)} />
+                <InPlaceEditor value={practicalHours} options={[0,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр." : "лаб."}`}))} displayText={`${practicalHours} ${coursePractType === "practice" ? "пр." : "лаб."}`} title={coursePractType === "practice" ? "Практичні (денна)" : "Лабораторні (денна)"} onChange={(v)=>onUpdatePracticalHours(topic,v)} />
                 <InPlaceEditor value={srsHours} options={[0,2,4,5,6,7,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС`}))} displayText={`${srsHours} СРС`} title="СРС (денна)" onChange={(v)=>onUpdateFulltimeSrsHours(topic,v)} />
                 <InPlaceEditor value={inabscentiaHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} год.заоч.`}))} displayText={`${inabscentiaHours} год.заоч.`} title="Години (заочна)" onChange={(v)=>onUpdateInabscentiaHours(topic,v)} />
-                <InPlaceEditor value={inabscentiaPracticalHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} пр.заоч.`}))} displayText={`${inabscentiaPracticalHours} пр.заоч.`} title="Практичні (заочна)" onChange={(v)=>onUpdateInabscentiaPracticalHours(topic,v)} />
+                <InPlaceEditor value={inabscentiaPracticalHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`}))} displayText={`${inabscentiaPracticalHours} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`} title={coursePractType === "practice" ? "Практичні (заочна)" : "Лабораторні (заочна)"} onChange={(v)=>onUpdateInabscentiaPracticalHours(topic,v)} />
                 <InPlaceEditor value={inabscentiaSrsHours} options={[0,2,4,6,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС заоч.`}))} displayText={`${inabscentiaSrsHours} СРС заоч.`} title="СРС (заочна)" onChange={(v)=>onUpdateInabscentiaSrsHours(topic,v)} />
-                <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} />
               </Group>
             </Group>
             {topic.lection && (
@@ -122,6 +151,7 @@ function TopicItem({
           </Stack>
 
           <Group gap="xs" wrap="nowrap">
+            <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
             {topic.generated && (
               <Tooltip label="Згенеровані дані">
                 <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${getTopicNo(topic)}/generated`)}>
@@ -159,36 +189,15 @@ const ATTESTATION_OPTS = [1, 2, 3, 4].map((v) => ({ value: String(v), label: Str
 // ─── Topic form (shared for new & edit) ──────────────────────────────────────
 interface TopicFormProps {
   title: string;
-  topicName: string; setTopicName: (v: string) => void;
-  topicSubtopics: string; setTopicSubtopics: (v: string) => void;
-  topicLection: string; setTopicLection: (v: string) => void;
-  topicHours: number; setTopicHours: (v: number) => void;
-  topicPracticalHours: number; setTopicPracticalHours: (v: number) => void;
-  topicSrsHours: number; setTopicSrsHours: (v: number) => void;
-  topicInabscentiaHours: number; setTopicInabscentiaHours: (v: number) => void;
-  topicInabscentiaPracticalHours: number; setTopicInabscentiaPracticalHours: (v: number) => void;
-  topicInabscentiaSrsHours: number; setTopicInabscentiaSrsHours: (v: number) => void;
-  topicAttestation: number; setTopicAttestation: (v: number) => void;
-  isDragging: boolean; setIsDragging: (v: boolean) => void;
+  form: TopicFormState;
+  setForm: (patch: Partial<TopicFormState>) => void;
+  isDragging: boolean;
+  setIsDragging: (v: boolean) => void;
   onSave: () => void;
   onCancel: () => void;
 }
 
-function TopicForm({
-  title,
-  topicName, setTopicName,
-  topicSubtopics, setTopicSubtopics,
-  topicLection, setTopicLection,
-  topicHours, setTopicHours,
-  topicPracticalHours, setTopicPracticalHours,
-  topicSrsHours, setTopicSrsHours,
-  topicInabscentiaHours, setTopicInabscentiaHours,
-  topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours,
-  topicInabscentiaSrsHours, setTopicInabscentiaSrsHours,
-  topicAttestation, setTopicAttestation,
-  isDragging, setIsDragging,
-  onSave, onCancel,
-}: TopicFormProps) {
+function TopicForm({ title, form, setForm, isDragging, setIsDragging, onSave, onCancel }: TopicFormProps) {
   const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -197,7 +206,7 @@ function TopicForm({
     const isText = file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
     if (!isText) { alert("Будь ласка, перетягніть текстовий файл (.txt)"); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => setTopicLection(ev.target?.result as string);
+    reader.onload = (ev) => setForm({ lection: ev.target?.result as string });
     reader.readAsText(file);
   };
 
@@ -212,69 +221,35 @@ function TopicForm({
           </Group>
         </Group>
 
-        <TextInput
-          label="Назва теми"
-          placeholder="Введіть назву теми"
-          value={topicName}
-          onChange={(e) => setTopicName(e.currentTarget.value)}
-        />
-
-        <Textarea
-          label="Підтеми (по одній на рядок)"
-          placeholder="Введіть підтеми, по одній на рядок"
-          value={topicSubtopics}
-          onChange={(e) => setTopicSubtopics(e.currentTarget.value)}
-          autosize
-          minRows={2}
-        />
+        <TextInput label="Назва теми" placeholder="Введіть назву теми" value={form.name} onChange={(e) => setForm({ name: e.currentTarget.value })} />
+        <Textarea label="Підтеми (по одній на рядок)" placeholder="Введіть підтеми, по одній на рядок" value={form.subtopics} onChange={(e) => setForm({ subtopics: e.currentTarget.value })} autosize minRows={2} />
 
         <Divider label="Денна форма" labelPosition="left" />
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-          <Select label="Години" data={FULLTIME_HOURS_OPTS} value={String(topicHours)} onChange={(v) => v && setTopicHours(Number(v))} />
-          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(topicPracticalHours)} onChange={(v) => v && setTopicPracticalHours(Number(v))} />
-          <Select label="СРС" data={SRS_OPTS} value={String(topicSrsHours)} onChange={(v) => v && setTopicSrsHours(Number(v))} />
+          <Select label="Години" data={FULLTIME_HOURS_OPTS} value={String(form.hours)} onChange={(v) => v && setForm({ hours: Number(v) })} />
+          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(form.practicalHours)} onChange={(v) => v && setForm({ practicalHours: Number(v) })} />
+          <Select label="СРС" data={SRS_OPTS} value={String(form.srsHours)} onChange={(v) => v && setForm({ srsHours: Number(v) })} />
         </SimpleGrid>
 
         <Divider label="Заочна форма" labelPosition="left" />
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-          <Select label="Години" data={INABS_HOURS_OPTS} value={String(topicInabscentiaHours)} onChange={(v) => v && setTopicInabscentiaHours(Number(v))} />
-          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(topicInabscentiaPracticalHours)} onChange={(v) => v && setTopicInabscentiaPracticalHours(Number(v))} />
-          <Select label="СРС" data={SRS_OPTS} value={String(topicInabscentiaSrsHours)} onChange={(v) => v && setTopicInabscentiaSrsHours(Number(v))} />
+          <Select label="Години" data={INABS_HOURS_OPTS} value={String(form.inabscentiaHours)} onChange={(v) => v && setForm({ inabscentiaHours: Number(v) })} />
+          <Select label="Практичні" data={PRACTICAL_OPTS} value={String(form.inabscentiaPracticalHours)} onChange={(v) => v && setForm({ inabscentiaPracticalHours: Number(v) })} />
+          <Select label="СРС" data={SRS_OPTS} value={String(form.inabscentiaSrsHours)} onChange={(v) => v && setForm({ inabscentiaSrsHours: Number(v) })} />
         </SimpleGrid>
 
-        <Select label="Атестація" data={ATTESTATION_OPTS} value={String(topicAttestation)} onChange={(v) => v && setTopicAttestation(Number(v))} w={120} />
-
-        <Textarea
-          label="Текст лекції"
-          placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"}
-          value={topicLection}
-          onChange={(e) => setTopicLection(e.currentTarget.value)}
-          autosize
-          minRows={4}
-          onDrop={handleFileDrop}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-          styles={isDragging ? { input: { borderStyle: "dashed", borderColor: "var(--mantine-color-blue-5)" } } : undefined}
-        />
+        <Select label="Атестація" data={ATTESTATION_OPTS} value={String(form.attestation)} onChange={(v) => v && setForm({ attestation: Number(v) })} w={120} />
+        <Textarea label="Текст лекції" placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"} value={form.lection} onChange={(e) => setForm({ lection: e.currentTarget.value })} autosize minRows={4} onDrop={handleFileDrop} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }} styles={isDragging ? { input: { borderStyle: "dashed", borderColor: "var(--mantine-color-blue-5)" } } : undefined} />
       </Stack>
     </Paper>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CourseTopicsEditor({ courseId, topics, onChange }: CourseTopicsEditorProps) {
+export default function CourseTopicsEditor({ courseId, courseTotalHours, topics, onChange, coursePractType }: CourseTopicsEditorProps) {
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [isAddingTopic, setIsAddingTopic] = useState(false);
-  const [topicName, setTopicName] = useState("");
-  const [topicSubtopics, setTopicSubtopics] = useState("");
-  const [topicLection, setTopicLection] = useState("");
-  const [topicHours, setTopicHours] = useState(2);
-  const [topicAttestation, setTopicAttestation] = useState(1);
-  const [topicPracticalHours, setTopicPracticalHours] = useState(0);
-  const [topicInabscentiaHours, setTopicInabscentiaHours] = useState(0);
-  const [topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours] = useState(0);
-  const [topicSrsHours, setTopicSrsHours] = useState(0);
-  const [topicInabscentiaSrsHours, setTopicInabscentiaSrsHours] = useState(0);
+  const [form, setFormState] = useState<TopicFormState>(createTopicFormState);
   const [isDragging, setIsDragging] = useState(false);
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
@@ -282,10 +257,25 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
   const resetForm = () => {
     setEditingTopic(null);
     setIsAddingTopic(false);
-    setTopicName(""); setTopicSubtopics(""); setTopicLection("");
-    setTopicHours(2); setTopicAttestation(1); setTopicPracticalHours(0);
-    setTopicInabscentiaHours(0); setTopicInabscentiaPracticalHours(0);
-    setTopicSrsHours(0); setTopicInabscentiaSrsHours(0);
+    setFormState(createTopicFormState());
+  };
+
+  const setForm = (patch: Partial<TopicFormState>) => setFormState((prev) => ({ ...prev, ...patch }));
+
+  const fillFormFromTopic = (topic: CourseTopic) => {
+    setFormState({
+      ...createTopicFormState(),
+      name: topic.name || "",
+      subtopics: (topic.generated?.subtopics || []).join("\n"),
+      lection: topic.lection || "",
+      hours: topic.data?.fulltime?.hours || 2,
+      attestation: topic.data?.attestation || 1,
+      practicalHours: topic.data?.fulltime?.practical_hours || 0,
+      inabscentiaHours: topic.data?.inabscentia?.hours || 0,
+      inabscentiaPracticalHours: topic.data?.inabscentia?.practical_hours || 0,
+      srsHours: topic.data?.fulltime?.srs_hours || 0,
+      inabscentiaSrsHours: topic.data?.inabscentia?.srs_hours || 0,
+    });
   };
 
   const handleAddTopic = () => {
@@ -295,11 +285,7 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
       index: topics.length + 1,
       name: "",
       lection: "",
-      data: {
-        attestation: 1,
-        fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 },
-        inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 },
-      },
+      data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
       generated: {},
     } as CourseTopic;
     (newTopic as TopicWithNo).no = getNextTopicNo(topics);
@@ -310,34 +296,23 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
   const handleEditTopic = (topic: CourseTopic) => {
     setEditingTopic(topic);
     setIsAddingTopic(false);
-    setTopicName(topic.name || "");
-    setTopicSubtopics((topic.generated?.subtopics || []).join("\n"));
-    setTopicLection(topic.lection || "");
-    setTopicHours(topic.data?.fulltime?.hours || 2);
-    setTopicAttestation(topic.data?.attestation || 1);
-    setTopicPracticalHours(topic.data?.fulltime?.practical_hours || 0);
-    setTopicInabscentiaHours(topic.data?.inabscentia?.hours || 0);
-    setTopicInabscentiaPracticalHours(topic.data?.inabscentia?.practical_hours || 0);
-    setTopicSrsHours(topic.data?.fulltime?.srs_hours || 0);
-    setTopicInabscentiaSrsHours(topic.data?.inabscentia?.srs_hours || 0);
+    fillFormFromTopic(topic);
   };
 
   const handleSaveTopic = () => {
     if (!editingTopic) return;
-    if (!topicName.trim()) { alert("Назва теми обов'язкова"); return; }
+    if (!form.name.trim()) { alert("Назва теми обов'язкова"); return; }
 
-    const subtopicsArray = topicSubtopics.split("\n").map((s) => s.trim()).filter(Boolean);
-    const existingGenerated = editingTopic.generated;
     const saved: CourseTopic = {
       ...editingTopic,
-      name: topicName.trim(),
-      lection: topicLection.trim(),
+      name: form.name.trim(),
+      lection: form.lection.trim(),
       data: {
-        attestation: topicAttestation,
-        fulltime: { hours: topicHours, practical_hours: topicPracticalHours, lab_hours: 0, srs_hours: topicSrsHours },
-        inabscentia: { hours: topicInabscentiaHours, practical_hours: topicInabscentiaPracticalHours, lab_hours: 0, srs_hours: topicInabscentiaSrsHours },
+        attestation: form.attestation,
+        fulltime: { hours: form.hours, practical_hours: form.practicalHours, lab_hours: 0, srs_hours: form.srsHours },
+        inabscentia: { hours: form.inabscentiaHours, practical_hours: form.inabscentiaPracticalHours, lab_hours: 0, srs_hours: form.inabscentiaSrsHours },
       },
-      generated: { subtopics: subtopicsArray, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(existingGenerated || {}) },
+      generated: { subtopics: form.subtopics.split("\n").map((s) => s.trim()).filter(Boolean), keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(editingTopic.generated || {}) },
     };
 
     if (isAddingTopic) {
@@ -349,26 +324,20 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
     }
 
     const editingKey = getTopicIdentifier(editingTopic);
-    const updated = topics.map((t) => (getTopicIdentifier(t) === editingKey ? saved : t));
-
-    onChange(updated);
+    onChange(topics.map((t) => (getTopicIdentifier(t) === editingKey ? saved : t)));
     resetForm();
   };
 
   const handleDeleteTopic = (topic: CourseTopic) => {
     if (!confirm("Ви впевнені, що хочете видалити цю тему?")) return;
-    const key = getTopicIdentifier(topic);
-    onChange(topics.filter((t) => getTopicIdentifier(t) !== key));
+    onChange(topics.filter((t) => getTopicIdentifier(t) !== getTopicIdentifier(topic)));
   };
 
-  const handleReorder = (newOrder: CourseTopic[]) => {
-    onChange(newOrder.map((t, i) => ({ ...t, index: i + 1 })));
-  };
+  const handleReorder = (newOrder: CourseTopic[]) => onChange(newOrder.map((t, i) => ({ ...t, index: i + 1 })));
 
   const patchTopic = (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
     const key = getTopicIdentifier(topic);
-    const updated: CourseTopic = { ...topic, data: { ...topic.data, ...patch } };
-    onChange(topics.map((t) => (getTopicIdentifier(t) === key ? updated : t)));
+    onChange(topics.map((t) => (getTopicIdentifier(t) === key ? { ...t, data: { ...t.data, ...patch } } : t)));
   };
 
   const handleUpdateAttestation = (topic: CourseTopic, v: number) => patchTopic(topic, { attestation: v });
@@ -397,13 +366,33 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
     setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
   };
 
-  const formProps = {
-    topicName, setTopicName, topicSubtopics, setTopicSubtopics, topicLection, setTopicLection,
-    topicHours, setTopicHours, topicPracticalHours, setTopicPracticalHours, topicSrsHours, setTopicSrsHours,
-    topicInabscentiaHours, setTopicInabscentiaHours, topicInabscentiaPracticalHours, setTopicInabscentiaPracticalHours,
-    topicInabscentiaSrsHours, setTopicInabscentiaSrsHours, topicAttestation, setTopicAttestation,
-    isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm,
-  };
+  const formProps = { form, setForm: setForm, isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm };
+
+  const summary = useMemo(() => {
+    const collectTotals = (mode: "fulltime" | "inabscentia") => {
+      const totals = topics.reduce(
+        (acc, topic) => {
+          const data = mode === "fulltime" ? topic.data?.fulltime : topic.data?.inabscentia;
+          acc.hours += data?.hours ?? 0;
+          acc.practical += data?.practical_hours ?? 0;
+          acc.srs += data?.srs_hours ?? 0;
+          return acc;
+        },
+        { hours: 0, practical: 0, srs: 0 },
+      );
+
+      return {
+        ...totals,
+        total: totals.hours + totals.practical + totals.srs,
+        isBalanced: totals.hours + totals.practical + totals.srs === courseTotalHours,
+      };
+    };
+
+    return {
+      fulltime: collectTotals("fulltime"),
+      inabscentia: collectTotals("inabscentia"),
+    };
+  }, [topics, courseTotalHours]);
 
   return (
     <Paper withBorder p="md">
@@ -469,6 +458,7 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
                   key={`topic-item-${topicKey}`}
                   topic={topic}
                   courseId={courseId}
+                  coursePractType={coursePractType}
                   onEdit={handleEditTopic}
                   onDelete={handleDeleteTopic}
                   onUpdateAttestation={handleUpdateAttestation}
@@ -487,6 +477,26 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
         {editingTopic && isAddingTopic && (
           <TopicForm title="Додати тему" {...formProps} />
         )}
+
+        <Paper withBorder p="sm">
+          <Stack gap={4}>
+            <Text fw={600} size="sm">Сумарно годин</Text>
+            <Group justify="space-between" wrap="wrap" gap="md">
+              <Stack gap={2}>
+                <Text size="xs" c="dimmed">Денна</Text>
+                <Text size="sm" c={summary.fulltime.isBalanced ? undefined : "red"}>
+                  Лекції: {summary.fulltime.hours} · {coursePractType === "practice" ? "Практичні" : "Лаборатор`ні"}: {summary.fulltime.practical} · СРС: {summary.fulltime.srs} · Разом: {summary.fulltime.total}
+                </Text>
+              </Stack>
+              <Stack gap={2}>
+                <Text size="xs" c="dimmed">Заочна</Text>
+                <Text size="sm" c={summary.inabscentia.isBalanced ? undefined : "red"}>
+                  Лекції: {summary.inabscentia.hours} · {coursePractType === "practice" ? "Практичні" : "Лабораторні"}: {summary.inabscentia.practical} · СРС: {summary.inabscentia.srs} · Разом: {summary.inabscentia.total}
+                </Text>
+              </Stack>
+            </Group>
+          </Stack>
+        </Paper>
       </Stack>
     </Paper>
   );

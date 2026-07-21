@@ -3,7 +3,7 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import path from "path";
 import expressionParser from "docxtemplater/expressions.js";
-import type { QuizQuestion } from "@/stores/models";
+import type { AcademicTitle } from "@/stores/models";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 import Handlebars from "handlebars";
 
@@ -34,6 +34,24 @@ const shortenNameAsSignature = (input: string | {name?: string}) => {
   }
 
   return input;
+}
+
+const shortenAcademicTitle = (str: string) => {
+  switch(str as AcademicTitle) {
+    case 'доктор економічних наук': return 'д.е.н';
+    case 'доктор технічних наук': return 'д.т.н';
+    case 'кандидат економічних наук': return 'к.е.н';
+    case 'кандидат педагогічних наук': return 'к.пед.н';
+    case 'кандидат технічних наук': return 'к.т.н';
+    case 'кандидат сільськогосподарських наук': return 'к.с.-г.н';
+    case 'кандидат філологічних наук': return 'к.філос.н';
+    case 'кандидат філософських наук': return 'к.філол.н';
+    case 'кандидат юридичних наук': return 'к.ю.н';
+    case 'професор': return 'проф.';
+    case 'кандидат історичних наук': return 'к.і.н';
+    default:
+      return str;
+  }
 }
 
 // Helper functions that can be used in templates like:
@@ -97,6 +115,11 @@ const parser = expressionParser.configure({
         if (!input) return input;
         if (Array.isArray(input)) return input.map(n => shortenName(n))
         return shortenNameAsSignature(input);
+      },
+      shortenAcademicTitle(input) {
+        if (!input) return input;
+        if (Array.isArray(input)) return input.map(n => shortenName(n))
+        return shortenName(input);
       }
   }
 });

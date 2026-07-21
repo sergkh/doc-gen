@@ -59,6 +59,7 @@ export default function ResultsEditor({
                   textOverflow: "clip",
                   lineHeight: 1.25,
                   display: "block",
+                  textAlign: "left",
                   paddingTop: 2,
                   paddingBottom: 2,
                 },

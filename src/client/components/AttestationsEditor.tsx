@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { Stack, Group, Text, TextInput, Select, Badge, ActionIcon, Button, Divider, Box } from "@mantine/core";
+import { faPlus, faPen, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { Stack, Group, Text, TextInput, Select, ActionIcon, Divider, Box, Tooltip } from "@mantine/core";
 
 export type Attestation = {
   name: string;
@@ -11,6 +11,7 @@ export type Attestation = {
 interface AttestationsEditorProps {
   attestations: Attestation[];
   onAdd: (name: string, semester: number) => void;
+  onUpdateName: (index: number, name: string) => void;
   onUpdateSemester: (index: number, semester: number) => void;
   onRemove: (index: number) => void;
 }
@@ -23,37 +24,75 @@ const SEMESTER_OPTIONS = [
 export default function AttestationsEditor({
   attestations,
   onAdd,
+  onUpdateName,
   onUpdateSemester,
   onRemove,
 }: AttestationsEditorProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [semester, setSemester] = useState<string>("1");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draftName, setDraftName] = useState("");
 
   const handleAdd = () => {
-    if (!inputValue.trim()) return;
-    onAdd(inputValue.trim(), Number(semester));
-    setInputValue("");
-    setSemester("1");
+    const defaultName = `Атестація ${attestations.length + 1}`;
+    onAdd(defaultName, 1);
+  };
+
+  const commitRename = (index: number) => {
+    const nextName = draftName.trim();
+    if (nextName) onUpdateName(index, nextName);
+    setEditingIndex(null);
+    setDraftName("");
   };
 
   return (
     <Stack gap="xs">
       <Divider label="Атестації" labelPosition="left" />
 
-      {attestations.length > 0 && (
-        <Group gap="xs" wrap="wrap">
-          {attestations.map((att, index) => (
-            <Box
-              style={(theme) => ({
-                display: 'inline-block',
-                padding: '10px 16px',
-                backgroundColor: theme.colors.blue[0],
-                borderRadius: '0.5em'
-              })}
-              key={index}
-              variant="outline"              
-            >
-              {att.name}{" "}
+      <Group gap="xs" wrap="wrap">
+        {attestations.map((att, index) => (
+          <Box
+            style={(theme) => ({
+              display: "inline-block",
+              padding: "10px 16px",
+              backgroundColor: theme.colors.blue[0],
+              borderRadius: "0.5em",
+            })}
+            key={index}
+          >
+            <Group gap={6} wrap="nowrap">
+              {editingIndex === index ? (
+                <TextInput
+                  size="xs"
+                  value={draftName}
+                  autoFocus
+                  onChange={(e) => setDraftName(e.currentTarget.value)}
+                  onBlur={() => commitRename(index)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitRename(index);
+                    }
+                    if (e.key === "Escape") {
+                      setEditingIndex(null);
+                      setDraftName("");
+                    }
+                  }}
+                  styles={{ input: { minWidth: 140, padding: "0 6px", height: 24 } }}
+                />
+              ) : (
+                <Text size="sm" fw={500} onClick={() => { setEditingIndex(index); setDraftName(att.name); }} style={{ cursor: "pointer" }}>
+                  {att.name}
+                </Text>
+              )}
+              <ActionIcon size="xs" variant="subtle" onClick={() => { setEditingIndex(index); setDraftName(att.name); }}>
+                <FontAwesomeIcon icon={faPen} size="xs" />
+              </ActionIcon>
+              <Tooltip label="Видалити атестацію">
+                <ActionIcon size="xs" variant="subtle" color="red" onClick={() => {
+                  if (confirm("Видалити атестацію?")) onRemove(index);
+                }}>
+                  <FontAwesomeIcon icon={faTimes} size="xs" />
+                </ActionIcon>
+              </Tooltip>
               <Select
                 data={SEMESTER_OPTIONS}
                 value={String(att.semester || 1)}
@@ -63,33 +102,14 @@ export default function AttestationsEditor({
                 styles={{ input: { border: "none", background: "transparent", padding: 0, fontSize: "inherit", color: "inherit", display: "inline-block" } }}
                 withCheckIcon={false}
               />
-            </Box>
-          ))}
-        </Group>
-      )}
-
-      <Group gap="xs">
-        <TextInput
-          style={{ flex: 1 }}
-          placeholder="Назва атестації"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.currentTarget.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-        />
-        <Select
-          data={SEMESTER_OPTIONS}
-          value={semester}
-          onChange={(v) => v && setSemester(v)}
-          w={140}
-        />
-        <Button
-          variant="default"
-          leftSection={<FontAwesomeIcon icon={faPlus} />}
-          onClick={handleAdd}
-          disabled={!inputValue.trim()}
-        >
-          Додати
-        </Button>
+            </Group>
+          </Box>
+        ))}
+        <Tooltip label="Додати атестацію">
+          <ActionIcon variant="default" onClick={handleAdd}>
+            <FontAwesomeIcon icon={faPlus} />
+          </ActionIcon>
+        </Tooltip>
       </Group>
     </Stack>
   );
