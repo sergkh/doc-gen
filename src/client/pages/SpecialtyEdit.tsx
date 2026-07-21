@@ -182,7 +182,9 @@ export default function SpecialtyEdit() {
                     <Group justify="space-between" wrap="nowrap">
                       <Group gap="xs" style={{ flex: 1, minWidth: 0 }}>
                         <Text fw={700} c="blue" size="sm">{result.no}.</Text>
-                        <Text size="sm" truncate>{result.name}</Text>
+                        <Text size="sm" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
+                          {result.name}
+                        </Text>
                       </Group>
                       <Group gap="xs" wrap="nowrap">
                         <Tooltip label="Редагувати">

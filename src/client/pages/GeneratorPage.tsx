@@ -63,6 +63,7 @@ export default function GeneratorPage() {
   const [navigateToEdit, setNavigateToEdit] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const pollingRunning = useRef<boolean | null>(false);
+  const hasRestoredSavedCourseRef = useRef(false);
 
   const handleDownload = async (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -148,6 +149,9 @@ export default function GeneratorPage() {
           setSelectedTemplateId(savedTemplateId);
         if (savedSpecialtyId && allSpecialties.some((s) => s.id.toString() === savedSpecialtyId))
           setSelectedSpecialtyId(savedSpecialtyId);
+
+        // Course is restored after courses are loaded for the selected specialty
+        // to avoid restoring an ID that doesn't belong to current specialty.
       } catch (error) {
         console.error("Failed to load data:", error);
         toast.error("Помилка завантаження даних");
@@ -168,6 +172,14 @@ export default function GeneratorPage() {
       try {
         const coursesData = await loadCoursesBySpecialty(Number(selectedSpecialtyId));
         setCourses(coursesData);
+
+        if (!hasRestoredSavedCourseRef.current) {
+          const savedCourseId = localStorage.getItem(SELECTED_COURSE_KEY);
+          if (savedCourseId && coursesData.some((c) => c.id.toString() === savedCourseId)) {
+            setSelectedCourseId(savedCourseId);
+          }
+          hasRestoredSavedCourseRef.current = true;
+        }
       } catch (error) {
         console.error("Failed to load courses:", error);
         toast.error("Помилка завантаження дисциплін");

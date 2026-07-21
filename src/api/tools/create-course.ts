@@ -16,6 +16,12 @@ const ZodInput = z.object({
     practice: z.number().int().nonnegative().optional(),
     labs: z.number().int().nonnegative().optional(),
   }),
+  inabscentia_hours: z.object({
+    lections: z.number().int().nonnegative(),
+    srs: z.number().int().nonnegative(),
+    practice: z.number().int().nonnegative().optional(),
+    labs: z.number().int().nonnegative().optional(),
+  }),
   controlType: z.enum(["exam", "credit", "both"]).default("credit"),
   year: z.number().int().positive().default(1),
   semesters: z.array(z.number().int().positive()).min(1).default([1]),
@@ -37,10 +43,13 @@ export function registerCreateCourse(server: McpServer) {
     "create_course",
     {
       description: "Створює курс для поточної спеціальності. Перед викликом необхідно встановити поточну спеціальність через set_specialty_context." +
-      "Потрібні: назва, ОК/ВК номер, ПІБ викладача, рік навчання (year), семестри (semesters), години (лекції, СРС, практика/лабораторні), опис. Потребує підтвердження." + 
-      "За замовчуванням створюються 2 атестації: 'Атестація 1' і 'Атестація 2'. За потреби можна передати attestationsCount." +
-      "Замість точної кількості годин можна вказати кількість кредитів. Кожен кредит це 30 годин курсу. Одне заняття – 2 години. Тому 16 год лекцій це 8 лекцій, тому 8 лекційних тем. Зазвичай 5 кредитів це 150 годин з яких 26 год лекцій, 24 год практичних чи лабораторних, 100 год – СРС. " +
-      "4 кредити це 120 годин з яких 16 год лекцій, 14 год практичних чи лабораторних та 90 год – СРС, якщо 3 кредити то це 16 год лекцій, 14 год практичних чи лабораторних та 60 год – СРС." +
+      "Потрібні: назва, ОК/ВК номер, ПІБ викладача, рік навчання (year), семестри (semesters), години (лекції, самостійна робота – СРС, практика/лабораторні), опис. Потребує підтвердження." + 
+      "Якщо курс займає лише 1 семестр, створи 2 атестації, якщо 2 семестри – 4 атестації. За замовчуванням створюються 2 атестації: 'Атестація 1' і 'Атестація 2'. За потреби можна передати attestationsCount." +
+      "Замість точної кількості годин можна вказати кількість кредитів. Кожен кредит це 30 годин курсу. Одне заняття – 2 години. Тому 16 год лекцій це 8 лекцій, тому 8 лекційних тем. " +
+      "Кількість годин для денного навчання (fulltime) та заочного (inabscentia) відрізняється – для заочного навчання сумарно кількість годин така сама, але зазвичай йде 2 год лекцій, 2 год практичних і всі інші години – СРС." +
+      "Зазвичай 5 кредитів це 150 годин з яких денне навчання має 26 год лекцій, 24 год практичних чи лабораторних, 100 год – СРС." +
+      "4 кредити це 120 годин з яких 16 год лекцій, 14 год практичних чи лабораторних та 90 год – СРС, " +
+      "3 кредити: для денного навчання 16 год лекцій, 14 год практичних чи лабораторних та 60 год – СРС" +
       "Якщо кредити та години не сходяться, перепитай у користувача",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,
@@ -92,18 +101,24 @@ export function registerCreateCourse(server: McpServer) {
 
       const courseData = {
         ok_no: args.code,
-        practice: hasPractice || !hasLabs,
+        practice_type: (hasPractice || !hasLabs) ? "practice" : "lab",
         optional,
-        type: hasLabs ? "practice" : "lesson",
+        type: "lesson",
         control_type: args.controlType,
         hours: totalHours,
         hours_detailed: {
           fulltime: {
-            hours: totalHours,
+            hours: (args.hours.lections ?? 0),
             practical_hours: hasLabs ? 0 : args.hours.practice ?? 0,
             lab_hours: hasLabs ? args.hours.labs ?? 0 : 0,
             srs_hours: args.hours.srs ?? 0,
           },
+          inabscentia: {
+            hours: (args.inabscentia_hours.lections ?? 0),
+            practical_hours: hasLabs ? 0 : args.inabscentia_hours.practice ?? 0,
+            lab_hours: hasLabs ? args.inabscentia_hours.labs ?? 0 : 0,
+            srs_hours: args.inabscentia_hours.srs ?? 0,
+          }
         },
         credits,
         specialty_mode: "new_only",

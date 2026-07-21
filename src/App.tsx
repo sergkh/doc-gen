@@ -9,7 +9,6 @@ import {
   Group,
   NavLink,
   Text,
-  UnstyledButton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import CoursesList from "./client/pages/CoursesList";
@@ -57,7 +56,18 @@ export function App() {
               <Text fw={700} size="lg">Doc Gen</Text>
                 <Group ml="xl" visibleFrom="sm">
                   {navItems.map((item) => (
-                    <Link key={item.to} to={item.to}>{item.label}</Link>
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      style={{
+                        color: item.match(location.pathname) ? "var(--mantine-color-blue-6)" : "inherit",
+                        fontWeight: item.match(location.pathname) ? 700 : 500,
+                        textDecoration: item.match(location.pathname) ? "underline" : "none",
+                        textUnderlineOffset: 4,
+                      }}
+                    >
+                      {item.label}
+                    </Link>
                   ))}
                 </Group>
             </Group>

@@ -27,11 +27,26 @@ interface CourseTopicsEditorProps {
   onChange: (topics: CourseTopic[]) => void;
 }
 
+type TopicWithNo = CourseTopic & { no?: number };
+
+function getTopicNo(topic: CourseTopic): number {
+  const no = (topic as TopicWithNo).no;
+  return typeof no === "number" ? no : topic.index;
+}
+
+function getTopicIdentifier(topic: CourseTopic): string {
+  return `no:${getTopicNo(topic)}`;
+}
+
+function getNextTopicNo(items: CourseTopic[]): number {
+  return items.reduce((max, t) => Math.max(max, getTopicNo(t)), 0) + 1;
+}
+
 interface TopicItemProps {
   topic: CourseTopic;
   courseId: number;
   onEdit: (topic: CourseTopic) => void;
-  onDelete: (id: number) => void;
+  onDelete: (topic: CourseTopic) => void;
   onUpdateAttestation: (topic: CourseTopic, v: number) => void;
   onUpdateFulltimeHours: (topic: CourseTopic, v: number) => void;
   onUpdatePracticalHours: (topic: CourseTopic, v: number) => void;
@@ -109,7 +124,7 @@ function TopicItem({
           <Group gap="xs" wrap="nowrap">
             {topic.generated && (
               <Tooltip label="Згенеровані дані">
-                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.id}/generated`)}>
+                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${getTopicNo(topic)}/generated`)}>
                   <FontAwesomeIcon icon={faEdit} />
                 </ActionIcon>
               </Tooltip>
@@ -120,7 +135,7 @@ function TopicItem({
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Видалити">
-              <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic.id)}>
+              <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic)}>
                 <FontAwesomeIcon icon={faTrash} />
               </ActionIcon>
             </Tooltip>
@@ -249,6 +264,7 @@ function TopicForm({
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CourseTopicsEditor({ courseId, topics, onChange }: CourseTopicsEditorProps) {
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
+  const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [topicName, setTopicName] = useState("");
   const [topicSubtopics, setTopicSubtopics] = useState("");
   const [topicLection, setTopicLection] = useState("");
@@ -265,6 +281,7 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
 
   const resetForm = () => {
     setEditingTopic(null);
+    setIsAddingTopic(false);
     setTopicName(""); setTopicSubtopics(""); setTopicLection("");
     setTopicHours(2); setTopicAttestation(1); setTopicPracticalHours(0);
     setTopicInabscentiaHours(0); setTopicInabscentiaPracticalHours(0);
@@ -273,11 +290,26 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
 
   const handleAddTopic = () => {
     resetForm();
-    setEditingTopic({ id: 0, course_id: courseId, index: topics.length + 1, name: "", lection: "", data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } }, generated: {} });
+    const newTopic = {
+      course_id: courseId,
+      index: topics.length + 1,
+      name: "",
+      lection: "",
+      data: {
+        attestation: 1,
+        fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 },
+        inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 },
+      },
+      generated: {},
+    } as CourseTopic;
+    (newTopic as TopicWithNo).no = getNextTopicNo(topics);
+    setEditingTopic(newTopic);
+    setIsAddingTopic(true);
   };
 
   const handleEditTopic = (topic: CourseTopic) => {
     setEditingTopic(topic);
+    setIsAddingTopic(false);
     setTopicName(topic.name || "");
     setTopicSubtopics((topic.generated?.subtopics || []).join("\n"));
     setTopicLection(topic.lection || "");
@@ -308,17 +340,25 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
       generated: { subtopics: subtopicsArray, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(existingGenerated || {}) },
     };
 
-    const updated = editingTopic.id === 0
-      ? [...topics, saved]
-      : topics.map((t) => (t.id === editingTopic.id ? saved : t));
+    if (isAddingTopic) {
+      const nextNo = getNextTopicNo(topics);
+      (saved as TopicWithNo).no = nextNo;
+      onChange([...topics, saved]);
+      resetForm();
+      return;
+    }
+
+    const editingKey = getTopicIdentifier(editingTopic);
+    const updated = topics.map((t) => (getTopicIdentifier(t) === editingKey ? saved : t));
 
     onChange(updated);
     resetForm();
   };
 
-  const handleDeleteTopic = (topicId: number) => {
+  const handleDeleteTopic = (topic: CourseTopic) => {
     if (!confirm("Ви впевнені, що хочете видалити цю тему?")) return;
-    onChange(topics.filter((t) => t.id !== topicId));
+    const key = getTopicIdentifier(topic);
+    onChange(topics.filter((t) => getTopicIdentifier(t) !== key));
   };
 
   const handleReorder = (newOrder: CourseTopic[]) => {
@@ -326,8 +366,9 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
   };
 
   const patchTopic = (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
+    const key = getTopicIdentifier(topic);
     const updated: CourseTopic = { ...topic, data: { ...topic.data, ...patch } };
-    onChange(topics.map((t) => (t.id === topic.id ? updated : t)));
+    onChange(topics.map((t) => (getTopicIdentifier(t) === key ? updated : t)));
   };
 
   const handleUpdateAttestation = (topic: CourseTopic, v: number) => patchTopic(topic, { attestation: v });
@@ -347,10 +388,11 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
 
   const handleAddGeneratedTopic = (gen: AIGeneratedTopic) => {
     const topicData: CourseTopic = {
-      id: 0, course_id: courseId, index: topics.length + 1, name: gen.name, lection: "",
+      course_id: courseId, index: topics.length + 1, name: gen.name, lection: "",
       data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
       generated: { subtopics: gen.subtopics, keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [] },
     };
+    (topicData as TopicWithNo).no = getNextTopicNo(topics);
     onChange([...topics, topicData]);
     setGeneratedTopics((prev) => prev?.filter((t) => t.name !== gen.name) ?? null);
   };
@@ -413,16 +455,18 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
         ) : (
           <Reorder.Group axis="y" values={topics} onReorder={handleReorder} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             {topics.map((topic) => {
-              if (editingTopic && editingTopic.id === topic.id) {
+              const topicKey = getTopicIdentifier(topic);
+              const editingKey = editingTopic ? getTopicIdentifier(editingTopic) : null;
+              if (editingKey && editingKey === topicKey) {
                 return (
-                  <div key={topic.id}>
+                  <div key={`topic-editor-${topicKey}`}>
                     <TopicForm title="Редагувати тему" {...formProps} />
                   </div>
                 );
               }
               return (
                 <TopicItem
-                  key={topic.id}
+                  key={`topic-item-${topicKey}`}
                   topic={topic}
                   courseId={courseId}
                   onEdit={handleEditTopic}
@@ -440,7 +484,7 @@ export default function CourseTopicsEditor({ courseId, topics, onChange }: Cours
           </Reorder.Group>
         )}
 
-        {editingTopic && editingTopic.id === 0 && (
+        {editingTopic && isAddingTopic && (
           <TopicForm title="Додати тему" {...formProps} />
         )}
       </Stack>

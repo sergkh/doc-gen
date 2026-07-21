@@ -48,6 +48,21 @@ export default function ResultsEditor({
               key={result.id}
               variant="light"
               title={result.name}
+              styles={{
+                root: {
+                  maxWidth: "100%",
+                  height: "auto",
+                },
+                label: {
+                  whiteSpace: "normal",
+                  overflow: "visible",
+                  textOverflow: "clip",
+                  lineHeight: 1.25,
+                  display: "block",
+                  paddingTop: 2,
+                  paddingBottom: 2,
+                },
+              }}
               rightSection={
                 <ActionIcon size="xs" variant="transparent" onClick={() => onRemove(result.id)}><FontAwesomeIcon icon={faTimes} size="xs" /></ActionIcon>
               }

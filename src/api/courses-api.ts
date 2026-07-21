@@ -268,19 +268,9 @@ const coursesApi = {
           return Response.json([]);
         }
 
-        const topics = course.topics ?? (await getCourseTopics(courseId));
-        const topicNames = topics.map(t => t.name);
-
         console.log(`Autofilling ${resultType} from (${filteredResults.length}) results for course ID:`, courseId);
 
-        const matchedResults = await autofillCourseResults(
-          filteredResults,
-          course.name,
-          course.data.description || "",
-          topicNames,
-          "gpt-4o",
-          null
-        );
+        const matchedResults = await autofillCourseResults(filteredResults, course, "gpt-5-2025-08-07");
 
         return Response.json(matchedResults);
       } catch (error) {

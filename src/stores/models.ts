@@ -29,19 +29,21 @@ export type HoursStruct = {
     hours: number,
     practical_hours: number,
     lab_hours: number,
-    srs_hours: number
+    srs_hours: number,
+    total_hours?: number
   },
   inabscentia?: {
     hours: number,
     practical_hours: number,
     lab_hours: number,
-    srs_hours: number
+    srs_hours: number,
+    total_hours?: number
   }
 }
 
 export type CourseData = {
   ok_no: string | null, // numbers like '1' or '1.1' but stored as string to preserve formatting
-  practice?: boolean, 
+  practice_type?: "practice" | "lab", // has practice lessons or labs
   optional: boolean,
   type?: "lesson" | "practice",
   control_type: "exam" | "credit" | "both",
@@ -49,8 +51,9 @@ export type CourseData = {
   hours_detailed?: HoursStruct,
   credits: number,
   specialty_mode: 'new_only' | 'old_only' | 'both' | 'unknown',
-  specialty: string,
-  area: string,
+  specialty?: string,
+  area?: string,
+  specialty_full?: Specialty,
   description: string,
   prerequisites: string[],
   postrequisites: string[],
@@ -119,10 +122,12 @@ export type GeneratedTopicData = {
   keyQuestions?: string[]
 } & Record<string, any>;
 
-export type CourseTopicData = { attestation: number } & HoursStruct;
+export type CourseTopicData = { 
+  attestation: number,
+  practices?: string[], // names of the related practices
+} & HoursStruct;
 
 export type CourseTopic = {
-  id: number,
   course_id: number,
   index: number,
   name: string,
@@ -154,24 +159,12 @@ export type CourseAttestation = {
     srs_hours: number
     total_hours: number
   }
-}
+} & HoursStruct;
 
 export type CourseSemester = {
   attestations: CourseAttestation[],
   semester: number
-  fulltime: {    
-    hours: number,
-    practical_hours: number,
-    srs_hours: number
-    total_hours: number
-  },
-  inabscentia: {
-    hours: number,
-    practical_hours: number,
-    srs_hours: number
-    total_hours: number
-  }
-}
+} & HoursStruct;
 
 export type CourseGenerationData = {
   course: Course,
@@ -186,6 +179,7 @@ export type CourseGenerationData = {
   attestations: CourseAttestation[],
   teacher: Teacher,
   oneSemesterOnly: boolean,
+  degree: SpecialtyDegree,
   hours: {
     total: number,
     fulltime: {
@@ -198,7 +192,7 @@ export type CourseGenerationData = {
       practicals: number,
       srs: number
     }
-  }
+  } & HoursStruct;
 } & Record<string, any>; // parameters input by the user for the template
 
 export type TemplateParameter = {

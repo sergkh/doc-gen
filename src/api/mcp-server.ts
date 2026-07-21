@@ -10,6 +10,7 @@ import { registerGetCurrentSpecialtyFullInfo } from "./tools/get-current-special
 import { registerGetCurrentCourseFullInfo } from "./tools/get-current-course-full-info";
 import { registerUpdateCourseResults } from "./tools/update-course-results";
 import { registerUpdateCourseRequisites } from "./tools/update-course-requisites";
+import { registerUpdateCourseLiterature } from "./tools/update-course-literature";
 import { registerCreateTeacher } from "./tools/create-teacher";
 import { registerListTemplates } from "./tools/list-templates";
 import { registerListTeachers } from "./tools/list-teachers";
@@ -46,6 +47,7 @@ function createServer(): McpServer {
       - update_course_topics (оновлення тем активної дисципліни; потребує confirm=true). Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних
       - update_course_results (оновлення результатів активної дисципліни за номерами окремо для ЗК/СК/РН; ІК додається автоматично)
       - update_course_requisites (оновлення пререквізитів/постреквізитів активної дисципліни; усі реквізити мають бути з тієї ж спеціальності)
+        - update_course_literature (оновлення літератури активної дисципліни: основна, додаткова, інтернет-ресурси)
       - list_templates (список доступних шаблонів для генерації документів з параметрами)
       `
   });
@@ -61,6 +63,7 @@ function createServer(): McpServer {
   registerGetCurrentCourseFullInfo(server);
   registerUpdateCourseResults(server);
   registerUpdateCourseRequisites(server);
+  registerUpdateCourseLiterature(server);
   registerCreateTeacher(server);
   registerListTemplates(server);
   registerListTeachers(server);

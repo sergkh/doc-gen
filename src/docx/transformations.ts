@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses, teachers } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, QuizQuestion, Specialty, Template } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -22,6 +22,32 @@ function randomizeQuestion(question: QuizQuestion, index: number): QuizQuestion 
   } as QuizQuestion;
 }
 
+function buildTopicHours(course: Course, allTopics: CourseTopic[]): CourseTopic[] {
+  const practices = course.data.practice_type === "practice";
+  return allTopics.map((t) => {
+    return {
+      ...t, 
+      data: {
+        ...t.data,
+        fulltime: {
+          hours: t.data.fulltime.hours,
+          practical_hours: practices ? (t.data.fulltime.practical_hours ?? t.data.fulltime.lab_hours) : 0,
+          lab_hours: practices ? 0 : (t.data.fulltime.lab_hours ?? t.data.fulltime.practical_hours),
+          srs_hours: t.data.fulltime.srs_hours,
+          total_hours: t.data.fulltime.hours + t.data.fulltime.practical_hours + t.data.fulltime.lab_hours + t.data.fulltime.srs_hours
+        },
+        inabscentia: {
+          hours: t.data.inabscentia?.hours ?? 0,
+          practical_hours: practices ? (t.data.inabscentia?.practical_hours ?? t.data.fulltime.lab_hours ?? 0) : 0,
+          lab_hours: practices ? 0 : (t.data.inabscentia?.lab_hours ?? t.data.inabscentia?.practical_hours ?? 0),
+          srs_hours: t.data.inabscentia?.srs_hours ?? 0,
+          total_hours: (t.data.inabscentia?.hours ?? 0) + (t.data.inabscentia?.practical_hours ?? 0) + (t.data.inabscentia?.lab_hours ?? 0) + (t.data.inabscentia?.srs_hours ?? 0)
+        }
+      }
+    }
+  });
+}
+
 function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAttestation[] {
   // group topics by attestation
   return course.data.attestations.map((a, index) => {
@@ -36,19 +62,18 @@ function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAtte
       fulltime: {
         hours: topics.map(t => t.data.fulltime.hours).sum(),
         practical_hours: topics.map(t => t.data.fulltime.practical_hours).sum(),
+        lab_hours: topics.map(t => t.data.fulltime.lab_hours).sum(),
         srs_hours: topics.map(t => t.data.fulltime.srs_hours).sum(),
-        total_hours: 0
+        total_hours: topics.map(t => t.data.fulltime.total_hours ?? 0).sum()
       },
       inabscentia: {
         hours: topics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
         practical_hours: topics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+        lab_hours: topics.map(t => t.data.inabscentia?.lab_hours ?? 0).sum(),
         srs_hours: topics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
-        total_hours: 0
+        total_hours: topics.map(t => t.data.inabscentia?.total_hours ?? 0).sum()
       }
     }
-    
-    attestation.fulltime.total_hours = attestation.fulltime.hours + attestation.fulltime.practical_hours + attestation.fulltime.srs_hours;
-    attestation.inabscentia.total_hours = attestation.inabscentia.hours + attestation.inabscentia.practical_hours + attestation.inabscentia.srs_hours;
 
     return attestation;
   });  
@@ -63,19 +88,21 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
       semesters[semester] = { 
         attestations: [], 
         semester, 
-        fulltime: { hours: 0, practical_hours: 0, srs_hours: 0, total_hours: 0 }, 
-        inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0, total_hours: 0 } 
+        fulltime: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0, total_hours: 0 }, 
+        inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0, total_hours: 0 } 
       };
     }
     semesters[semester].attestations.push(a);
     semesters[semester].fulltime.hours += a.fulltime.hours;
     semesters[semester].fulltime.practical_hours += a.fulltime.practical_hours;
+    semesters[semester].fulltime.lab_hours += a.fulltime.lab_hours;
     semesters[semester].fulltime.srs_hours += a.fulltime.srs_hours;
-    semesters[semester].fulltime.total_hours += a.fulltime.total_hours;
-    semesters[semester].inabscentia.hours += a.inabscentia.hours;
-    semesters[semester].inabscentia.practical_hours += a.inabscentia.practical_hours;
-    semesters[semester].inabscentia.srs_hours += a.inabscentia.srs_hours;
-    semesters[semester].inabscentia.total_hours += a.inabscentia.total_hours;
+    semesters[semester].fulltime.total_hours! += a.fulltime.total_hours;
+    semesters[semester].inabscentia!.hours += a.inabscentia.hours;
+    semesters[semester].inabscentia!.practical_hours += a.inabscentia.practical_hours;
+    semesters[semester].inabscentia!.lab_hours += a.inabscentia.lab_hours;
+    semesters[semester].inabscentia!.srs_hours += a.inabscentia.srs_hours;
+    semesters[semester].inabscentia!.total_hours! += a.inabscentia.total_hours;
   }
 
   return semesters;
@@ -103,13 +130,15 @@ export async function loadFullCourseInfo(
   // update course specialty and area strings
   if (course.data.specialty_mode === 'both') {
     course.data.specialty = `${specialty.old_code} ${specialty.old_name} / ${specialty.code} ${specialty.name}`;  
-  }else if (course.data.specialty_mode === 'old_only' && specialty.old_code && specialty.old_name) {
+  } else if (course.data.specialty_mode === 'old_only' && specialty.old_code && specialty.old_name) {
     course.data.specialty = `${specialty.old_code} ${specialty.old_name}`;  
   } else {
     course.data.specialty = `${specialty.code} ${specialty.name}`;
   }
 
   course.data.area = `${specialty.area_code} ${specialty.area}`;
+  course.data.practice_type = course.data.practice_type ?? "practice";
+  course.data.specialty_full = specialty;
   
   // Generate course info - this is the slowest part (as might use AI)
   // Progress from 5% to 70% (65% for AI generation)
@@ -132,7 +161,11 @@ export async function loadFullCourseInfo(
   const results = await courseResults.list(course.data.results);
   onProgress?.(90);
 
-  const attestations = buildAttestations(course, updatedTopics);
+  const countedTopics = buildTopicHours(course, updatedTopics);
+
+  console.log("Topic hours: ", countedTopics.map(t => t.data));
+
+  const attestations = buildAttestations(course, countedTopics);
   const semesters: CourseSemester[] = buildSemesters(attestations);
   
   const oneSemesterOnly = course.data.attestations.every(a => a.semester === 1);
@@ -142,20 +175,35 @@ export async function loadFullCourseInfo(
   const hours = {
     total: course.data.hours,
     fulltime: {
-      lectures: updatedTopics.map(t => t.data.fulltime.hours).sum(),
-      practicals: updatedTopics.map(t => t.data.fulltime.practical_hours).sum(),
-      srs: updatedTopics.map(t => t.data.fulltime.srs_hours).sum(),
+      // legacy format
+      lectures: countedTopics.map(t => t.data.fulltime.hours).sum(),
+      practicals: countedTopics.map(t => t.data.fulltime.practical_hours).sum(),
+      srs: countedTopics.map(t => t.data.fulltime.srs_hours).sum(),
+
+      // newer format to conform to HoursStruct
+      hours: countedTopics.map(t => t.data.fulltime.hours).sum(),
+      practical_hours: countedTopics.map(t => t.data.fulltime.practical_hours).sum(),
+      lab_hours: countedTopics.map(t => t.data.fulltime.lab_hours).sum(),
+      srs_hours: countedTopics.map(t => t.data.fulltime.srs_hours).sum(),
+      total_hours: countedTopics.map(t => t.data.fulltime.total_hours ?? 0).sum()
     },
     inabscentia: {
-      lectures: updatedTopics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
-      practicals: updatedTopics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
-      srs: updatedTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
+      // legacy format
+      lectures: countedTopics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
+      practicals: countedTopics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+      srs: countedTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
+      // newer format to conform to HoursStruct
+      hours: countedTopics.map(t => t.data.inabscentia?.hours ?? 0).sum(),
+      practical_hours: countedTopics.map(t => t.data.inabscentia?.practical_hours ?? 0).sum(),
+      lab_hours: countedTopics.map(t => t.data.inabscentia?.lab_hours ?? 0).sum(),
+      srs_hours: countedTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
+      total_hours: countedTopics.map(t => t.data.inabscentia?.total_hours ?? 0).sum()
     }
-  }
+  };
 
   return {
     course: updatedCourse,
-    topics: updatedTopics,
+    topics: countedTopics,
     generalResults: results.filter(r => r.type === "ЗК").sort((a, b) => a.no - b.no),
     specialResults: results.filter(r => r.type === "СК").sort((a, b) => a.no - b.no),
     programResults: results.filter(r => r.type === "РН").sort((a, b) => a.no - b.no),
@@ -165,6 +213,7 @@ export async function loadFullCourseInfo(
     teacher,
     prerequisites,
     postrequisites,
+    degree: specialty.degree,
     hours,
     ...params, // parameters input by the user for the template
 

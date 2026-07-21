@@ -397,7 +397,7 @@ export default function CourseEdit() {
               )}
             </Group>
             <TextInput
-              label="Номер ОК"
+              label={"Номер " + (item.data.optional ? "ВК" : "ОК")}
               placeholder="Наприклад 1 або 1.3"
               value={item.data.ok_no ?? ""}
               onChange={(e) => {
@@ -416,11 +416,6 @@ export default function CourseEdit() {
               onChange={(v) => update({ specialty_id: Number(v) })}
               searchable
             />
-            <TextInput
-              label="Напрям"
-              value={item.data.area}
-              onChange={(e) => updateData({ area: e.currentTarget.value })}
-            />
             <Select
               label="Форма контролю"
               data={[
@@ -430,6 +425,16 @@ export default function CourseEdit() {
               ]}
               value={item.data.control_type || "credit"}
               onChange={(v) => updateData({ control_type: v as "exam" | "credit" | "both" })}
+            />
+            <Select
+              label="Тип занять"
+              data={[
+                { value: "practice", label: "Практичні" },
+                { value: "lab", label: "Лабораторні" },
+              ]}
+              value={item.data.practice_type ?? null}
+              onChange={(v) => updateData({ practice_type: (v as "practice" | "lab" | null) ?? undefined })}
+              clearable
             />
             <NumberInput
               label="Рік навчання (денна)"

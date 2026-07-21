@@ -17,8 +17,8 @@ const titleValues = [
 
 const ZodInput = z.object({
   name: z.string().min(1, "Вкажіть ПІБ викладача"),
-  position: z.enum(positionValues, { errorMap: () => ({ message: `Посада має бути однією з: ${positionValues.join(", ")}` }) }),
-  academic_title: z.enum(titleValues, { errorMap: () => ({ message: `Науковий ступінь має бути одним з: ${titleValues.join(", ")}` }) }),
+  position: z.enum(positionValues, { message: `Посада має бути однією з: ${positionValues.join(", ")}` }),
+  academic_title: z.enum(titleValues, { message: `Науковий ступінь має бути одним з: ${titleValues.join(", ")}` }),
   email: z.string().email("Некоректний email").optional(),
   alt_names: z.array(z.string()).optional(),
 });
