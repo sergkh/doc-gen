@@ -118,8 +118,8 @@ const parser = expressionParser.configure({
       },
       shortenAcademicTitle(input) {
         if (!input) return input;
-        if (Array.isArray(input)) return input.map(n => shortenName(n))
-        return shortenName(input);
+        if (Array.isArray(input)) return input.map(n => shortenAcademicTitle(n))
+        return shortenAcademicTitle(input);
       }
   }
 });
