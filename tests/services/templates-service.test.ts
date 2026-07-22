@@ -1,8 +1,9 @@
 import { describe, it, expect } from "bun:test";
+await import("../stores/db-mock");
 
 describe("templatesService exports", () => {
   it("should export all required functions", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     
     expect(templatesService).toBeDefined();
     expect(typeof templatesService.getAllTemplates).toBe("function");
@@ -16,19 +17,19 @@ describe("templatesService exports", () => {
 
 describe("templatesService function signatures", () => {
   it("getAllTemplates should not require parameters", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.getAllTemplates.toString();
     expect(sig).toBeDefined();
   });
 
   it("getTemplateById should accept id parameter", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.getTemplateById.toString();
     expect(sig).toContain("id");
   });
 
   it("createTemplate should accept file, name, data, prompts parameters", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.createTemplate.toString();
     expect(sig).toContain("file");
     expect(sig).toContain("name");
@@ -37,7 +38,7 @@ describe("templatesService function signatures", () => {
   });
 
   it("updateTemplate should accept id, file, name, data, prompts parameters", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.updateTemplate.toString();
     expect(sig).toContain("id");
     expect(sig).toContain("file");
@@ -47,13 +48,13 @@ describe("templatesService function signatures", () => {
   });
 
   it("deleteTemplate should accept id parameter", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.deleteTemplate.toString();
     expect(sig).toContain("id");
   });
 
   it("downloadTemplate should accept id parameter", async () => {
-    const { templatesService } = await import("./templates-service");
+    const { templatesService } = await import("@/services/templates-service");
     const sig = templatesService.downloadTemplate.toString();
     expect(sig).toContain("id");
   });

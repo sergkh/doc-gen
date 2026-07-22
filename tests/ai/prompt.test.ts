@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { formatPrompt } from "./prompt";
+import { formatPrompt } from "@/ai/prompt";
 
 
 describe("formatPrompt", () => {

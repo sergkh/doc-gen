@@ -62,7 +62,7 @@ describe("coursesApi", () => {
   let api: any;
 
   beforeAll(async () => {
-    api = (await import("./courses-api")).default;
+    api = (await import("@/api/courses-api")).default;
   });
 
   beforeEach(() => {

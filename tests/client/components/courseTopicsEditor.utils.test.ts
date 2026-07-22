@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import type { CourseTopic } from "@/stores/models";
-import type { AIGeneratedTopic } from "../courses";
-import { addGeneratedTopicsToCourseTopics } from "./courseTopicsEditor.utils";
+import type { AIGeneratedTopic } from "@/client/courses";
+import { addGeneratedTopicsToCourseTopics } from "@/client/components/courseTopicsEditor.utils";
 
 describe("addGeneratedTopicsToCourseTopics", () => {
   it("adds all generated topics in one batch and preserves their order", () => {

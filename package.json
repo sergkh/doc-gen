@@ -7,7 +7,7 @@
     "dev": "bun --hot src/index.tsx",
     "start": "NODE_ENV=production bun src/index.tsx",
     "build": "bun run build.ts",
-    "test": "bun test"
+    "test": "bun tests/run-tests.ts"
   },
   "dependencies": {
     "@cfworker/json-schema": "^4.1.1",

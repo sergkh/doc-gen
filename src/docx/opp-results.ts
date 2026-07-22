@@ -62,6 +62,10 @@ function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfi
 export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
   const results: CourseResult[] = [];
 
+  if (type == 'СК') {
+    console.log("Parsing СК results:" + text);
+  }
+
   // They all ends with a dot or a newline.
   const pattern = new RegExp(`${type}(\\d+)\\*?\\.?\\s{0,2}([ʼ\\s\\S]*?)(\\.|\\n)`, 'gs');
   
@@ -71,11 +75,12 @@ export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): C
     
     const no = parseInt(match[1], 10);
     let name = match[2].trim();
-    
-    name = name.replace(/\s*(ЗК|СК|РН)\s*\d+\.?\s*$/, '').trim();    
+
+    name = name.replace(/\s*(ЗК|СК|РН)\s*\d+\*?\.?\s*$/, '').trim();    
     name = name.replace(/\s+/g, ' ').trim();
-    
+
     if (name) {
+      if (type == 'СК') console.log("Name: " + name);
       results.push({ id: -1, no, type, name: normalizeWhitespaces(dropDot(name)), specialty_id: 0 });
     }
   }

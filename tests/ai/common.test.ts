@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { fixAItext } from "./common";
+import { fixAItext } from "@/ai/common";
 
 describe("fixAItext", () => {
   describe("text format (string)", () => {

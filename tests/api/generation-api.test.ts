@@ -127,7 +127,7 @@ describe("generationApi", () => {
   let generationApi: any;
 
   beforeAll(async () => {
-    generationApi = (await import("./generation-api")).default;
+    generationApi = (await import("@/api/generation-api")).default;
   });
 
   beforeEach(() => {

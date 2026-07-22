@@ -1,7 +1,18 @@
 // @ts-nocheck
-import { describe, it, expect } from "bun:test";
-import mock from "@/stores/db-mock.test";
-import { parseOPPResults, parseOPP } from "./opp-results";
+import { describe, it, expect, mock } from "bun:test";
+await import("../stores/db-mock");
+
+mock.module("@/ai/extractor", () => ({
+  extractInformationAI: mock(async () => ({
+    specialty: "Комп’ютерні науки",
+    code: "F3",
+    area_code: "F",
+    area: "Інформаційні технології",
+    qualification: "Бакалавр з комп’ютерних наук",
+  })),
+}));
+
+const { parseOPPResults, parseOPP } = await import("@/docx/opp-results");
 
 describe("parseOPPResults", () => {
   describe("ЗК (General Competencies)", () => {
@@ -230,4 +241,13 @@ describe("parseOPPResults", () => {
     });
   });
 
+});
+
+describe("parseOPP", () => {
+  it("fully parses the OPP DOCX fixture", async () => {
+    const parsed = await parseOPP(`${import.meta.dir}/../data/opp.docx`);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed).toMatchSnapshot();
+  });
 });
