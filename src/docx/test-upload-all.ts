@@ -15,7 +15,7 @@ const COLORS = {
 
 const DOCSETS_ROOT = process.env.DOCS_UPLOAD_ROOT ?? '/Users/sergeykhruschak/workspace/Univer/doc-gen/uploads/plan'
 
-const API_BASE_URL = process.env.API_BASE_URL ?? "http://localhost:3000";
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
 const API_PATH = "/api/courses/parse-docx";
 
@@ -99,7 +99,7 @@ async function uploadDocx(filePath: string, okNo: string | null = null) {
     formData.append("ok_no", okNo);
   }
 
-  return fetch(`${API_BASE_URL}${API_PATH}`, { method: "POST", body: formData });
+  return fetch(`${BASE_URL}${API_PATH}`, { method: "POST", body: formData });
 }
 
 async function processFolder(folderName: string, folderPath: string): Promise<FolderSummary> {
