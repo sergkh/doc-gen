@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Prompt } from "@/stores/models";
 import PromptTester from "./PromptTester";
+import PromptTemplateTextarea from "./PromptTemplateTextarea";
+import type { PromptVariable } from "../util/prompt-autocomplete";
 import { AVAILABLE_MODELS } from "@/ai/models";
 import {
   Stack,
   Group,
   Text,
   TextInput,
-  Textarea,
   Select,
   Button,
 } from "@mantine/core";
@@ -24,9 +25,10 @@ interface PromptEditorProps {
   selectedType: "course" | "topic";
   onSave: (prompt: Prompt) => Promise<void>;
   onCancel: () => void;
+  availableVariables?: PromptVariable[];
 }
 
-export default function PromptEditor({ prompt, selectedType, onSave, onCancel }: PromptEditorProps) {
+export default function PromptEditor({ prompt, selectedType, onSave, onCancel, availableVariables = [] }: PromptEditorProps) {
   const promptType = selectedType ?? prompt.type;
 
   const [name, setName] = useState(prompt.name || "");
@@ -109,21 +111,21 @@ export default function PromptEditor({ prompt, selectedType, onSave, onCancel }:
           onChange={(v) => v && setFormat(v as Prompt["format"])}
         />
       </Group>
-      <Textarea
+      <PromptTemplateTextarea
         label="Системний промпт"
         placeholder="Системний промпт"
         value={systemPrompt}
-        onChange={(e) => setSystemPrompt(e.currentTarget.value)}
-        autosize
+        onChange={setSystemPrompt}
+        variables={availableVariables}
         minRows={2}
         maxRows={6}
       />
-      <Textarea
+      <PromptTemplateTextarea
         label="Промпт"
         placeholder="Промпт користувача"
         value={userPrompt}
-        onChange={(e) => setUserPrompt(e.currentTarget.value)}
-        autosize
+        onChange={setUserPrompt}
+        variables={availableVariables}
         minRows={6}
         maxRows={20}
       />

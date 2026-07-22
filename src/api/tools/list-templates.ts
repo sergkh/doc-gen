@@ -14,6 +14,7 @@ const ZodTemplate = z.object({
   name: z.string(),
   parameters: z.array(ZodParameter),
   url: z.string(),
+  manifestUri: z.string(),
 });
 
 const ZodOutput = z.object({
@@ -31,6 +32,7 @@ export function registerListTemplates(server: McpServer) {
     "list_templates",
     {
       description: "Повертає список доступних шаблонів для генерації документів з параметрами та відносний URL для скачування. " +
+      "Кожен шаблон містить manifestUri з контрактом AI-полів, типами та залежностями. " +
       "Використовуй якщо необхідно згенерувати документ. Для формування повного URL шаблону візьми базовий URL MCP сервера без шляху й додай вміст поля url",
       annotations: {
         idempotentHint: true,
@@ -62,6 +64,7 @@ export function registerListTemplates(server: McpServer) {
             subtype: p.subtype,
           })),
           url: `${baseUrl}/api/courses/${courseId}/generate/${t.id}/download`,
+          manifestUri: `docgen:///template/${t.id}/manifest`,
         }));
 
         const message = `Знайдено ${items.length} шаблонів.`;

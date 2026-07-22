@@ -16,6 +16,8 @@ import { registerListTemplates } from "./tools/list-templates";
 import { registerListTeachers } from "./tools/list-teachers";
 import { registerSpecialtiesCoursesResources } from "./resources/specialties-courses-resources";
 import { registerTeachersResources } from "./resources/teachers-resources";
+import { registerTemplateManifestResources } from "./resources/template-manifest-resources";
+import { registerFillTemplateFields } from "./tools/fill-template-fields";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -49,6 +51,7 @@ function createServer(): McpServer {
       - update_course_requisites (оновлення пререквізитів/постреквізитів активної дисципліни; усі реквізити мають бути з тієї ж спеціальності)
       - update_course_literature (оновлення літератури активної дисципліни: основна, додаткова, інтернет-ресурси)
       - list_templates (список доступних шаблонів для генерації документів з параметрами)
+      - fill_template_fields (показує готові AI-поля та заповнює одне або кілька полів з перевіркою типів і залежностей)
       `
   });
 
@@ -66,9 +69,11 @@ function createServer(): McpServer {
   registerUpdateCourseLiterature(server);
   registerCreateTeacher(server);
   registerListTemplates(server);
+  registerFillTemplateFields(server);
   registerListTeachers(server);
   registerSpecialtiesCoursesResources(server);
   registerTeachersResources(server);
+  registerTemplateManifestResources(server);
 
   return server;
 }
