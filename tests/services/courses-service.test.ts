@@ -151,8 +151,9 @@ describe("coursesService", () => {
       lection: "2",
       data: {
         attestation: 1,
-        fulltime: { hours: 10, practical_hours: 5, srs_hours: 5 },
-        inabscentia: { hours: 8, practical_hours: 4, srs_hours: 4 }
+        practices: [{ name: "Existing practice", description: "Existing description" }],
+        fulltime: { hours: 10, practical_hours: 5, lab_hours: 0, srs_hours: 5 },
+        inabscentia: { hours: 8, practical_hours: 4, lab_hours: 0, srs_hours: 4 }
       },
       generated: null
     };
@@ -266,16 +267,14 @@ describe("coursesService", () => {
       expect(result.lection).toBe("4");
     });
 
-    it("should preserve id and course_id", () => {
+    it("should preserve course_id", () => {
       const parsed = {
-        id: 999,
         course_id: 999,
         data: existingTopic.data,
         generated: null
       };
 
       const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
-      expect(result.id).toBe(1);
       expect(result.course_id).toBe(1);
     });
 
@@ -288,6 +287,69 @@ describe("coursesService", () => {
 
       const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
       expect(result.index).toBe(1);
+    });
+
+    it("should save practices with their descriptions", () => {
+      const practices = [
+        { name: "Build a Merkle tree", description: "Create the tree and verify a proof." },
+      ];
+      const parsed = {
+        data: {
+          ...existingTopic.data,
+          practices,
+        },
+        generated: null,
+      };
+
+      const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
+
+      expect(result.data.practices).toEqual(practices);
+    });
+
+    it("should normalize legacy string practices when preserving them", () => {
+      const legacyTopic = {
+        ...existingTopic,
+        data: {
+          ...existingTopic.data,
+          practices: ["Legacy practice"],
+        },
+      };
+      const parsed = {
+        data: {
+          ...existingTopic.data,
+          practices: undefined,
+        },
+        generated: null,
+      };
+
+      const result = coursesService.mergeCourseTopic(legacyTopic as any, parsed as any);
+
+      expect(result.data.practices).toEqual([
+        { name: "Legacy practice", description: "" },
+      ]);
+    });
+
+    it("should preserve lab hours while merging topic data", () => {
+      const parsed = {
+        data: {
+          ...existingTopic.data,
+          fulltime: {
+            ...existingTopic.data.fulltime,
+            hours: 12,
+          },
+        },
+        generated: null,
+      };
+
+      const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
+
+      expect(result.data.fulltime).toEqual({
+        hours: 12,
+        practical_hours: 5,
+        lab_hours: 0,
+        srs_hours: 5,
+      });
+      expect(result.data.inabscentia?.lab_hours).toBe(0);
     });
   });
 });

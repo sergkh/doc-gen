@@ -133,9 +133,14 @@ export type GeneratedTopicData = {
   keyQuestions?: string[]
 } & Record<string, any>;
 
+export type CoursePractice = {
+  name: string,
+  description: string
+};
+
 export type CourseTopicData = { 
   attestation: number,
-  practices?: string[], // names of the related practices
+  practices?: CoursePractice[],
 } & HoursStruct;
 
 export type CourseTopic = {

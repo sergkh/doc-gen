@@ -1,5 +1,5 @@
 import { courses, history, teachers } from "@/stores/db";
-import type { Course, CourseTopic, DocVersionRecord, GeneratedCourseData, ParsedData, Prompt, PromptResult } from "@/stores/models";
+import type { Course, CoursePractice, CourseTopic, DocVersionRecord, GeneratedCourseData, ParsedData, Prompt, PromptResult } from "@/stores/models";
 import { dropEmpty } from "@/client/util/util";
 import { CourseNotFoundError } from "./errors";
 import { parseSylabusOrProgram } from "@/docx/parse";
@@ -81,7 +81,7 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
       merged.push(mergeCourseTopic(existingTopic, parsedTopic));
       seen.add(existingTopic.index);
     } else {
-      merged.push({ ...parsedTopic, id: 0, course_id: courseId });
+      merged.push({ ...parsedTopic, course_id: courseId });
       seen.add(parsedTopic.index);
     }
   }
@@ -98,24 +98,46 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
 }
 
 function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
+  const mergeDefined = <T extends object>(
+    current: T | undefined,
+    incoming: Partial<T> | undefined
+  ): T => ({
+    ...current,
+    ...Object.fromEntries(
+      Object.entries(incoming ?? {}).filter(([, value]) => value !== undefined)
+    ),
+  }) as T;
+
+  const normalizePractices = (
+    practices: Array<CoursePractice | string> | undefined
+  ): CoursePractice[] | undefined => practices?.map((practice) =>
+    typeof practice === "string"
+      ? { name: practice, description: "" }
+      : practice
+  );
+
   const mergedData = {
+    ...existing.data,
+    ...parsed.data,
     attestation: parsed.data?.attestation ?? existing.data?.attestation,
-    fulltime: {    
-      hours: parsed.data?.fulltime?.hours ?? existing.data?.fulltime?.hours,
-      practical_hours: parsed.data?.fulltime?.practical_hours ?? existing.data?.fulltime?.practical_hours,
-      srs_hours: parsed.data?.fulltime?.srs_hours ?? existing.data?.fulltime?.srs_hours,
-    },
-    inabscentia: {
-      hours: parsed.data?.inabscentia?.hours ?? existing.data?.inabscentia?.hours,
-      practical_hours: parsed.data?.inabscentia?.practical_hours ?? existing.data?.inabscentia?.practical_hours,
-      srs_hours: parsed.data?.inabscentia?.srs_hours ?? existing.data?.inabscentia?.srs_hours
-    }
+    practices: normalizePractices(
+      parsed.data?.practices ??
+        (existing.data?.practices as Array<CoursePractice | string> | undefined)
+    ),
+    fulltime: mergeDefined(existing.data?.fulltime, parsed.data?.fulltime),
+    ...(parsed.data?.inabscentia || existing.data?.inabscentia
+      ? {
+          inabscentia: mergeDefined(
+            existing.data?.inabscentia,
+            parsed.data?.inabscentia
+          )
+        }
+      : {})
   }
 
   const mergedGenerated = {...existing.generated, ...parsed.generated}
 
   return {
-    id: existing.id,
     course_id: existing.course_id,
     index: existing.index,
     name: parsed.name ?? existing.name,
