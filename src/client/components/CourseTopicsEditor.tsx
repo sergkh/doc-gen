@@ -133,44 +133,45 @@ function TopicItem({
           </div>
 
           <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-            <Group gap="xs" wrap="wrap">
+            <Group justify="space-between" align="flex-start" gap="xs" wrap="wrap">
               <Text fw={700} size="sm">
                 {topic.index}. {topic.name || `Тема ${topic.index}`}
               </Text>
-              <Group gap={4} wrap="wrap">
-                <InPlaceEditor value={hours} options={[2,4,6,8].map(v=>({value:v,label:`${v} год.`}))} displayText={`${hours} год.`} title="Години (денна)" onChange={(v)=>onUpdateFulltimeHours(topic,v)} />
-                <InPlaceEditor value={practicalHours} options={[0,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр." : "лаб."}`}))} displayText={`${practicalHours} ${coursePractType === "practice" ? "пр." : "лаб."}`} title={coursePractType === "practice" ? "Практичні (денна)" : "Лабораторні (денна)"} onChange={(v)=>onUpdatePracticalHours(topic,v)} />
-                <InPlaceEditor value={srsHours} options={[0,2,4,5,6,7,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС`}))} displayText={`${srsHours} СРС`} title="СРС (денна)" onChange={(v)=>onUpdateFulltimeSrsHours(topic,v)} />
-                <InPlaceEditor value={inabscentiaHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} год.заоч.`}))} displayText={`${inabscentiaHours} год.заоч.`} title="Години (заочна)" onChange={(v)=>onUpdateInabscentiaHours(topic,v)} />
-                <InPlaceEditor value={inabscentiaPracticalHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`}))} displayText={`${inabscentiaPracticalHours} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`} title={coursePractType === "practice" ? "Практичні (заочна)" : "Лабораторні (заочна)"} onChange={(v)=>onUpdateInabscentiaPracticalHours(topic,v)} />
-                <InPlaceEditor value={inabscentiaSrsHours} options={[0,2,4,6,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС заоч.`}))} displayText={`${inabscentiaSrsHours} СРС заоч.`} title="СРС (заочна)" onChange={(v)=>onUpdateInabscentiaSrsHours(topic,v)} />
+              <Group gap="xs" wrap="nowrap">
+                <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
+                {topic.generated && (
+                  <Tooltip label="Згенеровані дані">
+                    <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/generated`)}>
+                      <FontAwesomeIcon icon={faEdit} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                <Tooltip label="Редагувати">
+                  <ActionIcon variant="subtle" onClick={() => onEdit(topic)}>
+                    <FontAwesomeIcon icon={faPen} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Видалити">
+                  <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic)}>
+                    <FontAwesomeIcon icon={faTrash} />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
+            <SimpleGrid cols={3} spacing={4}>
+              <InPlaceEditor value={hours} options={[2,4,6,8].map(v=>({value:v,label:`${v} год.`}))} displayText={`${hours} год.`} title="Години (денна)" onChange={(v)=>onUpdateFulltimeHours(topic,v)} />
+              <InPlaceEditor value={practicalHours} options={[0,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр." : "лаб."}`}))} displayText={`${practicalHours} ${coursePractType === "practice" ? "пр." : "лаб."}`} title={coursePractType === "practice" ? "Практичні (денна)" : "Лабораторні (денна)"} onChange={(v)=>onUpdatePracticalHours(topic,v)} />
+              <InPlaceEditor value={srsHours} options={[0,2,4,5,6,7,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС`}))} displayText={`${srsHours} СРС`} title="СРС (денна)" onChange={(v)=>onUpdateFulltimeSrsHours(topic,v)} />
+            </SimpleGrid>
+            <SimpleGrid cols={3} spacing={4}>
+              <InPlaceEditor value={inabscentiaHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} год.заоч.`}))} displayText={`${inabscentiaHours} год.заоч.`} title="Години (заочна)" onChange={(v)=>onUpdateInabscentiaHours(topic,v)} />
+              <InPlaceEditor value={inabscentiaPracticalHours} options={[0,1,2,4,6,8].map(v=>({value:v,label:`${v} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`}))} displayText={`${inabscentiaPracticalHours} ${coursePractType === "practice" ? "пр.заоч." : "лаб.заоч."}`} title={coursePractType === "practice" ? "Практичні (заочна)" : "Лабораторні (заочна)"} onChange={(v)=>onUpdateInabscentiaPracticalHours(topic,v)} />
+              <InPlaceEditor value={inabscentiaSrsHours} options={[0,2,4,6,8,10,12,14,16,18].map(v=>({value:v,label:`${v} СРС заоч.`}))} displayText={`${inabscentiaSrsHours} СРС заоч.`} title="СРС (заочна)" onChange={(v)=>onUpdateInabscentiaSrsHours(topic,v)} />
+            </SimpleGrid>
             {topic.lection && (
               <Text size="sm" c="dimmed" lineClamp={3} style={{ whiteSpace: "pre-wrap" }}>{topic.lection}</Text>
             )}
           </Stack>
-
-          <Group gap="xs" wrap="nowrap">
-            <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
-            {topic.generated && (
-              <Tooltip label="Згенеровані дані">
-                <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/generated`)}>
-                  <FontAwesomeIcon icon={faEdit} />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            <Tooltip label="Редагувати">
-              <ActionIcon variant="subtle" onClick={() => onEdit(topic)}>
-                <FontAwesomeIcon icon={faPen} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Видалити">
-              <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic)}>
-                <FontAwesomeIcon icon={faTrash} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
         </Group>
       </Paper>
     </Reorder.Item>

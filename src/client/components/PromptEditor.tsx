@@ -81,7 +81,7 @@ export default function PromptEditor({ prompt, selectedType, onSave, onCancel, a
         <Text fw={600}>{isExistingPrompt ? "Редагувати промпт" : "Додати промпт"}</Text>
         <Group gap="xs">
           <Button variant="default" onClick={onCancel} disabled={isSaving}>Скасувати</Button>
-          <Button onClick={handleSave} loading={isSaving}>Зберегти</Button>
+          <Button onClick={handleSave} loading={isSaving}>Оновити</Button>
         </Group>
       </Group>
 
