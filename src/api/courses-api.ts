@@ -17,9 +17,12 @@ async function getCourseTopics(courseId: number): Promise<CourseTopic[]> {
   if (!course.topics || course.topics.length === 0) {
     const oldTopics = await courseTopics.all(courseId);
     if (oldTopics.length > 0) {
-      course.topics = oldTopics;
+      course.topics = oldTopics.map((topic) => ({
+        ...topic,
+        uid: topic.uid ?? crypto.randomUUID(),
+      }));
       await courses.update(course);
-      return oldTopics;
+      return course.topics;
     }
     course.topics = [];
     return [];
@@ -39,6 +42,7 @@ async function addTopicToCourse(courseId: number, topic: CourseTopic): Promise<C
 
   const stored: CourseTopic = {
     ...topic,
+    uid: topic.uid ?? crypto.randomUUID(),
     course_id: courseId,
     index: course.topics.length + 1,
   };

@@ -116,8 +116,10 @@ describe("coursesApi", () => {
       coursesGet.mockResolvedValueOnce(course as any);
       oldTopicsAll.mockResolvedValueOnce(legacy as any);
       const response = await api["/api/courses/:courseId/topics"].GET(request({ courseId: "1" }));
-      expect(await response.json()).toEqual(legacy);
-      expect(course.topics).toEqual(legacy);
+      const migrated = await response.json() as any[];
+      expect(migrated[0]).toEqual(expect.objectContaining(legacy[0]!));
+      expect(migrated[0].uid).toMatch(/^[0-9a-f-]{36}$/);
+      expect(course.topics).toEqual(migrated);
       expect(coursesUpdate).toHaveBeenCalledWith(course);
     });
 
@@ -137,7 +139,9 @@ describe("coursesApi", () => {
       const course = { id: 2, topics: [{ index: 1, name: "First" }] };
       coursesGet.mockResolvedValueOnce(course as any);
       const response = await api["/api/courses/:courseId/topics"].POST(request({ courseId: "2" }, { index: 99, name: "Second" }));
-      expect(await response.json()).toEqual({ course_id: 2, index: 2, name: "Second" });
+      const created = await response.json() as any;
+      expect(created).toEqual(expect.objectContaining({ course_id: 2, index: 2, name: "Second" }));
+      expect(created.uid).toMatch(/^[0-9a-f-]{36}$/);
       expect(course.topics).toHaveLength(2);
       expect(coursesUpdate).toHaveBeenCalledWith(course);
     });

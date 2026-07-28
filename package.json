@@ -17,6 +17,7 @@
     "@fortawesome/react-fontawesome": "^3.3.0",
     "@mantine/core": "^8.3.13",
     "@mantine/hooks": "^8.3.13",
+    "@marp-team/marp-core": "^4.4.0",
     "@modelcontextprotocol/server": "^2.0.0-alpha.2",
     "@openai/agents": "^0.11.6",
     "angular-expressions": "^1.5.1",

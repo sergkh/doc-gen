@@ -10,6 +10,7 @@ interface AddGeneratedTopicsArgs {
 export function addGeneratedTopicsToCourseTopics({ topics, generatedTopics, courseId }: AddGeneratedTopicsArgs) {
   const nextTopics = generatedTopics.reduce<CourseTopic[]>((acc, gen) => {
     const topicData: CourseTopic = {
+      uid: crypto.randomUUID(),
       course_id: courseId,
       index: acc.length + topics.length + 1,
       name: gen.name,

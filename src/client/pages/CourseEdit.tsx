@@ -2,7 +2,7 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft, faExclamationTriangle, faChalkboard } from "@fortawesome/free-solid-svg-icons";
 import {
   loadCourse, upsertCourse, loadAllCourses, normalizeCourseName,
   formatDisciplineCode, autofillCourseResults
@@ -364,6 +364,9 @@ export default function CourseEdit() {
               </Anchor>
               <Anchor component={Link} to={`/courses/${item.id}/history`} size="sm">
                 <FontAwesomeIcon icon={faClockRotateLeft} /> Історія
+              </Anchor>
+              <Anchor component={Link} to={`/courses/${item.id}/presentations`} size="sm">
+                <FontAwesomeIcon icon={faChalkboard} /> Презентації
               </Anchor>
             </>
           )}

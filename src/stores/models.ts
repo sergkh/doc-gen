@@ -139,6 +139,9 @@ export type CourseTopicData = {
 } & HoursStruct;
 
 export type CourseTopic = {
+  /** Legacy identifier used only while reading the former course_topics table. */
+  id?: number,
+  uid?: string,
   course_id: number,
   index: number,
   name: string,

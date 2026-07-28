@@ -18,6 +18,7 @@ import { registerSpecialtiesCoursesResources } from "./resources/specialties-cou
 import { registerTeachersResources } from "./resources/teachers-resources";
 import { registerTemplateManifestResources } from "./resources/template-manifest-resources";
 import { registerFillTemplateFields } from "./tools/fill-template-fields";
+import { registerPresentationResources, registerPresentationTools } from "@/presentations/mcp";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -52,6 +53,11 @@ function createServer(): McpServer {
       - update_course_literature (оновлення літератури активної дисципліни: основна, додаткова, інтернет-ресурси)
       - list_templates (список доступних шаблонів для генерації документів з параметрами)
       - fill_template_fields (показує готові AI-поля та заповнює одне або кілька полів з перевіркою типів і залежностей)
+      - create_topic_presentation (створює одну Marp-презентацію для теми активної дисципліни)
+      - update_presentation_slides (змінює слайди за індексом і Git-ревізією)
+      - replace_presentation_slides (атомарно замінює всі слайди)
+      - put_presentation_diagram (генерує діаграму через Kroki та зберігає джерело і SVG)
+      - restore_presentation_revision (відновлює презентацію до Git-ревізії новим комітом)
       `
   });
 
@@ -74,6 +80,8 @@ function createServer(): McpServer {
   registerSpecialtiesCoursesResources(server);
   registerTeachersResources(server);
   registerTemplateManifestResources(server);
+  registerPresentationResources(server);
+  registerPresentationTools(server);
 
   return server;
 }

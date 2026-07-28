@@ -1,6 +1,10 @@
 FROM oven/bun:1.3.5 AS base
 WORKDIR /usr/src/app
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
+
 FROM base AS install
 RUN mkdir -p /temp/dev
 COPY package.json bun.lock /temp/dev/

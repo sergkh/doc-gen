@@ -6,6 +6,7 @@ import type { CourseTopicData, GeneratedTopicData } from "@/stores/models";
 
 const TopicInput = z.object({
   id: z.number().int().positive().optional(),
+  uid: z.string().uuid().optional(),
   name: z.string().min(1, "Вкажіть назву теми"),
   lection: z.string().default(""),
   index: z.number().int().positive().default(1),  
@@ -51,6 +52,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
     "update_course_topics",
     {
       description: "Оновлює теми для активної дисципліни в контексті. Потрібно підтвердження confirm=true. " +
+        "Для наявних тем завжди повертай uid з get_current_course_full_info — він зберігає звʼязок теми зовнішніми системами. " +
         "Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 чи 4 години практичних. " +
         "Тому 16 годин лекцій це 8 лекцій, тому 8 лекційних тем. " +
         "Дисципліна має або практичні або лабораторні заняття, але не одночасно. Тому одна з цих категорій буде завжди 0." +
@@ -79,7 +81,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
       await coursesService.mergeCourseTopics(
         current.course.id,
         args.topics.map((topic) => ({
-          id: topic.id ?? 0,
+          uid: topic.uid,
           course_id: current.course!.id,
           index: topic.index,
           name: topic.name,

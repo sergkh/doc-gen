@@ -26,6 +26,12 @@ async function getCourses(
 
 async function createCourse(c: Course, reason: string = 'Created new course by user'): Promise<Course> {
   console.log("Adding new course", c);
+  if (c.topics?.some((topic) => !topic.uid)) {
+    c = {
+      ...c,
+      topics: c.topics.map((topic) => topic.uid ? topic : { ...topic, uid: crypto.randomUUID() }),
+    };
+  }
   
   const courseId = (await courses.add(c))[0].id;
   c.id = courseId;
@@ -69,32 +75,47 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
   if (parsedTopics.length === 0) return;
   const course = await courses.get(courseId);
   if (!course) return;
-  const existingTopics = course.topics ?? [];
+  course.topics = mergeCourseTopicLists(courseId, course.topics ?? [], parsedTopics);
+  await courses.update(course);
+}
+
+function mergeCourseTopicLists(
+  courseId: number,
+  existingTopics: CourseTopic[],
+  parsedTopics: CourseTopic[],
+): CourseTopic[] {
   const existingTopicsMap = new Map(existingTopics.map(t => [t.index, t]));
+  const existingTopicsByUid = new Map(existingTopics.filter((t) => t.uid).map((t) => [t.uid!, t]));
 
   const merged: CourseTopic[] = [];
-  const seen = new Set<number>();
+  const seen = new Set<string>();
 
   for (const parsedTopic of parsedTopics) {
-    const existingTopic = existingTopicsMap.get(parsedTopic.index);
+    const existingTopic = (parsedTopic.uid ? existingTopicsByUid.get(parsedTopic.uid) : undefined)
+      ?? existingTopicsMap.get(parsedTopic.index);
     if (existingTopic) {
       merged.push(mergeCourseTopic(existingTopic, parsedTopic));
-      seen.add(existingTopic.index);
+      seen.add(existingTopic.uid ?? `index:${existingTopic.index}`);
     } else {
-      merged.push({ ...parsedTopic, id: 0, course_id: courseId });
-      seen.add(parsedTopic.index);
+      const newTopic = {
+        ...parsedTopic,
+        id: 0,
+        uid: parsedTopic.uid ?? crypto.randomUUID(),
+        course_id: courseId,
+      } as CourseTopic;
+      merged.push(newTopic);
+      seen.add(newTopic.uid!);
     }
   }
 
   for (const t of existingTopics) {
-    if (!seen.has(t.index)) {
+    if (!seen.has(t.uid ?? `index:${t.index}`)) {
       merged.push(t);
     }
   }
 
   merged.sort((a, b) => a.index - b.index);
-  course.topics = merged;
-  await courses.update(course);
+  return merged;
 }
 
 function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
@@ -103,11 +124,13 @@ function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
     fulltime: {    
       hours: parsed.data?.fulltime?.hours ?? existing.data?.fulltime?.hours,
       practical_hours: parsed.data?.fulltime?.practical_hours ?? existing.data?.fulltime?.practical_hours,
+      lab_hours: parsed.data?.fulltime?.lab_hours ?? existing.data?.fulltime?.lab_hours ?? 0,
       srs_hours: parsed.data?.fulltime?.srs_hours ?? existing.data?.fulltime?.srs_hours,
     },
     inabscentia: {
       hours: parsed.data?.inabscentia?.hours ?? existing.data?.inabscentia?.hours,
       practical_hours: parsed.data?.inabscentia?.practical_hours ?? existing.data?.inabscentia?.practical_hours,
+      lab_hours: parsed.data?.inabscentia?.lab_hours ?? existing.data?.inabscentia?.lab_hours ?? 0,
       srs_hours: parsed.data?.inabscentia?.srs_hours ?? existing.data?.inabscentia?.srs_hours
     }
   }
@@ -116,6 +139,7 @@ function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
 
   return {
     id: existing.id,
+    uid: existing.uid ?? crypto.randomUUID(),
     course_id: existing.course_id,
     index: existing.index,
     name: parsed.name ?? existing.name,
@@ -175,11 +199,11 @@ async function updateCourseFromParsed(course: Course & ParsedData, dbCourse: Cou
   let updated = dbCourse ? mergeCourseData(dbCourse, course) : course;
   
   if (dbCourse) {
-    updated.topics = course.topics;
+    updated.topics = mergeCourseTopicLists(dbCourse.id, dbCourse.topics ?? [], course.topics ?? []);
     await updateCourseInt(updated, dbCourse, `Doc upload`);
   } else {
     updated.topics = course.topics;
-    const stored = await createCourse(updated, 'Doc upload');
+    await createCourse(updated, 'Doc upload');
   }
 
   return course;
@@ -376,6 +400,7 @@ export const coursesService = {
   getCourses,
   mergeCourseData,
   mergeCourseTopics,
+  mergeCourseTopicLists,
   mergeCourseTopic,
   updateCourse,
   parseCourseDataUpload,

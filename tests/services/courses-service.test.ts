@@ -145,6 +145,7 @@ describe("coursesService", () => {
   describe("mergeCourseTopic", () => {
     const existingTopic = {
       id: 1,
+      uid: "stable-topic-uid",
       course_id: 1,
       index: 1,
       name: "Existing Topic",
@@ -279,6 +280,17 @@ describe("coursesService", () => {
       expect(result.course_id).toBe(1);
     });
 
+    it("should preserve the existing uid when parsed topic has no uid", () => {
+      const parsed = {
+        index: 1,
+        data: existingTopic.data,
+        generated: null
+      };
+
+      const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
+      expect(result.uid).toBe("stable-topic-uid");
+    });
+
     it("should preserve index", () => {
       const parsed = {
         index: 99,
@@ -288,6 +300,48 @@ describe("coursesService", () => {
 
       const result = coursesService.mergeCourseTopic(existingTopic as any, parsed as any);
       expect(result.index).toBe(1);
+    });
+  });
+
+  describe("mergeCourseTopicLists", () => {
+    it("matches DOCX topics without uid by index and preserves the stored uid", () => {
+      const existing = [{
+        id: 1,
+        uid: "stored-topic-uid",
+        course_id: 7,
+        index: 1,
+        name: "Old name",
+        data: {},
+        generated: {},
+      }];
+      const parsed = [{
+        course_id: 0,
+        index: 1,
+        name: "Name from DOCX",
+        data: {},
+        generated: {},
+      }];
+
+      const result = coursesService.mergeCourseTopicLists(7, existing as any, parsed as any);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.uid).toBe("stored-topic-uid");
+      expect(result[0]!.name).toBe("Name from DOCX");
+    });
+
+    it("assigns a uid once to a new DOCX topic", () => {
+      const parsed = [{
+        course_id: 0,
+        index: 2,
+        name: "New topic from DOCX",
+        data: {},
+        generated: {},
+      }];
+
+      const result = coursesService.mergeCourseTopicLists(7, [], parsed as any);
+
+      expect(result[0]!.uid).toMatch(/^[0-9a-f-]{36}$/);
+      expect(result[0]!.course_id).toBe(7);
     });
   });
 });

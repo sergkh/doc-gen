@@ -35,3 +35,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 .cursor/
 uploads/
+
+# Independent per-course Git repositories managed by the presentations feature
+/presentations/

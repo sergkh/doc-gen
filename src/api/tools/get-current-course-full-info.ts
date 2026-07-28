@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
-import { courses } from "@/stores/db";
+import { coursesService } from "@/services/courses-service";
 import { getSessionContext, toolResult, ZodContext, type ToolContentResult } from "./session-context";
 
 const ZodOutput = z.object({
@@ -21,7 +21,7 @@ const ZodOutput = z.object({
     .optional(),
   topics: z.array(
     z.object({
-      id: z.number(),
+      uid: z.string(),
       course_id: z.number(),
       index: z.number(),
       name: z.string(),

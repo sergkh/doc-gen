@@ -28,6 +28,8 @@ import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
 import SpecialtyHistory from "./client/pages/SpecialtyHistory";
 import { theme } from "./theme";
+import PresentationListPage from "./presentations/PresentationListPage";
+import PresentationEditorPage from "./presentations/PresentationEditorPage";
 
 const navItems = [
   { label: "Генератор", to: "/", match: (path: string) => path === "/" },
@@ -96,6 +98,8 @@ export function App() {
             <Route path="/courses/:id" element={<CourseEdit />} />
             <Route path="/courses/:courseId/generated" element={<CourseGeneratedDataEdit />} />
             <Route path="/courses/:courseId/history" element={<CourseHistory />} />
+            <Route path="/courses/:courseId/presentations" element={<PresentationListPage />} />
+            <Route path="/courses/:courseId/presentations/:topicUid" element={<PresentationEditorPage />} />
             <Route path="/courses/:courseId/topics/:topicIndex/generated" element={<TopicGeneratedDataEdit />} />
             <Route path="/teachers" element={<TeachersList />} />
             <Route path="/teachers/:id" element={<TeacherEdit />} />
