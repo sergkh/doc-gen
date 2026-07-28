@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { Reorder, useDragControls } from "motion/react";
-import type { CourseTopic } from "@/stores/models";
+import type { CoursePractice, CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
-import { generateCourseTopics, type AIGeneratedTopic } from "../courses";
-import { addGeneratedTopicsToCourseTopics } from "./courseTopicsEditor.utils";
+import { generateCourseTopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
+import { addGeneratedTopicsToCourseTopics, normalizeCoursePractices } from "./courseTopicsEditor.utils";
 import {
   Stack,
   Group,
@@ -43,6 +43,7 @@ type TopicFormState = {
   inabscentiaHours: number;
   inabscentiaPracticalHours: number;
   inabscentiaSrsHours: number;
+  practices: CoursePractice[];
 };
 
 const createTopicFormState = (): TopicFormState => ({
@@ -56,6 +57,7 @@ const createTopicFormState = (): TopicFormState => ({
   inabscentiaHours: 0,
   inabscentiaPracticalHours: 0,
   inabscentiaSrsHours: 0,
+  practices: [],
 });
 
 function getTopicNo(topic: CourseTopic): number {
@@ -86,13 +88,6 @@ interface TopicItemProps {
   onUpdateInabscentiaSrsHours: (topic: CourseTopic, v: number) => void;
 }
 
-const ATTESTATION_COLORS: Record<number, string> = {
-  1: "var(--mantine-color-default)",
-  2: "var(--mantine-color-blue-light)",
-  3: "var(--mantine-color-red-light)",
-  4: "var(--mantine-color-green-light)",
-};
-
 function TopicItem({
   topic, courseId,
   coursePractType,
@@ -111,6 +106,7 @@ function TopicItem({
   const inabscentiaHours = topic.data?.inabscentia?.hours || 0;
   const inabscentiaPracticalHours = topic.data?.inabscentia?.practical_hours || 0;
   const inabscentiaSrsHours = topic.data?.inabscentia?.srs_hours || 0;
+  const practices = normalizeCoursePractices(topic.data?.practices);
 
   return (
     <Reorder.Item
@@ -122,7 +118,7 @@ function TopicItem({
       <Paper
         withBorder
         p="sm"
-        bg={ATTESTATION_COLORS[attestation] ?? ATTESTATION_COLORS[1]}
+        bg={getAttestationColor(attestation)}
       >
         <Group align="flex-start" wrap="nowrap" gap="xs">
           <div
@@ -138,21 +134,31 @@ function TopicItem({
                 {topic.index}. {topic.name || `Тема ${topic.index}`}
               </Text>
               <Group gap="xs" wrap="nowrap">
-                <InPlaceEditor value={attestation} options={[1,2,3,4].map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
+                <InPlaceEditor value={attestation} options={ATTESTATION_INDEXES.map(v=>({value:v,label:`Атест. ${v}`}))} displayText={`Атест. ${attestation}`} title="Атестація" onChange={(v)=>onUpdateAttestation(topic,v)} compact />
                 {topic.generated && (
                   <Tooltip label="Згенеровані дані">
-                    <ActionIcon variant="subtle" color="blue" onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/generated`)}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="blue"
+                      aria-label={`Згенеровані дані теми ${topic.index}`}
+                      onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/generated`)}
+                    >
                       <FontAwesomeIcon icon={faEdit} />
                     </ActionIcon>
                   </Tooltip>
                 )}
                 <Tooltip label="Редагувати">
-                  <ActionIcon variant="subtle" onClick={() => onEdit(topic)}>
+                  <ActionIcon variant="subtle" aria-label={`Редагувати тему ${topic.index}`} onClick={() => onEdit(topic)}>
                     <FontAwesomeIcon icon={faPen} />
                   </ActionIcon>
                 </Tooltip>
                 <Tooltip label="Видалити">
-                  <ActionIcon variant="subtle" color="red" onClick={() => onDelete(topic)}>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label={`Видалити тему ${topic.index}`}
+                    onClick={() => onDelete(topic)}
+                  >
                     <FontAwesomeIcon icon={faTrash} />
                   </ActionIcon>
                 </Tooltip>
@@ -171,6 +177,19 @@ function TopicItem({
             {topic.lection && (
               <Text size="sm" c="dimmed" lineClamp={3} style={{ whiteSpace: "pre-wrap" }}>{topic.lection}</Text>
             )}
+            {practices.length > 0 && (
+              <Stack gap={2} mt={2}>
+                <Text size="xs" fw={600}>
+                  {coursePractType === "practice" ? "Практичні заняття" : "Лабораторні заняття"}
+                </Text>
+                {practices.map((practice, index) => (
+                  <Text key={`${practice.name}-${index}`} size="xs" c="dimmed">
+                    {index + 1}. <Text component="span" inherit fw={500}>{practice.name}</Text>
+                    {practice.description ? ` — ${practice.description}` : ""}
+                  </Text>
+                ))}
+              </Stack>
+            )}
           </Stack>
         </Group>
       </Paper>
@@ -186,11 +205,14 @@ const FULLTIME_HOURS_OPTS = hoursOptions([2, 4, 6, 8], "год.");
 const PRACTICAL_OPTS = hoursOptions([0, 2, 4, 6, 8], "год.");
 const SRS_OPTS = hoursOptions([0, 2, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18], "год.");
 const INABS_HOURS_OPTS = hoursOptions([0, 1, 2, 4, 6, 8], "год.");
-const ATTESTATION_OPTS = [1, 2, 3, 4].map((v) => ({ value: String(v), label: String(v) }));
+const ATTESTATION_INDEXES = Array.from({ length: 8 }, (_, index) => index + 1);
+const ATTESTATION_OPTS = ATTESTATION_INDEXES
+  .map((value) => ({ value: String(value), label: String(value) }));
 
 // ─── Topic form (shared for new & edit) ──────────────────────────────────────
 interface TopicFormProps {
   title: string;
+  coursePractType: "practice" | "lab";
   form: TopicFormState;
   setForm: (patch: Partial<TopicFormState>) => void;
   isDragging: boolean;
@@ -199,7 +221,7 @@ interface TopicFormProps {
   onCancel: () => void;
 }
 
-function TopicForm({ title, form, setForm, isDragging, setIsDragging, onSave, onCancel }: TopicFormProps) {
+function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, onSave, onCancel }: TopicFormProps) {
   const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -212,14 +234,38 @@ function TopicForm({ title, form, setForm, isDragging, setIsDragging, onSave, on
     reader.readAsText(file);
   };
 
+  const addPractice = () => {
+    setForm({
+      practices: [...form.practices, { name: "", description: "" }],
+    });
+  };
+
+  const updatePractice = (index: number, patch: Partial<CoursePractice>) => {
+    setForm({
+      practices: form.practices.map((practice, practiceIndex) =>
+        practiceIndex === index ? { ...practice, ...patch } : practice
+      ),
+    });
+  };
+
+  const removePractice = (index: number) => {
+    setForm({
+      practices: form.practices.filter((_, practiceIndex) => practiceIndex !== index),
+    });
+  };
+
+  const practiceLabel = coursePractType === "practice" ? "практичне заняття" : "лабораторне заняття";
+  const practiceLabelGenitive = coursePractType === "practice" ? "практичного заняття" : "лабораторного заняття";
+  const practicesLabel = coursePractType === "practice" ? "Практичні заняття" : "Лабораторні заняття";
+
   return (
-    <Paper withBorder p="md">
+    <Paper withBorder p="md" bg={getAttestationColor(form.attestation)}>
       <Stack>
         <Group justify="space-between">
           <Text fw={600}>{title}</Text>
           <Group gap="xs">
-            <Button variant="default" onClick={onCancel}>Скасувати</Button>
-            <Button onClick={onSave}>Зберегти</Button>
+            <Button variant="default" aria-label="Скасувати редагування теми" onClick={onCancel}>Скасувати</Button>
+            <Button aria-label="Зберегти тему" onClick={onSave}>Зберегти</Button>
           </Group>
         </Group>
 
@@ -241,6 +287,53 @@ function TopicForm({ title, form, setForm, isDragging, setIsDragging, onSave, on
         </SimpleGrid>
 
         <Select label="Атестація" data={ATTESTATION_OPTS} value={String(form.attestation)} onChange={(v) => v && setForm({ attestation: Number(v) })} w={120} />
+
+        <Divider label={practicesLabel} labelPosition="left" />
+        <Stack gap="sm">
+          {form.practices.length === 0 && (
+            <Text size="sm" c="dimmed">Заняття ще не додані</Text>
+          )}
+          {form.practices.map((practice, index) => (
+            <Paper key={index} withBorder p="sm">
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Text size="sm" fw={600}>
+                    {coursePractType === "practice" ? "Практична робота" : "Лабораторна робота"} {index + 1}
+                  </Text>
+                  <Tooltip label="Видалити заняття">
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      aria-label={`Видалити ${practiceLabel} ${index + 1}`}
+                      onClick={() => removePractice(index)}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+                <TextInput
+                  label="Назва"
+                  placeholder={`Введіть назву ${practiceLabelGenitive}`}
+                  value={practice.name}
+                  onChange={(event) => updatePractice(index, { name: event.currentTarget.value })}
+                />
+                <Textarea
+                  label="Короткий опис"
+                  placeholder="Стисло опишіть завдання та очікуваний результат"
+                  value={practice.description}
+                  onChange={(event) => updatePractice(index, { description: event.currentTarget.value })}
+                  autosize
+                  minRows={2}
+                />
+              </Stack>
+            </Paper>
+          ))}
+          <Button variant="light" leftSection={<FontAwesomeIcon icon={faPlus} />} onClick={addPractice}>
+            Додати {practiceLabel}
+          </Button>
+          <Text size="xs" c="dimmed">Одне заняття зазвичай відповідає 2 годинам.</Text>
+        </Stack>
+
         <Textarea label="Текст лекції" placeholder={isDragging ? "Відпустіть файл тут..." : "Введіть текст лекції (або перетягніть .txt файл)"} value={form.lection} onChange={(e) => setForm({ lection: e.currentTarget.value })} autosize minRows={4} onDrop={handleFileDrop} onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }} styles={isDragging ? { input: { borderStyle: "dashed", borderColor: "var(--mantine-color-blue-5)" } } : undefined} />
       </Stack>
     </Paper>
@@ -277,6 +370,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
       inabscentiaPracticalHours: topic.data?.inabscentia?.practical_hours || 0,
       srsHours: topic.data?.fulltime?.srs_hours || 0,
       inabscentiaSrsHours: topic.data?.inabscentia?.srs_hours || 0,
+      practices: normalizeCoursePractices(topic.data?.practices),
     });
   };
 
@@ -287,7 +381,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
       index: topics.length + 1,
       name: "",
       lection: "",
-      data: { attestation: 1, fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
+      data: { attestation: 1, practices: [], fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
       generated: {},
     } as CourseTopic;
     (newTopic as TopicWithNo).no = getNextTopicNo(topics);
@@ -304,13 +398,23 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
   const handleSaveTopic = () => {
     if (!editingTopic) return;
     if (!form.name.trim()) { alert("Назва теми обов'язкова"); return; }
+    const practices = form.practices.map((practice) => ({
+      name: practice.name.trim(),
+      description: practice.description.trim(),
+    }));
+    if (practices.some((practice) => !practice.name || !practice.description)) {
+      alert("Для кожного заняття вкажіть назву та короткий опис");
+      return;
+    }
 
     const saved: CourseTopic = {
       ...editingTopic,
       name: form.name.trim(),
       lection: form.lection.trim(),
       data: {
+        ...editingTopic.data,
         attestation: form.attestation,
+        practices,
         fulltime: { hours: form.hours, practical_hours: form.practicalHours, lab_hours: 0, srs_hours: form.srsHours },
         inabscentia: { hours: form.inabscentiaHours, practical_hours: form.inabscentiaPracticalHours, lab_hours: 0, srs_hours: form.inabscentiaSrsHours },
       },
@@ -379,7 +483,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     setGeneratedTopics(null);
   };
 
-  const formProps = { form, setForm: setForm, isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm };
+  const formProps = { coursePractType, form, setForm: setForm, isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm };
 
   const summary = useMemo(() => {
     const collectTotals = (mode: "fulltime" | "inabscentia") => {
@@ -414,12 +518,17 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
           <Text fw={700}>Теми курсу</Text>
           <Group gap="xs">
             <Tooltip label="Згенерувати теми AI">
-              <ActionIcon variant="subtle" onClick={handleGenerateTopics} loading={aiTopicsLoading}>
+              <ActionIcon
+                variant="subtle"
+                aria-label="Згенерувати теми AI"
+                onClick={handleGenerateTopics}
+                loading={aiTopicsLoading}
+              >
                 <FontAwesomeIcon icon={faWandMagicSparkles} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Додати тему">
-              <ActionIcon variant="default" onClick={handleAddTopic}>
+              <ActionIcon variant="default" aria-label="Додати тему" onClick={handleAddTopic}>
                 <FontAwesomeIcon icon={faPlus} />
               </ActionIcon>
             </Tooltip>

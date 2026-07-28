@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faPen, faTimes, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { Stack, Group, Text, TextInput, Select, ActionIcon, Divider, Box, Tooltip } from "@mantine/core";
 import type { CourseTopic } from "@/stores/models";
-import { renameAttestation } from "../courses";
+import { getAttestationColor, renameAttestation } from "../courses";
 
 export type Attestation = {
   name: string;
@@ -74,12 +74,12 @@ export default function AttestationsEditor({
       <Group gap="xs" wrap="wrap">
         {attestations.map((att, index) => (
           <Box
-            style={(theme) => ({
+            style={{
               display: "inline-block",
               padding: "10px 16px",
-              backgroundColor: theme.colors.blue[0],
+              backgroundColor: getAttestationColor(index + 1),
               borderRadius: "0.5em",
-            })}
+            }}
             key={index}
           >
             <Group gap={6} wrap="nowrap">
@@ -112,6 +112,7 @@ export default function AttestationsEditor({
                   size="xs"
                   variant="subtle"
                   color="blue"
+                  aria-label={`AI-перейменувати атестацію ${index + 1}`}
                   loading={renamingIndex === index}
                   disabled={courseId <= 0}
                   onClick={() => handleAiRename(index)}
@@ -119,11 +120,16 @@ export default function AttestationsEditor({
                   <FontAwesomeIcon icon={faWandMagicSparkles} size="xs" />
                 </ActionIcon>
               </Tooltip>
-              <ActionIcon size="xs" variant="subtle" onClick={() => { setEditingIndex(index); setDraftName(att.name); }}>
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                aria-label={`Редагувати атестацію ${index + 1}`}
+                onClick={() => { setEditingIndex(index); setDraftName(att.name); }}
+              >
                 <FontAwesomeIcon icon={faPen} size="xs" />
               </ActionIcon>
               <Tooltip label="Видалити атестацію">
-                <ActionIcon size="xs" variant="subtle" color="red" onClick={() => {
+                <ActionIcon size="xs" variant="subtle" color="red" aria-label={`Видалити атестацію ${index + 1}`} onClick={() => {
                   if (confirm("Видалити атестацію?")) onRemove(index);
                 }}>
                   <FontAwesomeIcon icon={faTimes} size="xs" />
@@ -142,7 +148,7 @@ export default function AttestationsEditor({
           </Box>
         ))}
         <Tooltip label="Додати атестацію">
-          <ActionIcon variant="default" onClick={handleAdd}>
+          <ActionIcon variant="default" aria-label="Додати атестацію" onClick={handleAdd}>
             <FontAwesomeIcon icon={faPlus} />
           </ActionIcon>
         </Tooltip>

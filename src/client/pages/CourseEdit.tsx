@@ -443,7 +443,8 @@ export default function CourseEdit() {
               ]}
               value={item.data.practice_type ?? null}
               onChange={(v) => updateData({ practice_type: (v as "practice" | "lab" | null) ?? undefined })}
-              clearable
+              searchable={false}
+              allowDeselect={false}
             />
             <NumberInput
               label="Рік навчання (денна)"

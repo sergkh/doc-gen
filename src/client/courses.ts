@@ -1,5 +1,24 @@
 import type { Course, CourseTopic, KeyValue } from "@/stores/models";
 
+export const ATTESTATION_COLORS = [
+  "var(--mantine-color-blue-light)",
+  "var(--mantine-color-teal-light)",
+  "var(--mantine-color-green-light)",
+  "var(--mantine-color-yellow-light)",
+  "var(--mantine-color-orange-light)",
+  "var(--mantine-color-red-light)",
+  "var(--mantine-color-pink-light)",
+  "var(--mantine-color-violet-light)",
+] as const;
+
+export function getAttestationColor(attestationIndex: number): string {
+  const zeroBasedIndex = Number.isFinite(attestationIndex) && attestationIndex > 0
+    ? Math.floor(attestationIndex) - 1
+    : 0;
+
+  return ATTESTATION_COLORS[zeroBasedIndex % ATTESTATION_COLORS.length]!;
+}
+
 export function formatDisciplineCode(okNo: string | null): string {
   if (!okNo) return "??";
   if(/^\d{1,2}$/.test(okNo)) return `ОК${okNo}`;
