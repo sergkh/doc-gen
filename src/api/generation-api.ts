@@ -248,6 +248,40 @@ const generationApi = {
       return Response.json({ success: true, field: body.field });
     }
   },
+  "/api/courses/:courseId/generate/:templateId/data": {
+    async GET(req: BunRequest) {
+      const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };
+
+      const course = await courses.get(courseId);
+      if (!course) {
+        return jsonError("Дисципліну не знайдено", 404);
+      }
+
+      const template = await templates.get(templateId);
+      if (!template) {
+        return jsonError("Шаблон не знайдено", 404);
+      }
+
+      const topics = course.topics ?? [];
+      if (topics.length === 0) {
+        return jsonError("У дисципліни немає тем", 404);
+      }
+
+      const specialty = await specialties.get(course.specialty_id);
+      if (!specialty) {
+        return jsonError("Спеціальність не знайдено", 404);
+      }
+
+      try {
+        const queryParameters = Object.fromEntries(new URL(req.url).searchParams.entries());
+        const renderData = await loadFullCourseInfo(template, course, specialty, topics, queryParameters);
+        return Response.json(renderData);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Невідома помилка";
+        return jsonError(message, 500);
+      }
+    }
+  },
   "/api/courses/:courseId/generate/:templateId/download": {
     async GET(req: BunRequest) {
       const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };

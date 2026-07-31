@@ -115,6 +115,7 @@ function makePOST(path: string, body?: any) {
 function makeGET(path: string) {
   return {
     params: {} as Record<string, string>,
+    url: new URL(path, "http://localhost").toString(),
     json: async () => { throw new Error("GET has no body"); },
   } as any;
 }
@@ -462,6 +463,92 @@ describe("generationApi", () => {
       const updatedCourse = mockCoursesUpdate.mock.calls[0][0];
       expect(updatedCourse.topics[0].generated.description).toBe("Old desc");
       expect(updatedCourse.topics[0].generated.content).toBe("New content");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // GET /api/courses/:courseId/generate/:templateId/data
+  // ---------------------------------------------------------------------------
+  describe("GET /api/courses/:courseId/generate/:templateId/data", () => {
+    const route = () => generationApi["/api/courses/:courseId/generate/:templateId/data"];
+
+    const course = {
+      id: 1,
+      specialty_id: 2,
+      topics: [{ id: 3, name: "Topic" }],
+    };
+    const template = { id: 4, file: "template.docx", name: "Template" };
+    const specialty = { id: 2, name: "Specialty" };
+
+    it("should build and return the render data as JSON", async () => {
+      const renderData = {
+        course: { id: 1, name: "Course" },
+        topics: [{ id: 3, name: "Topic" }],
+        customParameter: "value",
+      };
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      mockSpecialtiesGet.mockReturnValueOnce(Promise.resolve(specialty));
+      mockLoadFullCourseInfo.mockReturnValueOnce(Promise.resolve(renderData));
+
+      const req = makeGET("/api/courses/1/generate/4/data?customParameter=value");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      const resp = await route().GET(req);
+
+      expect(resp.status).toBe(200);
+      expect(resp.headers.get("Content-Type")).toContain("application/json");
+      expect(await resp.json()).toEqual(renderData);
+      expect(mockLoadFullCourseInfo).toHaveBeenCalledWith(
+        template,
+        course,
+        specialty,
+        course.topics,
+        { customParameter: "value" }
+      );
+      expect(mockRenderDoc).not.toHaveBeenCalled();
+      expect(mockRenderHandlebarsText).not.toHaveBeenCalled();
+    });
+
+    it("should return 404 when required generation data is missing", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(null));
+      let req = makeGET("/api/courses/1/generate/4/data");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      expect((await route().GET(req)).status).toBe(404);
+
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(null));
+      req = makeGET("/api/courses/1/generate/4/data");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      expect((await route().GET(req)).status).toBe(404);
+
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve({ ...course, topics: [] }));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      req = makeGET("/api/courses/1/generate/4/data");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      expect((await route().GET(req)).status).toBe(404);
+
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      mockSpecialtiesGet.mockReturnValueOnce(Promise.resolve(null));
+      req = makeGET("/api/courses/1/generate/4/data");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      const response = await route().GET(req);
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ error: "Спеціальність не знайдено" });
+    });
+
+    it("should return a JSON error when building render data fails", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      mockSpecialtiesGet.mockReturnValueOnce(Promise.resolve(specialty));
+      mockLoadFullCourseInfo.mockRejectedValueOnce(new Error("Failed to build data"));
+
+      const req = makeGET("/api/courses/1/generate/4/data");
+      matchParams(req, { courseId: "1", templateId: "4" });
+      const resp = await route().GET(req);
+
+      expect(resp.status).toBe(500);
+      expect(await resp.json()).toEqual({ error: "Failed to build data" });
     });
   });
 
