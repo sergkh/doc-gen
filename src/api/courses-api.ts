@@ -90,6 +90,24 @@ const coursesApi = {
       return Response.json({ success: true });
     }
   },
+  "/api/courses/:id/generated": {
+    async PUT(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const body = await req.json() as { generated: GeneratedCourseData; version: number };
+
+      if (!body.generated || !Number.isInteger(body.version)) {
+        return Response.json({ error: "Некоректні згенеровані дані курсу" }, { status: 400 });
+      }
+
+      const course = await coursesService.updateCourseGeneratedData(
+        Number(id),
+        body.generated,
+        body.version,
+      );
+
+      return Response.json({ success: true, course });
+    },
+  },
   "/api/courses/parse-docx": {
     async POST(req: BunRequest) {
       try {
@@ -344,6 +362,13 @@ const coursesApi = {
       const history = await coursesService.getCourseHistory(Number(id));
       return Response.json(history);
     }
+  },
+  "/api/courses/:id/history/reset": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const record = await coursesService.resetCourseHistory(Number(id));
+      return Response.json({ success: true, record });
+    },
   },
   "/api/courses/:id/history/:historyId/revert": {
     async POST(req: BunRequest) {

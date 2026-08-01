@@ -7,6 +7,7 @@ import { verifyCourse } from "@/docx/verification";
 import { deepEquals } from "bun";
 import { runCoursePrompts } from "@/ai/generator";
 import { create } from "jsondiffpatch";
+import type { Delta } from "jsondiffpatch";
 
 async function getCourses(
   specialtyId?: number,
@@ -191,6 +192,34 @@ async function updateCourse(id: number, updated: Course, reason: string): Promis
   return {...updated, version: updated.version + 1 };
 }
 
+async function updateCourseGeneratedData(
+  id: number,
+  generated: GeneratedCourseData,
+  version: number,
+): Promise<Course> {
+  const oldCourse = await coursesService.getCourseById(id);
+
+  if (!oldCourse) {
+    throw new CourseNotFoundError(id);
+  }
+
+  const updatedCourse: Course = {
+    ...oldCourse,
+    generated,
+    version,
+  };
+
+  if (deepEquals(updatedCourse, oldCourse)) return oldCourse;
+
+  await updateCourseInt(
+    updatedCourse,
+    oldCourse,
+    "Updated generated course data by user",
+  );
+
+  return { ...updatedCourse, version: version + 1 };
+}
+
 async function updateCourseFromParsed(course: Course & ParsedData, dbCourse: Course | null) {
   await handleTeacher(course);
 
@@ -281,8 +310,80 @@ async function savePromptResult(id: number, field: string, value: any) {
   );
 }
 
+function withoutHistoryMetadata(course: Course): Record<string, unknown> {
+  const comparable = { ...course } as Course & Record<string, unknown>;
+  delete comparable.created_at;
+  delete comparable.updated_at;
+  return comparable;
+}
+
+function buildCourseHistoryDetails(records: DocVersionRecord[], limit: number = 10): DocVersionRecord[] {
+  const diffpatcher = create();
+  let state: Course | undefined;
+
+  const detailed = [...records]
+    .sort((left, right) => {
+      const stampDifference = new Date(left.stamp).getTime() - new Date(right.stamp).getTime();
+      return stampDifference || left.id - right.id;
+    })
+    .map((record) => {
+      let changes: Delta | undefined;
+      let reconstructionError: string | undefined;
+
+      if (record.type === "snapshot" && record.data) {
+        const snapshot = structuredClone(record.data) as Course;
+        if (state) {
+          changes = diffpatcher.diff(
+            withoutHistoryMetadata(state),
+            withoutHistoryMetadata(snapshot),
+          );
+        }
+        state = snapshot;
+      } else if (record.type === "patch" && record.data) {
+        changes = record.data as Delta;
+        if (state) {
+          try {
+            state = diffpatcher.patch(state, record.data as Delta) as Course;
+          } catch (error) {
+            reconstructionError = "Несумісний застарілий запис історії";
+            console.warn(
+              `Skipping incompatible course history patch #${record.id} while reconstructing snapshot details:`,
+              error instanceof Error ? error.message : error,
+            );
+            state = undefined;
+          }
+        }
+      } else if (record.type === "tombstone") {
+        state = undefined;
+      }
+
+      return {
+        ...record,
+        ...(changes ? { changes } : {}),
+        ...(reconstructionError ? { reconstruction_error: reconstructionError } : {}),
+      };
+    });
+
+  return detailed.reverse().slice(0, limit);
+}
+
 async function getCourseHistory(courseId: number) {
-  return history.forObject("course", courseId);
+  const records = await history.forObject("course", courseId, 100);
+  return buildCourseHistoryDetails(records);
+}
+
+async function resetCourseHistory(courseId: number): Promise<DocVersionRecord> {
+  const course = await coursesService.getCourseById(courseId);
+
+  if (!course) {
+    throw new CourseNotFoundError(courseId);
+  }
+
+  return history.reset(
+    "course",
+    course,
+    "History reset: created a new snapshot from the current course state",
+  );
 }
 
 async function revertToHistory(courseId: number, historyId: number): Promise<Course> {
@@ -399,11 +500,14 @@ export const coursesService = {
   mergeCourseData,
   mergeCourseTopics,
   mergeCourseTopic,
+  buildCourseHistoryDetails,
   updateCourse,
+  updateCourseGeneratedData,
   parseCourseDataUpload,
   deleteCourse,
   getCourseById,
   getCourseHistory,
+  resetCourseHistory,
   revertToHistory,
   runPrompt,
   savePromptResult

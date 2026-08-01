@@ -1,3 +1,5 @@
+import type { Delta } from "jsondiffpatch";
+
 export type ResultType = "ЗК" | "СК" | "РН" | "ІК";
 
 export type CourseResult = {
@@ -304,4 +306,6 @@ export type DocVersionRecord = {
   stamp: Date;
   comment: string;
   data: any;
+  changes?: Delta;
+  reconstruction_error?: string;
 };

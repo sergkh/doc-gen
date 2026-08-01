@@ -3,6 +3,74 @@ await import("../stores/db-mock");
 const { coursesService } = await import("@/services/courses-service");
 
 describe("coursesService", () => {
+  describe("buildCourseHistoryDetails", () => {
+    it("calculates field changes for snapshots as well as patches", () => {
+      const records = [
+        {
+          id: 3,
+          type: "snapshot",
+          stamp: new Date("2026-01-03T00:00:00Z"),
+          data: { id: 1, name: "Course", data: { credits: 5 } },
+        },
+        {
+          id: 2,
+          type: "patch",
+          stamp: new Date("2026-01-02T00:00:00Z"),
+          data: { data: { credits: [3, 4] } },
+        },
+        {
+          id: 1,
+          type: "snapshot",
+          stamp: new Date("2026-01-01T00:00:00Z"),
+          data: { id: 1, name: "Course", data: { credits: 3 } },
+        },
+      ];
+
+      const detailed = coursesService.buildCourseHistoryDetails(records as any);
+
+      expect(detailed.map((record) => record.id)).toEqual([3, 2, 1]);
+      expect(detailed[0]?.changes).toEqual({ data: { credits: [4, 5] } });
+      expect(detailed[1]?.changes).toEqual({ data: { credits: [3, 4] } });
+      expect(detailed[2]?.changes).toBeUndefined();
+    });
+
+    it("keeps incompatible legacy patches visible without failing the history page", () => {
+      const incompatiblePatch = {
+        topics: {
+          _t: "a",
+          0: { name: ["Old topic", "New topic"] },
+        },
+      };
+      const records = [
+        {
+          id: 3,
+          type: "snapshot",
+          stamp: new Date("2026-01-03T00:00:00Z"),
+          data: { id: 1, name: "Course", data: {}, topics: [{ name: "New topic" }] },
+        },
+        {
+          id: 2,
+          type: "patch",
+          stamp: new Date("2026-01-02T00:00:00Z"),
+          data: incompatiblePatch,
+        },
+        {
+          id: 1,
+          type: "snapshot",
+          stamp: new Date("2026-01-01T00:00:00Z"),
+          data: { id: 1, name: "Course", data: {} },
+        },
+      ];
+
+      const detailed = coursesService.buildCourseHistoryDetails(records as any);
+
+      expect(detailed.map((record) => record.id)).toEqual([3, 2, 1]);
+      expect(detailed[1]?.changes).toEqual(incompatiblePatch);
+      expect(detailed[1]?.reconstruction_error).toBe("Несумісний застарілий запис історії");
+      expect(detailed[0]?.changes).toBeUndefined();
+    });
+  });
+
   describe("mergeCourseData", () => {
     it("should merge teacher_id from parsed data", () => {
       const original = {

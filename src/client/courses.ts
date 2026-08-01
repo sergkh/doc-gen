@@ -258,6 +258,17 @@ export async function revertCourseToHistory(courseId: number, historyId: number)
   return await res.json();
 }
 
+export async function resetCourseHistory(courseId: number): Promise<void> {
+  const res = await fetch(`/api/courses/${courseId}/history/reset`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Помилка скидання історії: ${res.status}`);
+  }
+}
+
 export async function generateCourseTopics(courseId: number): Promise<AIGeneratedTopic[]> {
   const res = await fetch(`/api/courses/${courseId}/topics/generate`, {
     method: "POST"

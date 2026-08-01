@@ -18,10 +18,12 @@ const getCourses = mock(async () => [] as any[]);
 const createCourse = mock(async () => undefined as any);
 const getCourseById = mock(async () => null as any);
 const updateCourse = mock(async () => null as any);
+const updateCourseGeneratedData = mock(async () => null as any);
 const deleteCourse = mock(async () => undefined as any);
 const parseCourseDataUpload = mock(() => null as any);
 const getCourseHistory = mock(async () => [] as any[]);
 const revertToHistory = mock(async () => null as any);
+const resetCourseHistory = mock(async () => null as any);
 
 mock.module("@/services/courses-service", () => ({
   coursesService: {
@@ -29,10 +31,12 @@ mock.module("@/services/courses-service", () => ({
     createCourse,
     getCourseById,
     updateCourse,
+    updateCourseGeneratedData,
     deleteCourse,
     parseCourseDataUpload,
     getCourseHistory,
     revertToHistory,
+    resetCourseHistory,
   },
 }));
 
@@ -68,8 +72,8 @@ describe("coursesApi", () => {
   beforeEach(() => {
     for (const fn of [
       coursesGet, coursesUpdate, oldTopicsAll, resultsBySpecialty, specialtiesGet,
-      getCourses, createCourse, getCourseById, updateCourse, deleteCourse,
-      parseCourseDataUpload, getCourseHistory, revertToHistory, computeFileHash,
+      getCourses, createCourse, getCourseById, updateCourse, updateCourseGeneratedData, deleteCourse,
+      parseCourseDataUpload, getCourseHistory, revertToHistory, resetCourseHistory, computeFileHash,
       autofillCourseResults, generateCourseTopics, renameAttestationName,
     ]) fn.mockClear();
   });
@@ -106,6 +110,27 @@ describe("coursesApi", () => {
       const deleted = await api["/api/courses/:id"].DELETE(request({ id: "4" }));
       expect(await deleted.json()).toEqual({ success: true });
       expect(deleteCourse).toHaveBeenCalledWith(4);
+    });
+
+    it("updates generated course data through a history-aware route", async () => {
+      updateCourseGeneratedData.mockResolvedValueOnce({ id: 4, version: 3 } as any);
+      const generated = { programGoal: "New goal" };
+      const response = await api["/api/courses/:id/generated"].PUT(
+        request({ id: "4" }, { generated, version: 2 }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: true, course: { id: 4, version: 3 } });
+      expect(updateCourseGeneratedData).toHaveBeenCalledWith(4, generated, 2);
+    });
+
+    it("rejects malformed generated course updates", async () => {
+      const response = await api["/api/courses/:id/generated"].PUT(
+        request({ id: "4" }, { generated: null, version: 2 }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(updateCourseGeneratedData).not.toHaveBeenCalled();
     });
   });
 
@@ -327,6 +352,17 @@ describe("coursesApi", () => {
       const failed = await route.POST(request({ id: "5", historyId: "11" }));
       expect(failed.status).toBe(400);
       expect(await failed.json()).toEqual({ error: "Invalid history entry" });
+    });
+
+    it("resets course history to one fresh snapshot", async () => {
+      resetCourseHistory.mockResolvedValueOnce({ id: 12, type: "snapshot" } as any);
+      const response = await api["/api/courses/:id/history/reset"].POST(request({ id: "5" }));
+
+      expect(await response.json()).toEqual({
+        success: true,
+        record: { id: 12, type: "snapshot" },
+      });
+      expect(resetCourseHistory).toHaveBeenCalledWith(5);
     });
   });
 });

@@ -78,7 +78,14 @@ export default function CourseGeneratedDataEdit() {
     if (!course || !courseId) return;
     setIsSaving(true);
     try {
-      const r = await fetch(`/api/courses/${courseId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...course, generated: dropEmpty({ ...generatedValues }) }) });
+      const r = await fetch(`/api/courses/${courseId}/generated`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generated: dropEmpty({ ...generatedValues }),
+          version: course.version,
+        }),
+      });
       if (!r.ok) throw new Error();
       toast.success("Дані успішно збережено");
       navigate(`/courses/${courseId}`);

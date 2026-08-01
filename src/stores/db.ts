@@ -36,6 +36,20 @@ const history = {
     ) RETURNING *`;
   },
 
+  reset: async (
+    type: DocObjectType,
+    entity: { id: number },
+    comment: string,
+  ): Promise<DocVersionRecord> => {
+    return sql.begin(async (tx) => {
+      await tx`DELETE FROM doc_version_records WHERE object_type = ${type} AND object_id = ${entity.id}`;
+      const records = await tx`INSERT INTO doc_version_records (object_id, object_type, type, stamp, comment, data) VALUES (
+        ${entity.id}, ${type}, 'snapshot', ${new Date()}, ${comment}, ${entity}
+      ) RETURNING *`;
+      return records[0] as DocVersionRecord;
+    });
+  },
+
   createTombstone: async (type: DocObjectType, entity: { id: number }, reason: string) => {
     history.save({ 
       object_id: entity.id,

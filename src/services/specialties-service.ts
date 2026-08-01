@@ -1,4 +1,5 @@
 import { create } from "jsondiffpatch";
+import type { Delta } from "jsondiffpatch";
 import { specialties, courseResults, history } from "@/stores/db";
 import type { DocVersionRecord, Specialty } from "@/stores/models";
 
@@ -60,8 +61,60 @@ async function getSpecialtyResults(specialtyId: number) {
   return courseResults.bySpecialty(Number(specialtyId));
 }
 
+function withoutHistoryMetadata(specialty: Specialty): Record<string, unknown> {
+  const comparable = { ...specialty } as Specialty & Record<string, unknown>;
+  delete comparable.created_at;
+  delete comparable.updated_at;
+  return comparable;
+}
+
+function buildSpecialtyHistoryDetails(records: DocVersionRecord[], limit: number = 10): DocVersionRecord[] {
+  const diffpatcher = create();
+  let state: Specialty | undefined;
+
+  const detailed = [...records]
+    .sort((left, right) => {
+      const stampDifference = new Date(left.stamp).getTime() - new Date(right.stamp).getTime();
+      return stampDifference || left.id - right.id;
+    })
+    .map((record) => {
+      let changes: Delta | undefined;
+
+      if (record.type === "snapshot" && record.data) {
+        const snapshot = structuredClone(record.data) as Specialty;
+        if (state) {
+          changes = diffpatcher.diff(
+            withoutHistoryMetadata(state),
+            withoutHistoryMetadata(snapshot),
+          );
+        }
+        state = snapshot;
+      } else if (record.type === "patch" && record.data) {
+        changes = record.data as Delta;
+        if (state) {
+          try {
+            state = diffpatcher.patch(state, record.data as Delta) as Specialty;
+          } catch (error) {
+            console.warn(
+              `Skipping incompatible specialty history patch #${record.id} while reconstructing snapshot details:`,
+              error instanceof Error ? error.message : error,
+            );
+            state = undefined;
+          }
+        }
+      } else if (record.type === "tombstone") {
+        state = undefined;
+      }
+
+      return changes ? { ...record, changes } : { ...record };
+    });
+
+  return detailed.reverse().slice(0, limit);
+}
+
 async function getSpecialtyHistory(specialtyId: number) {
-  return history.forObject("specialty", specialtyId);
+  const records = await history.forObject("specialty", specialtyId, 100);
+  return buildSpecialtyHistoryDetails(records);
 }
 
 async function revertToHistory(specialtyId: number, historyId: number): Promise<Specialty> {
@@ -161,6 +214,7 @@ export const specialtiesService = {
   updateSpecialty,
   deleteSpecialty,
   getSpecialtyResults,
+  buildSpecialtyHistoryDetails,
   getSpecialtyHistory,
   revertToHistory,
 };

@@ -15,6 +15,77 @@ describe("specialtiesService exports", () => {
   });
 });
 
+describe("specialtiesService history details", () => {
+  it("calculates field changes for snapshots as well as patches", async () => {
+    const { specialtiesService } = await import("@/services/specialties-service");
+    const records = [
+      {
+        id: 3,
+        type: "snapshot",
+        stamp: new Date("2026-01-03T00:00:00Z"),
+        data: { id: 1, code: "F3", name: "Computer Science", data: { disciplines: [] } },
+      },
+      {
+        id: 2,
+        type: "patch",
+        stamp: new Date("2026-01-02T00:00:00Z"),
+        data: { code: ["122", "F"] },
+      },
+      {
+        id: 1,
+        type: "snapshot",
+        stamp: new Date("2026-01-01T00:00:00Z"),
+        data: { id: 1, code: "122", name: "Computer Science", data: { disciplines: [] } },
+      },
+    ];
+
+    const detailed = specialtiesService.buildSpecialtyHistoryDetails(records as any);
+
+    expect(detailed.map((record) => record.id)).toEqual([3, 2, 1]);
+    expect(detailed[0]?.changes).toEqual({ code: ["F", "F3"] });
+    expect(detailed[1]?.changes).toEqual({ code: ["122", "F"] });
+    expect(detailed[2]?.changes).toBeUndefined();
+  });
+
+  it("keeps incompatible legacy patches visible without failing history loading", async () => {
+    const { specialtiesService } = await import("@/services/specialties-service");
+    const incompatiblePatch = {
+      data: {
+        disciplines: {
+          _t: "a",
+          0: { name: ["Old", "New"] },
+        },
+      },
+    };
+    const records = [
+      {
+        id: 3,
+        type: "snapshot",
+        stamp: new Date("2026-01-03T00:00:00Z"),
+        data: { id: 1, code: "F3", data: { disciplines: [{ name: "New" }] } },
+      },
+      {
+        id: 2,
+        type: "patch",
+        stamp: new Date("2026-01-02T00:00:00Z"),
+        data: incompatiblePatch,
+      },
+      {
+        id: 1,
+        type: "snapshot",
+        stamp: new Date("2026-01-01T00:00:00Z"),
+        data: { id: 1, code: "F3", data: {} },
+      },
+    ];
+
+    const detailed = specialtiesService.buildSpecialtyHistoryDetails(records as any);
+
+    expect(detailed.map((record) => record.id)).toEqual([3, 2, 1]);
+    expect(detailed[1]?.changes).toEqual(incompatiblePatch);
+    expect(detailed[0]?.changes).toBeUndefined();
+  });
+});
+
 describe("specialtiesService function signatures", () => {
   it("getAllSpecialties should not require parameters", async () => {
     const { specialtiesService } = await import("@/services/specialties-service");
