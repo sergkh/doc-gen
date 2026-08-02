@@ -17,9 +17,11 @@ import {
   Progress,
   Paper,
   Anchor,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faDownload, faEdit, faLink } from "@fortawesome/free-solid-svg-icons";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -272,6 +274,23 @@ export default function GeneratorPage() {
     setSelectedCourseId(null);
   };
 
+  const handleCopySynchronousDownloadLink = async () => {
+    if (!selectedCourseId || !selectedTemplateId) return;
+
+    const downloadUrl = new URL(
+      `/api/courses/${selectedCourseId}/generate/${selectedTemplateId}/download`,
+      window.location.origin
+    ).toString();
+
+    try {
+      await navigator.clipboard.writeText(downloadUrl);
+      toast.success("Посилання скопійовано");
+    } catch (error) {
+      console.error("Failed to copy synchronous download link:", error);
+      toast.error("Не вдалося скопіювати посилання");
+    }
+  };
+
   const handleGenerate = async (navigateAfterCompletion: boolean = false) => {
     if (!selectedCourseId) {
       toast.error("Будь ласка, оберіть дисципліну");
@@ -437,6 +456,17 @@ export default function GeneratorPage() {
         >
           Згенерувати і редагувати
         </Button>
+        <Tooltip label="Скопіювати посилання для синхронного завантаження">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            aria-label="Посилання для синхронного завантаження"
+            onClick={handleCopySynchronousDownloadLink}
+            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
+          >
+            <FontAwesomeIcon icon={faLink} />
+          </ActionIcon>
+        </Tooltip>
         {isGenerating && (
           <Text size="sm" c="dimmed">
             Генерація може зайняти близько 20 хв, в залежності від кількості матеріалу
