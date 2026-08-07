@@ -386,8 +386,6 @@ export default function GeneratorPage() {
             value={selectedSpecialtyId}
             onChange={handleSpecialtyChange}
             disabled={isGenerating || isLoading}
-            searchable
-            clearable
           />
 
           <Select
@@ -397,8 +395,6 @@ export default function GeneratorPage() {
             value={selectedCourseId}
             onChange={setSelectedCourseId}
             disabled={isGenerating || !selectedSpecialtyId || isLoadingCourses}
-            searchable
-            clearable
           />
 
           <Select
@@ -411,8 +407,6 @@ export default function GeneratorPage() {
               setParameterValues({});
             }}
             disabled={isGenerating || isLoading}
-            searchable
-            clearable
           />
 
           <TemplateParametersInput
