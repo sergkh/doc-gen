@@ -202,8 +202,6 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
     } as CourseTopic;
   });
 
-  console.log(`Parsed ${topics.length} topics from syllabus`, topics.map(t => `${t.name} ${t.data.fulltime.hours}h ${t.data.fulltime.practical_hours}h ${t.data.fulltime.srs_hours}h`));
-
   return topics;
 }
 

@@ -202,6 +202,7 @@ export async function loadFullCourseInfo(
   return {
     course: updatedCourse,
     topics: countedTopics,
+    integralResult: results.find(r => r.type === "ІК")!,
     generalResults: results.filter(r => r.type === "ЗК").sort((a, b) => a.no - b.no),
     specialResults: results.filter(r => r.type === "СК").sort((a, b) => a.no - b.no),
     programResults: results.filter(r => r.type === "РН").sort((a, b) => a.no - b.no),

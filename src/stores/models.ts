@@ -187,6 +187,7 @@ export type CourseSemester = {
 export type CourseGenerationData = {
   course: Course,
   topics: CourseTopic[],
+  integralResult: CourseResult,
   generalResults:CourseResult[],
   specialResults:CourseResult[],
   programResults:CourseResult[],
