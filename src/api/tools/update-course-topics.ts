@@ -10,7 +10,6 @@ const PracticeInput = z.object({
 }) as z.ZodType<CoursePractice>;
 
 export const UpdateCourseTopicInput = z.object({
-  id: z.number().int().positive().optional(),
   name: z.string().min(1, "Вкажіть назву теми"),
   lection: z.string().default(""),
   index: z.number().int().positive().default(1),  
@@ -84,7 +83,6 @@ export function registerUpdateCourseTopics(server: McpServer) {
       await coursesService.mergeCourseTopics(
         current.course.id,
         args.topics.map((topic) => ({
-          id: topic.id ?? 0,
           course_id: current.course!.id,
           index: topic.index,
           name: topic.name,
