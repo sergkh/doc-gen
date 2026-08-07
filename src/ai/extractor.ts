@@ -12,7 +12,7 @@ export async function extractInformationAI<ZodInput extends z.ZodType>(
 ): Promise<z.infer<ZodInput> | null> {
   const client = createOpenAIClient(apiKey);
 
-  console.log("Extracting information with AI...", text.slice(0, 100), "...");
+  console.log("Extracting information with AI:", text.slice(0, 100), "...");
   
   const response = await retryWithBackoff(async () => {
     return await client.responses.parse({
