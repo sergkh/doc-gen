@@ -9,6 +9,11 @@ const PracticeInput = z.object({
   description: z.string().min(1, "Додайте короткий опис практичного заняття"),
 }) as z.ZodType<CoursePractice>;
 
+const AttestationInput = z.object({
+  name: z.string(),
+  semester: z.number().int().positive().lte(2).default(1)
+});
+
 export const UpdateCourseTopicInput = z.object({
   name: z.string().min(1, "Вкажіть назву теми"),
   lection: z.string().default(""),
@@ -39,7 +44,7 @@ export const UpdateCourseTopicInput = z.object({
 });
 
 export const UpdateCourseTopicsInput = z.object({
-  attestations: z.array(z.string()).min(2, "Вкажіть принаймні 2 атестації"),
+  attestations: z.array(AttestationInput).min(2, "Вкажіть принаймні 2 атестації"),
   topics: z.array(UpdateCourseTopicInput).min(1, "Додайте принаймні одну тему")
 });
 
@@ -54,16 +59,18 @@ export function registerUpdateCourseTopics(server: McpServer) {
   server.registerTool(
     "update_course_topics",
     {
-      description: "Оновлює теми для активної дисципліни в контексті. Потрібно підтвердження confirm=true. " +
-        "Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 чи 4 години практичних. " +
-        "Тому 16 годин лекцій це 8 лекцій, тому 8 лекційних тем. " +
+      description: "Оновлює теми для активної дисципліни в контексті. Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 чи 4 години практичних. " +
+        "Тому 16 годин лекцій це 8 лекцій і 8 лекційних тем. " +
         "Дисципліна має або практичні або лабораторні заняття, але не одночасно. Тому одна з цих категорій буде завжди 0." +
         "Загальну кількість годин можна взяти з дисципліни (курсу) і сумарно всі години тем мають відповідати загальній кількості годин дисципліни." +
         "Зверни увагу що години для денного навчання (fulltime) та заочного (inabscentia) відрізняються, у заочного значно менше годин, тому розподіли " +
         "їх на перші теми з кожної атестації (скільки вистачить), а всі інші вистав в 0." +
-        "Використовуючи назву теми та опис від користувача, додай підтеми (subtopics) та ключові слова (keywords) а також плану лекції (lection_plan)." +
+        "Використовуючи назву теми та опис від користувача, додай підтеми (subtopics) та ключові слова (keywords), а також план лекції (lection_plan)." +
         "Якщо тема має години практичних чи лабораторних, додай відповідні заняття в список practices як об'єкти з полями name і description. " +
-        "Назва має відповідати темі, description має стисло пояснювати практичне завдання, а кількість занять залежить від годин: 1 заняття — 2 години.",
+        "Назва має відповідати темі, description має стисло пояснювати практичне завдання, а кількість занять залежить від годин: 1 заняття — 2 години." + 
+        "При значній зміні назв тем, онови також назви атестацій, при незначній зміні назв – залиш як є. Назва атестації має коротко узагальнювати теми, які в неї входять. " +
+        "Якщо курс займає більше ніж 1 семестр, то атестацій має бути 4, 2 на перший семестр і 2 на другий семестр. Якщо 1 - семестр, то 2 атестації, обидві 1й семестр." +
+        "Не додавай пояснень в дужках чи після двокрапки в назву атектації чи теми",
       inputSchema: UpdateCourseTopicsInput,
       outputSchema: ZodOutput,
       annotations: {
@@ -79,7 +86,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
       if (!current.course) {
         return toolResult("Дисципліну не встановлено. Викличте set_discipline_context.", current, "dependency_not_met");
       }
-    
+
       await coursesService.mergeCourseTopics(
         current.course.id,
         args.topics.map((topic) => ({
@@ -90,6 +97,22 @@ export function registerUpdateCourseTopics(server: McpServer) {
           data: topic.data,
           generated: topic.generated
         })) as any
+      );
+
+      const latest = (await coursesService.getCourseById(current.course.id))!;
+      
+      if (!latest) {
+        return toolResult("Дисципліну не знайдено.", current, "not_found");
+      }
+
+      await coursesService.updateCourse(current.course.id, { 
+        ...latest,
+        data: {
+          ...latest.data,
+          attestations: args.attestations
+        } 
+      },
+        "MCP attestation names update"
       );
 
       console.log("MCP tool update_course_topics success", { sessionId: ctx.sessionId, courseId: current.course.id });
