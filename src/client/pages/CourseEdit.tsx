@@ -2,13 +2,13 @@ import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faEdit, faCheck, faCopy, faClockRotateLeft, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faEdit, faClockRotateLeft, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import {
   loadCourse, upsertCourse, loadAllCourses, normalizeCourseName,
   formatDisciplineCode, autofillCourseResults
 } from "../courses";
 import { loadAllTeachers } from "../teachers";
-import { loadAllResults } from "../results";
+import { loadResultsBySpecialty } from "../results";
 import { loadAllSpecialties } from "../specialties";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
 import AttestationsEditor from "../components/AttestationsEditor";
@@ -40,10 +40,20 @@ const RESULT_TYPES = {
   ЗК: "Загальні компетентності",
   СК: "Спеціальні компетентності",
   РН: "Результати навчання",
+  ІК: "Інтегральна компетентність",
 };
 
-type ResultType = "ЗК" | "СК" | "РН";
+type ResultType = "ЗК" | "СК" | "РН" | "ІК";
+type AutofillResultType = Exclude<ResultType, "ІК">;
 type DependencyField = "prerequisites" | "postrequisites";
+
+const LITERATURE_TYPES = [
+  ["main", "основна література"],
+  ["additional", "додаткова література"],
+  ["internet", "інтернет-ресурси"],
+] as const;
+
+const REQUIRED_RESULT_TYPES: ResultType[] = ["ЗК", "СК", "РН", "ІК"];
 
 function extractRawCourseName(displayName: string): string {
   return displayName.replace(/^(ОК\d+(?:\.\d+)?|ВК\d+(?:\.\d+)?)\s+/i, "").trim();
@@ -67,7 +77,7 @@ export default function CourseEdit() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
-  const [autofillLoading, setAutofillLoading] = useState<Record<ResultType, boolean>>({
+  const [autofillLoading, setAutofillLoading] = useState<Record<AutofillResultType, boolean>>({
     ЗК: false, СК: false, РН: false,
   });
   const [dependencyInputs, setDependencyInputs] = useState<Record<DependencyField, string>>({
@@ -101,9 +111,15 @@ export default function CourseEdit() {
   }, [id, clonedCourse]);
   useEffect(() => {
     loadAllTeachers().then(setTeachers).catch(console.error);
-    loadAllResults().then(setAllResults).catch(console.error);
     loadAllSpecialties().then(setSpecialties).catch(console.error);
   }, []);
+  useEffect(() => {
+    if (!item?.specialty_id) {
+      setAllResults([]);
+      return;
+    }
+    loadResultsBySpecialty(item.specialty_id).then(setAllResults).catch(console.error);
+  }, [item?.specialty_id]);
   useEffect(() => {
     loadAllCourses()
       .then((courses) =>
@@ -162,7 +178,7 @@ export default function CourseEdit() {
     updateData({ results: item.data.results.filter((id) => id !== resultId) });
   };
 
-  const handleAutofillResults = async (type: ResultType) => {
+  const handleAutofillResults = async (type: AutofillResultType) => {
     if (!item || item.id < 0) return;
     setAutofillLoading((prev) => ({ ...prev, [type]: true }));
     try {
@@ -271,6 +287,49 @@ export default function CourseEdit() {
     [item]
   );
 
+  const validationWarnings = useMemo(() => {
+    if (!item) return [];
+
+    const topicHours = (item.topics || []).reduce((total, topic) => {
+      const hours = topic.data?.fulltime;
+      return total + (hours?.hours ?? 0) + (hours?.practical_hours ?? 0) + (hours?.lab_hours ?? 0) + (hours?.srs_hours ?? 0);
+    }, 0);
+    const missingLiterature = LITERATURE_TYPES
+      .filter(([key]) => !(item.data.literature?.[key] || []).some((entry) => entry.trim()))
+      .map(([, label]) => label);
+    const selectedTypes = new Set(selectedResults.map((result) => result.type));
+    const missingResultTypes = REQUIRED_RESULT_TYPES.filter((type) => !selectedTypes.has(type));
+    const placeholderAttestations = item.data.attestations.filter((attestation) => /^атестація\s+\d+$/i.test(attestation.name.trim()));
+
+    return [
+      ...(item.data.hours > 0 && topicHours !== item.data.hours ? [{
+        key: "topic-hours",
+        label: "Години тем",
+        tooltip: `Сума годин усіх тем (${topicHours}) не дорівнює загальній кількості годин курсу (${item.data.hours}).`,
+      }] : []),
+      ...(missingLiterature.length > 0 ? [{
+        key: "literature",
+        label: "Література",
+        tooltip: `Не заповнено: ${missingLiterature.join(", ")}.`,
+      }] : []),
+      ...(missingResultTypes.length > 0 ? [{
+        key: "results",
+        label: "Результати",
+        tooltip: `Відсутні типи результатів: ${missingResultTypes.join(", ")}. Курс має містити ЗК, СК, РН та ІК.`,
+      }] : []),
+      ...(placeholderAttestations.length > 0 ? [{
+        key: "attestations",
+        label: "Атестації",
+        tooltip: `Перейменуйте шаблонні атестації: ${placeholderAttestations.map((attestation) => attestation.name).join(", ")}.`,
+      }] : []),
+      ...(item.data.credits > 0 && item.data.hours > 0 && item.data.hours !== item.data.credits * 30 ? [{
+        key: "credits",
+        label: "Кредити",
+        tooltip: `Загальна кількість годин (${item.data.hours}) має дорівнювати ${item.data.credits * 30} (${item.data.credits} кредитів × 30).`,
+      }] : []),
+    ];
+  }, [item, selectedResults]);
+
   if (!item) {
     return <Center h={200}><Loader /></Center>;
   }
@@ -373,6 +432,19 @@ export default function CourseEdit() {
           <Button onClick={handleSave} disabled={!isValid}>Зберегти</Button>
         </Group>
       </Group>
+
+      {validationWarnings.length > 0 && (
+        <Group gap="xs" wrap="wrap">
+          <Text size="sm" c="yellow.8" fw={500}>Потребує уваги:</Text>
+          {validationWarnings.map((warning) => (
+            <Tooltip key={warning.key} label={warning.tooltip} multiline w={320} withArrow>
+              <Badge color="yellow" variant="light" leftSection={<FontAwesomeIcon icon={faExclamationTriangle} size="xs" />} style={{ cursor: "help" }}>
+                {warning.label}
+              </Badge>
+            </Tooltip>
+          ))}
+        </Group>
+      )}
 
       <Paper withBorder p="md">
         <Stack>
@@ -485,7 +557,7 @@ export default function CourseEdit() {
           />
 
           <Divider label="Результати навчання" labelPosition="left" />
-          {(["ЗК", "СК", "РН"] as const).map((type) => (
+          {(["ЗК", "СК", "РН", "ІК"] as const).map((type) => (
             <ResultsEditor
               key={type}
               label={RESULT_TYPES[type]}
@@ -493,8 +565,8 @@ export default function CourseEdit() {
               availableResults={getAvailableResultsForType(type)}
               onAdd={handleAddResult}
               onRemove={handleRemoveResult}
-              onAutofill={item.id > 0 ? () => handleAutofillResults(type) : undefined}
-              autofillLoading={autofillLoading[type]}
+              onAutofill={type !== "ІК" && item.id > 0 ? () => handleAutofillResults(type) : undefined}
+              autofillLoading={type === "ІК" ? false : autofillLoading[type]}
             />
           ))}
 

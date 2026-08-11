@@ -21,13 +21,9 @@ export default function ResultEdit() {
   const [item, setItem] = useState<CourseResult | null>(null);
 
   useEffect(() => {
-    loadResult(id || "new")
-      .then((loaded) => {
-        if (id === "new" && specialtyId && loaded.specialty_id === null) {
-          loaded.specialty_id = Number(specialtyId);
-        }
-        setItem(loaded);
-      })
+    if (!specialtyId) return;
+    loadResult(Number(specialtyId), id || "new")
+      .then(setItem)
       .catch(console.error);
   }, [id, specialtyId]);
 
@@ -39,7 +35,7 @@ export default function ResultEdit() {
   const handleSave = async () => {
     if (!item || !isValid) return;
     try {
-      await upsertResult(item);
+      await upsertResult(Number(specialtyId), item);
       navigate("/specialties/" + specialtyId);
     } catch (error) {
       console.error("Error saving result:", error);

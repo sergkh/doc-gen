@@ -5,6 +5,7 @@ import type { PromptVariable } from "../util/prompt-autocomplete";
 import { Reorder, useDragControls } from "motion/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGripVertical, faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 import {
   Stack,
   Group,
@@ -149,7 +150,7 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
       name: "",
       type: selectedPromptType,
       field: "",
-      model: "gpt-4o",
+      model: DEFAULT_AGENT_MODEL,
       format: "text",
       system_prompt: 'Ти асистент викладача з дисципліни "{{courseName}}". Опис: {{courseDescription}}',
       prompt: "",

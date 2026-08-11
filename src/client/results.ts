@@ -1,27 +1,17 @@
 import type { CourseResult } from "@/stores/models";
 
-export async function loadAllResults() {
-  const res = await fetch(`/api/results`)
-
-  if (!res.ok) {
-    throw new Error(`Помилка завантаження результатів: ${res.status}`);
-  }
-
-  return await res.json() as CourseResult[];
-}
-
-export async function loadResult(id: string): Promise<CourseResult> {
+export async function loadResult(specialtyId: number, id: string): Promise<CourseResult> {
   if (id === "new") {
     return {
       id: -1,
       no: 0,
-      specialty_id: null,
+      specialty_id: specialtyId,
       type: "ЗК",
       name: ""
     };
   }
 
-  const res = await fetch(`/api/results/${id}`);
+  const res = await fetch(`/api/specialties/${specialtyId}/results/${id}`);
 
   if (!res.ok) {
     throw new Error(`Помилка завантаження результату: ${res.status}`);
@@ -30,9 +20,11 @@ export async function loadResult(id: string): Promise<CourseResult> {
   return await res.json() as CourseResult;
 }
 
-export async function upsertResult(result: CourseResult): Promise<void> {
+export async function upsertResult(specialtyId: number, result: CourseResult): Promise<void> {
   const method = result.id >= 0 ? "PUT" : "POST";
-  const url = result.id >= 0 ? `/api/results/${result.id}` : `/api/results`;
+  const url = result.id >= 0
+    ? `/api/specialties/${specialtyId}/results/${result.id}`
+    : `/api/specialties/${specialtyId}/results`;
 
   const resultData = result.id >= 0 ? result : { id: result.id, no: result.no, specialty_id: result.specialty_id, type: result.type, name: result.name };
 
@@ -49,8 +41,8 @@ export async function upsertResult(result: CourseResult): Promise<void> {
   }
 }
 
-export async function deleteResult(id: number): Promise<void> {
-  const res = await fetch(`/api/results/${id}`, {
+export async function deleteResult(specialtyId: number, id: number): Promise<void> {
+  const res = await fetch(`/api/specialties/${specialtyId}/results/${id}`, {
     method: "DELETE"
   });
 
@@ -82,4 +74,3 @@ export async function loadResultsBySpecialty(specialtyId: number): Promise<Cours
 
   return await res.json() as CourseResult[];
 }
-

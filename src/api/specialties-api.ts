@@ -38,13 +38,6 @@ const specialtiesApi = {
       return Response.json({ success: true });
     }
   },
-  "/api/specialties/:id/results": {
-    async GET(req: BunRequest) {
-      const { id } = req.params as { id: string };
-      const results = await specialtiesService.getSpecialtyResults(Number(id));
-      return Response.json(results);
-    }
-  },
   "/api/specialties/:id/history": {
     async GET(req: BunRequest) {
       const { id } = req.params as { id: string };

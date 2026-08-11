@@ -6,8 +6,7 @@ import path from "path";
 import { computeFileHash } from "@/api/utils/files";
 import { autofillCourseResults, generateCourseTopics, renameAttestationName } from "@/ai/autofill";
 import { coursesService } from "@/services/courses-service";
-
-let _nextTopicId = -1;
+import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 
 // Migration helper: ensure course has topics, falling back to old table if needed
 async function getCourseTopics(courseId: number): Promise<CourseTopic[]> {
@@ -344,7 +343,7 @@ const coursesApi = {
           course.data.description || "",
           `${specialty.code} ${specialty.name}`,
           course.data.credits,
-          "gpt-4o-mini",
+          DEFAULT_AGENT_MODEL,
           null
         );
 

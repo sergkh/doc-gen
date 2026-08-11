@@ -104,7 +104,6 @@ export function App() {
             <Route path="/specialties/:specialtyId/history" element={<SpecialtyHistory />} />
             <Route path="/specialties/:specialtyId/results/matrix" element={<ResultsMatrix />} />
             <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
-            <Route path="/results/:id" element={<ResultEdit />} />
             <Route path="/templates" element={<TemplatesList />} />
             <Route path="/templates/:id" element={<TemplateEdit />} />
           </Routes>

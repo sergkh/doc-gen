@@ -88,7 +88,7 @@ export default function SpecialtyEdit() {
   const handleDelete = async (result: CourseResult) => {
     if (!confirm(`Ви впевнені, що хочете видалити результат "${result.name}"?`)) return;
     try {
-      await deleteResult(result.id);
+      await deleteResult(specialty!.id, result.id);
       if (specialty?.id) setItems(await loadResultsBySpecialty(specialty.id));
       toast.success("Результат успішно видалено");
     } catch {
@@ -132,7 +132,7 @@ export default function SpecialtyEdit() {
     }
     setIsSavingResult(true);
     try {
-      await upsertResult({ ...editingResult, name: editingResult.name.trim() });
+      await upsertResult(specialty.id, { ...editingResult, name: editingResult.name.trim() });
       setItems(await loadResultsBySpecialty(specialty.id));
       setEditingResult(null);
       toast.success(editingResult.id >= 0 ? "Результат успішно оновлено" : "Результат успішно додано");

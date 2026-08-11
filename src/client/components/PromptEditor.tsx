@@ -4,7 +4,7 @@ import type { Prompt } from "@/stores/models";
 import PromptTester from "./PromptTester";
 import PromptTemplateTextarea from "./PromptTemplateTextarea";
 import type { PromptVariable } from "../util/prompt-autocomplete";
-import { AVAILABLE_MODELS } from "@/ai/models";
+import { AVAILABLE_MODELS, DEFAULT_AGENT_MODEL } from "@/ai/models";
 import {
   Stack,
   Group,
@@ -33,7 +33,7 @@ export default function PromptEditor({ prompt, selectedType, onSave, onCancel, a
 
   const [name, setName] = useState(prompt.name || "");
   const [field, setField] = useState(prompt.field);
-  const [model, setModel] = useState(prompt.model || "gpt-4o");
+  const [model, setModel] = useState(prompt.model || DEFAULT_AGENT_MODEL);
   const [format, setFormat] = useState<Prompt["format"]>(prompt.format || "text");
   const [systemPrompt, setSystemPrompt] = useState(prompt.system_prompt);
   const [userPrompt, setUserPrompt] = useState(prompt.prompt);
@@ -42,7 +42,7 @@ export default function PromptEditor({ prompt, selectedType, onSave, onCancel, a
   useEffect(() => {
     setName(prompt.name || "");
     setField(prompt.field);
-    setModel(prompt.model || "gpt-4o");
+    setModel(prompt.model || DEFAULT_AGENT_MODEL);
     setFormat(prompt.format || "text");
     setSystemPrompt(prompt.system_prompt);
     setUserPrompt(prompt.prompt);
@@ -60,7 +60,7 @@ export default function PromptEditor({ prompt, selectedType, onSave, onCancel, a
         name: name.trim(),
         type: promptType,
         field: field.trim(),
-        model: model || "gpt-4o",
+        model: model || "gpt-5.6-luna",
         format: format || "text",
         system_prompt: systemPrompt.trim(),
         prompt: userPrompt.trim(),

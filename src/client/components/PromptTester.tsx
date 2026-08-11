@@ -20,6 +20,7 @@ import {
   Divider,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 
 interface PromptTesterProps {
   prompt: Prompt;
@@ -258,7 +259,7 @@ export default function PromptTester({
       ...prompt,
       type: promptType,
       field: field.trim(),
-      model: model || "gpt-4o",
+      model: model || DEFAULT_AGENT_MODEL,
       format: format || "text",
       system_prompt: systemPrompt.trim(),
       prompt: userPrompt.trim(),

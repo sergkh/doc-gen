@@ -67,6 +67,20 @@ const history = {
     reason: string, 
     objType: DocObjectType
   ) => {
+    const changes = oldData === null
+      ? undefined
+      : history._diffpatcher.diff(
+        drop(oldData, 'created_at', 'updated_at'),
+        drop(newData, 'created_at', 'updated_at')
+      );
+
+    // jsondiffpatch returns undefined when a save does not change any persisted
+    // fields. Do not write an empty patch: PostgreSQL would receive it as NULL,
+    // while the history table correctly requires a JSON payload.
+    if (oldData !== null && changes === undefined) {
+      return;
+    }
+
     const type = (Math.random() < 0.2 || oldData === null) ? 'snapshot' : 'patch';
     const objId = newData.id;
 
@@ -76,12 +90,7 @@ const history = {
       type,
       stamp: new Date(),
       comment: reason,
-      data: (type === 'snapshot') ? 
-        newData : 
-        history._diffpatcher.diff(
-          drop(oldData!, 'created_at', 'updated_at'), 
-          drop(newData, 'created_at', 'updated_at')
-        )
+      data: type === 'snapshot' ? newData : changes
     };
 
     await history.save(entry);

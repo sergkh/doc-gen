@@ -1,6 +1,7 @@
 import { createOpenAIClient, retryWithBackoff } from "./common";
 import { z } from 'zod';
 import { zodTextFormat } from "openai/helpers/zod";
+import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 
 // Extracts information with prompt from text
 export async function extractInformationAI<ZodInput extends z.ZodType>(
@@ -16,7 +17,7 @@ export async function extractInformationAI<ZodInput extends z.ZodType>(
   
   const response = await retryWithBackoff(async () => {
     return await client.responses.parse({
-      model: model ?? "gpt-4o-mini",
+      model: model ?? DEFAULT_AGENT_MODEL,
       input: [{
         role: "system",
         content: prompt

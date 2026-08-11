@@ -59,4 +59,4 @@ export type DisciplineSearchItem = {
   teacher: string | null;
 };
 
-export const DEFAULT_AGENT_MODEL = "gpt-4o-mini";
+export const DEFAULT_AGENT_MODEL = "gpt-5.6-luna";
