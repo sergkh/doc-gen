@@ -21,7 +21,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPrint } from "@fortawesome/free-solid-svg-icons";
+import { faDatabase, faFloppyDisk, faPrint } from "@fortawesome/free-solid-svg-icons";
 import "./TeacherWorkHours.css";
 
 type DirectoryItem = {
@@ -57,12 +57,19 @@ type WorkHours = {
   organizational: number;
 };
 
+type SavedTimesheetData = {
+  additionalDaysOff?: number[];
+  sciencePercentage?: number;
+  workByDay?: Record<string, WorkHours>;
+};
+
 type LoadState = "idle" | "loading" | "ready" | "error";
 
 const STRUCTURE_ID = "0";
 const MAX_WEEKDAY_HOURS = 7.2;
 const MAX_LESSONS_PER_WEEKDAY = Math.floor(MAX_WEEKDAY_HOURS / 2);
 const MAX_WEEKDAY_MINUTES = Math.round(MAX_WEEKDAY_HOURS * 60);
+const MAX_MANUAL_WORK_MINUTES = (23 * 60) + 59;
 const WORK_SHIFT_MINUTES = 60;
 
 const lessonTypeLabels: Record<LessonType, string> = {
@@ -232,6 +239,9 @@ export function App() {
   const [workByDay, setWorkByDay] = useState<Record<number, WorkHours>>({});
   const [directoryState, setDirectoryState] = useState<LoadState>("idle");
   const [isSavingMkr, setIsSavingMkr] = useState(false);
+  const [isSavingTimesheet, setIsSavingTimesheet] = useState(false);
+  const [timesheetState, setTimesheetState] = useState<"loading" | "new" | "saved">("loading");
+  const [preserveSavedWorkHours, setPreserveSavedWorkHours] = useState(false);
   const [reportState, setReportState] = useState<LoadState>("idle");
   const [error, setError] = useState("");
   const { startDate, endDate } = useMemo(() => getMonthRange(reportMonth), [reportMonth]);
@@ -268,6 +278,29 @@ export function App() {
     }
   };
 
+  const saveTimesheet = async () => {
+    if (!teacher) return;
+
+    setIsSavingTimesheet(true);
+    try {
+      const response = await fetch(`/api/teachers/${teacher.id}/timesheets/${reportMonth}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          additionalDaysOff: [...additionalDaysOff],
+          sciencePercentage,
+          workByDay,
+        } satisfies SavedTimesheetData),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      setTimesheetState("saved");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не вдалося зберегти табель");
+    } finally {
+      setIsSavingTimesheet(false);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
     loadTeacher(id)
@@ -278,6 +311,43 @@ export function App() {
       })
       .catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, [id]);
+
+  useEffect(() => {
+    if (!teacher) return;
+
+    let isActive = true;
+    setTimesheetState("loading");
+    setPreserveSavedWorkHours(false);
+    fetch(`/api/teachers/${teacher.id}/timesheets/${reportMonth}`)
+      .then(async (response) => {
+        if (response.status === 404) return null;
+        if (!response.ok) throw new Error(await response.text());
+        return await response.json() as { data: SavedTimesheetData };
+      })
+      .then((timesheet) => {
+        if (!isActive) return;
+        if (!timesheet) {
+          setAdditionalDaysOff(new Set());
+          setWorkByDay({});
+          setTimesheetState("new");
+          return;
+        }
+
+        const data = timesheet.data;
+        setAdditionalDaysOff(new Set(data.additionalDaysOff ?? []));
+        setSciencePercentage(data.sciencePercentage ?? 50);
+        setWorkByDay(data.workByDay ?? {});
+        setPreserveSavedWorkHours(true);
+        setTimesheetState("saved");
+      })
+      .catch((caught) => {
+        if (!isActive) return;
+        setError(caught instanceof Error ? caught.message : "Не вдалося завантажити табель");
+        setTimesheetState("new");
+      });
+
+    return () => { isActive = false; };
+  }, [teacher?.id, reportMonth]);
 
   useEffect(() => {
     if (!teacher || (teacher.mkr_department_id && teacher.mkr_teacher_id)) return;
@@ -327,10 +397,6 @@ export function App() {
       isActive = false;
     };
   }, [needsMkrSelection, selectedChairId]);
-
-  useEffect(() => {
-    setAdditionalDaysOff(new Set());
-  }, [reportMonth]);
 
   const sortedSchedule = useMemo(
     () =>
@@ -434,14 +500,14 @@ export function App() {
       }
 
       const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(item.total * 60));
-      const organizational = clamp(workByDay[item.day]?.organizational ?? 0, 0, availableMinutes);
-      const remainingMinutes = availableMinutes - organizational;
+      const organizational = clamp(workByDay[item.day]?.organizational ?? 0, 0, MAX_MANUAL_WORK_MINUTES);
+      const remainingMinutes = Math.max(0, availableMinutes - organizational);
       const science = workByDay[item.day]?.science ?? Math.round((remainingMinutes * sciencePercentage) / 100);
       const methodical = workByDay[item.day]?.methodical ?? remainingMinutes - science;
 
       work.set(item.day, {
-        science: clamp(science, 0, remainingMinutes),
-        methodical: clamp(methodical, 0, remainingMinutes),
+        science: clamp(science, 0, MAX_MANUAL_WORK_MINUTES),
+        methodical: clamp(methodical, 0, MAX_MANUAL_WORK_MINUTES),
         organizational,
       });
     }
@@ -451,6 +517,8 @@ export function App() {
 
   useEffect(() => {
     setWorkByDay(current => {
+      if (preserveSavedWorkHours) return current;
+
       const next: Record<number, WorkHours> = {};
 
       for (const item of monthlyWorkload) {
@@ -473,7 +541,7 @@ export function App() {
 
       return next;
     });
-  }, [monthlyWorkload, sciencePercentage]);
+  }, [monthlyWorkload, preserveSavedWorkHours, sciencePercentage]);
 
   const updateWorkHours = (day: number, type: keyof WorkHours, minutes: number) => {
     const workload = monthlyWorkload.find(item => item.day === day);
@@ -482,9 +550,18 @@ export function App() {
     setWorkByDay(current => {
       const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(workload.total * 60));
       const existing = resolvedWorkByDay.get(day) ?? { science: 0, methodical: 0, organizational: 0 };
-      // A direct edit must not rebalance another category: the displayed total
-      // should immediately reflect the value entered by the user.
-      const next = { ...existing, [type]: clamp(minutes, 0, availableMinutes) };
+      const next = { ...existing };
+
+      if (type === "organizational") {
+        next.organizational = clamp(minutes, 0, MAX_MANUAL_WORK_MINUTES);
+        const remainingMinutes = Math.max(0, availableMinutes - next.organizational);
+        next.science = Math.round((remainingMinutes * sciencePercentage) / 100);
+        next.methodical = remainingMinutes - next.science;
+      } else {
+        const remainingMinutes = Math.max(0, availableMinutes - next.organizational);
+        next[type] = clamp(minutes, 0, MAX_MANUAL_WORK_MINUTES);
+        next[type === "science" ? "methodical" : "science"] = Math.max(0, remainingMinutes - next[type]);
+      }
 
       return { ...current, [day]: next };
     });
@@ -563,7 +640,7 @@ export function App() {
         value={Math.floor(minutes / 60)}
         onChange={value => updateWorkHours(day, type, (Number(value) || 0) * 60 + (minutes % 60))}
         min={0}
-        max={7}
+        max={23}
         hideControls
         disabled={disabled}
       />
@@ -626,6 +703,14 @@ export function App() {
           <Group gap="xs">
             <Select aria-label="Місяць" data={monthOptions} value={selectedMonth} onChange={value => value && updateReportMonth(selectedYear, value)} w={150} />
             <Select aria-label="Рік" data={yearOptions} value={selectedYear} onChange={value => value && updateReportMonth(value, selectedMonth)} w={100} />
+            {timesheetState === "saved" && (
+              <Tooltip label="Табель завантажено з бази даних">
+                <FontAwesomeIcon icon={faDatabase} color="var(--mantine-color-green-6)" />
+              </Tooltip>
+            )}
+            <Button leftSection={<FontAwesomeIcon icon={faFloppyDisk} />} onClick={saveTimesheet} loading={isSavingTimesheet} disabled={reportState !== "ready"}>
+              Зберегти
+            </Button>
             <Tooltip label="Надрукувати сформований звіт"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => window.print()} disabled={!sortedSchedule.length}>Друк</Button></Tooltip>
           </Group>
         </Group>
@@ -636,7 +721,7 @@ export function App() {
               <Group justify="space-between" mb={4}>
                 <Text size="sm" c="dimmed">Наука: {sciencePercentage}% / Методична робота: {100 - sciencePercentage}%</Text>
               </Group>
-              <Slider value={sciencePercentage} onChange={setSciencePercentage} min={0} max={100} label={value => `${value}% науки`} />
+              <Slider value={sciencePercentage} onChange={(value) => { setPreserveSavedWorkHours(false); setSciencePercentage(value); }} min={0} max={100} label={value => `${value}% науки`} />
             </div>
           </Stack>
         </Paper>

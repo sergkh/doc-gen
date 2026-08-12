@@ -1,7 +1,7 @@
 import path from "path";
 import { sql } from "bun";
 import { create } from "jsondiffpatch";
-import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, TeacherTimesheet, Template } from "./models";
 import { ConcurrentModificationError } from "@/services/errors";
 
 // Initialize the database connection
@@ -255,6 +255,24 @@ const teacherPublications = {
   },
 };
 
+const teacherTimesheets = {
+  get: async (teacherId: number, period: string): Promise<TeacherTimesheet | null> => {
+    const result = await sql`SELECT * FROM teacher_timesheets WHERE teacher_id = ${teacherId} AND period = ${period}`;
+    return result[0] as TeacherTimesheet | null;
+  },
+
+  save: async (teacherId: number, period: string, data: Record<string, unknown>): Promise<TeacherTimesheet> => {
+    const result = await sql`
+      INSERT INTO teacher_timesheets (teacher_id, period, data)
+      VALUES (${teacherId}, ${period}, ${data})
+      ON CONFLICT (teacher_id, period)
+      DO UPDATE SET data = EXCLUDED.data, updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    return result[0] as TeacherTimesheet;
+  },
+};
+
 const courseTopics = {
   all: async (courseId: number): Promise<CourseTopic[]> => {
     return await sql`SELECT * FROM course_topics WHERE course_id = ${courseId} ORDER BY index`;
@@ -448,4 +466,4 @@ const specialties = {
 };
 
 
-export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications, history };
+export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications, teacherTimesheets, history };

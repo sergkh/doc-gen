@@ -50,6 +50,20 @@ const teachersApi = {
       return Response.json(publications);
     }
   },
+  "/api/teachers/:id/timesheets/:period": {
+    async GET(req: BunRequest) {
+      const { id, period } = req.params as { id: string; period: string };
+      if (!/^\d{4}-\d{2}$/.test(period)) return new Response("Invalid timesheet period", { status: 400 });
+      const timesheet = await teachersService.getTeacherTimesheet(Number(id), period);
+      return timesheet ? Response.json(timesheet) : new Response("Timesheet not found", { status: 404 });
+    },
+    async PUT(req: BunRequest) {
+      const { id, period } = req.params as { id: string; period: string };
+      if (!/^\d{4}-\d{2}$/.test(period)) return new Response("Invalid timesheet period", { status: 400 });
+      const data = await req.json() as Record<string, unknown>;
+      return Response.json(await teachersService.saveTeacherTimesheet(Number(id), period, data));
+    },
+  },
   "/api/teachers/:id/refresh-publications": {
     async POST(req: BunRequest) {
       const { id } = req.params as { id: string };

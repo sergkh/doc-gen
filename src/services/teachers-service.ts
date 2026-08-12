@@ -1,5 +1,5 @@
-import { teachers, teacherPublications } from "@/stores/db";
-import type { Teacher, TeacherPublication } from "@/stores/models";
+import { teachers, teacherPublications, teacherTimesheets } from "@/stores/db";
+import type { Teacher, TeacherPublication, TeacherTimesheet } from "@/stores/models";
 import { fetchTeacherPublications } from "@/parsing/lit-parser";
 
 async function getAllTeachers(): Promise<Teacher[]> {
@@ -47,6 +47,14 @@ async function refreshTeacherPublications(teacherId: number): Promise<number> {
   return addedPublications.length;
 }
 
+async function getTeacherTimesheet(teacherId: number, period: string): Promise<TeacherTimesheet | null> {
+  return teacherTimesheets.get(teacherId, period);
+}
+
+async function saveTeacherTimesheet(teacherId: number, period: string, data: Record<string, unknown>): Promise<TeacherTimesheet> {
+  return teacherTimesheets.save(teacherId, period, data);
+}
+
 export const teachersService = {
   getAllTeachers,
   getTeacherById,
@@ -54,5 +62,7 @@ export const teachersService = {
   updateTeacher,
   deleteTeacher,
   getTeacherPublications,
-  refreshTeacherPublications
+  refreshTeacherPublications,
+  getTeacherTimesheet,
+  saveTeacherTimesheet,
 };

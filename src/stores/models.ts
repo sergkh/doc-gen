@@ -127,6 +127,15 @@ export type Teacher = {
   mkr_teacher_id?: number | null,
 }
 
+export type TeacherTimesheet = {
+  id: number,
+  teacher_id: number,
+  period: string,
+  data: Record<string, unknown>,
+  created_at?: string,
+  updated_at?: string,
+}
+
 export type GeneratedTopicData = {
   subtopics?: string[],
   keywords?: string[],

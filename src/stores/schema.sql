@@ -82,6 +82,16 @@ CREATE TABLE IF NOT EXISTS teacher_publications(
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS teacher_timesheets(
+  id SERIAL PRIMARY KEY,
+  teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+  period CHAR(7) NOT NULL,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (teacher_id, period)
+);
+
 CREATE TABLE IF NOT EXISTS doc_version_records(
   id SERIAL PRIMARY KEY,
   object_id INTEGER NOT NULL,
