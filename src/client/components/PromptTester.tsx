@@ -326,7 +326,7 @@ export default function PromptTester({
         Протестувати промпт
       </Button>
 
-      <Collapse in={opened}>
+      <Collapse expanded={opened}>
         <Stack gap="sm">
           <Select
             label="Спеціальність"

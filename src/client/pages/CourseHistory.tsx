@@ -167,7 +167,7 @@ export default function CourseHistory() {
                   </Tooltip>
                 </Group>
               </Group>
-              <Collapse in={isExpanded}>
+              <Collapse expanded={isExpanded}>
                 <Divider my="sm" />
                 <ScrollArea>
                   <Table withTableBorder withColumnBorders verticalSpacing="xs" miw={720}>

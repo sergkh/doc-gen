@@ -298,7 +298,7 @@ export default function CoursesWithResults() {
                         </Group>
                       }
                     >
-                      <Collapse in={!!expandedWarnings[course.id]}>
+                      <Collapse expanded={!!expandedWarnings[course.id]}>
                         <List size="sm" spacing={2} mt="xs">
                           {warnings.map((w, i) => <List.Item key={i}>{w}</List.Item>)}
                         </List>
