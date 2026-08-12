@@ -194,9 +194,15 @@ function parseSylabusTopics(tables: DocTable[]): CourseTopic[] {
         fulltime: { 
           hours: parseInt(row[2]?.trim() || "0") || 0,
           practical_hours: parseInt(row[3]?.trim() || "0") || 0,
+          lab_hours: 0,
           srs_hours: parseInt(row[4]?.trim() || "0") || 0,
         },
-        inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 }
+        inabscentia: { 
+          hours: 0, 
+          practical_hours: 0,
+          lab_hours: 0,
+          srs_hours: 0 
+        }
       },
       generated: {}
     } as CourseTopic;
@@ -570,7 +576,6 @@ async function parseProgram(filepath: string, text: string, dryRun: boolean = fa
     // Save the last topic if exists
     if (currentTopic) {
       topics.push(fillTopicHours({
-        id: -1,
         course_id: -1,
         index: currentTopic.index,
         name: currentTopic.name,

@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses, teachers } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, GenerationPractice, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -54,11 +54,14 @@ function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAtte
     
     const topics = allTopics.filter(t => t.data?.attestation === index + 1);
 
+    const practices = buildPracticalLessons(topics);
+
     let attestation: CourseAttestation = {
       no: index+1,
       name: a.name,
       semester: a.semester,
       topics,
+      practices,
       fulltime: {
         hours: topics.map(t => t.data.fulltime.hours).sum(),
         practical_hours: topics.map(t => t.data.fulltime.practical_hours).sum(),
@@ -106,6 +109,43 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
   }
 
   return semesters;
+}
+
+function buildPracticalLessons(topics: CourseTopic[]): GenerationPractice[] {
+  const practices: GenerationPractice[] = [];
+
+  let index = 1;
+  for (const topic of topics) {
+    if (topic.data.practices) {
+      let inAbscHours = topic.data.inabscentia?.practical_hours ?? 0;
+      
+      for (const practice of topic.data.practices) {
+        
+        practices.push({ 
+          ...practice, 
+          no: index++,
+          fulltime: {
+            hours: 2
+          },
+          inabscentia: {
+            hours: (inAbscHours > 0 ? 2 : 0)
+          }
+        });
+        
+        inAbscHours-=2;
+      }
+    } else if (topic.data.fulltime?.practical_hours) {
+      practices.push({ 
+        name: topic.name,
+        description: "",
+        fulltime: { hours: topic.data.fulltime?.practical_hours },
+        inabscentia: { hours: topic.data.inabscentia?.practical_hours ?? 0 },
+        no: index++ 
+      });
+    }
+  }
+
+  return practices;
 }
 
 /*

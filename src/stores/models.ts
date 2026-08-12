@@ -176,6 +176,7 @@ export type CourseAttestation = {
   name: string,
   semester: number
   topics: CourseTopic[],
+  practices: GenerationPractice[],  
   fulltime: {    
     hours: number,
     practical_hours: number,
@@ -195,6 +196,17 @@ export type CourseSemester = {
   semester: number
 } & HoursStruct;
 
+export type GenerationPractice = {
+  no: number,
+  fulltime: {
+    hours: number
+  },
+  inabscentia: {
+    hours: number
+  }
+} & CoursePractice
+
+// All course related data collected in one place used to generate any course related documents
 export type CourseGenerationData = {
   course: Course,
   topics: CourseTopic[],
