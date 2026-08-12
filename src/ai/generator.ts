@@ -125,7 +125,7 @@ export function runTopicPrompts(
     courseDescription: course.data.description ?? "",
     name: topic.name,
     lection: topic.lection || topic.name,
-    topics: allTopics.map(t => t.name).join(", "),
+    topics: allTopics.map(t => t.name).join('", "'),
     subtopics: topic.generated?.subtopics ?? state['subtopics']?.items.join(", ") ?? '',
     course: course
   }));
@@ -143,7 +143,7 @@ export function runCoursePrompts(
     ...state,
     courseName: course.name,
     courseDescription: course.data.description ?? "",
-    topics: courseTopics.map(t => t.name).join(", "),
+    topics: courseTopics.map(t => t.name).join('", "'),
     subtopics: courseTopics.flatMap(t => t.generated?.subtopics || []).join(", "),
     course: course,
     hours: {

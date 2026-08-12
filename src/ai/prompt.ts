@@ -11,7 +11,11 @@ export function formatPrompt(template: string, data: Record<string, any>): strin
     }, data);
 
     if (Array.isArray(value)) {
-      return value.join(", ");
+      return value.join('", "');
+    }
+
+    if (typeof value === "object") {
+      return JSON.stringify(value);
     }
 
     return value;
