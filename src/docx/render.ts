@@ -67,6 +67,9 @@ const parser = expressionParser.configure({
         if (!Array.isArray(array)) return undefined;
         return array[index];
       },
+      take(input, limit) {
+        return Array.isArray(input) ? input.slice(0, Number(limit)) : input;
+      },
       uppercase(input) {
           if (!input) return input;
           if (Array.isArray(input)) return input.map(i => i.toUpperCase());

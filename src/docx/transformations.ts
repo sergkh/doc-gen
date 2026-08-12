@@ -49,12 +49,14 @@ function buildTopicHours(course: Course, allTopics: CourseTopic[]): CourseTopic[
 }
 
 function buildAttestations(course: Course, allTopics: CourseTopic[]): CourseAttestation[] {
+  let practicesCounter = 0;
   // group topics by attestation
   return course.data.attestations.map((a, index) => {
     
     const topics = allTopics.filter(t => t.data?.attestation === index + 1);
 
-    const practices = buildPracticalLessons(topics);
+    const practices = buildPracticalLessons(topics, practicesCounter + 1);
+    practicesCounter += practices.length;
 
     let attestation: CourseAttestation = {
       no: index+1,
@@ -111,10 +113,10 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
   return semesters;
 }
 
-function buildPracticalLessons(topics: CourseTopic[]): GenerationPractice[] {
+function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): GenerationPractice[] {
   const practices: GenerationPractice[] = [];
 
-  let index = 1;
+  let index = startIndexAt;
   for (const topic of topics) {
     if (topic.data.practices) {
       let inAbscHours = topic.data.inabscentia?.practical_hours ?? 0;
