@@ -4,7 +4,7 @@ import PromptEditor from "./PromptEditor";
 import type { PromptVariable } from "../util/prompt-autocomplete";
 import { Reorder, useDragControls } from "motion/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGripVertical, faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faGripVertical, faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
 import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 import {
   Stack,
@@ -82,10 +82,11 @@ type PromptItemProps = {
   index: number;
   dragDisabled: boolean;
   onEdit: (index: number) => void;
+  onDuplicate: (index: number) => void;
   onDelete: (index: number) => void;
 };
 
-function PromptItem({ prompt, index, dragDisabled, onEdit, onDelete }: PromptItemProps) {
+function PromptItem({ prompt, index, dragDisabled, onEdit, onDuplicate, onDelete }: PromptItemProps) {
   const dragControls = useDragControls();
 
   return (
@@ -129,6 +130,11 @@ function PromptItem({ prompt, index, dragDisabled, onEdit, onDelete }: PromptIte
                 <FontAwesomeIcon icon={faPen} />
               </ActionIcon>
             </Tooltip>
+            <Tooltip label="Дублювати">
+              <ActionIcon variant="subtle" onClick={() => onDuplicate(index)}>
+                <FontAwesomeIcon icon={faCopy} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Видалити">
               <ActionIcon variant="subtle" color="red" onClick={() => onDelete(index)}>
                 <FontAwesomeIcon icon={faTrash} />
@@ -164,6 +170,28 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
     if (editingPromptIndex !== null) updated[editingPromptIndex] = prompt;
     onChange(updated);
     setEditingPromptIndex(null);
+  };
+
+  const handleDuplicatePrompt = (index: number) => {
+    const original = prompts[index];
+    if (!original) return;
+
+    const existingFields = new Set(prompts.map((candidate) => candidate.field));
+    let duplicateNumber = 1;
+    let field = `${original.field}_copy`;
+    while (existingFields.has(field)) {
+      duplicateNumber += 1;
+      field = `${original.field}_copy_${duplicateNumber}`;
+    }
+    const duplicate: Prompt = {
+      ...original,
+      name: `${original.name} (копія${duplicateNumber > 1 ? ` ${duplicateNumber}` : ""})`,
+      field,
+    };
+    const updated = [...prompts];
+    updated.splice(index + 1, 0, duplicate);
+    onChange(updated);
+    setEditingPromptIndex(index + 1);
   };
 
   const handleDeletePrompt = (index: number) => {
@@ -227,6 +255,7 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
                 index={index}
                 dragDisabled={editingPromptIndex !== null}
                 onEdit={setEditingPromptIndex}
+                onDuplicate={handleDuplicatePrompt}
                 onDelete={handleDeletePrompt}
               />
             )
