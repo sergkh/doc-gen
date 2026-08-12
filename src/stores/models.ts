@@ -122,7 +122,9 @@ export type Teacher = {
   email: string | null,
   position: TeacherPosition | null,
   academic_title: AcademicTitle | null,
-  alt_names: string[]
+  alt_names: string[],
+  mkr_department_id?: number | null,
+  mkr_teacher_id?: number | null,
 }
 
 export type GeneratedTopicData = {

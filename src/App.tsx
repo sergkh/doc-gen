@@ -15,6 +15,7 @@ import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
 import TeachersList from "./client/pages/TeachersList";
 import TeacherEdit from "./client/pages/TeacherEdit";
+import TeacherWorkHours from "./client/pages/TeacherWorkHours";
 import CourseEdit from "./client/pages/CourseEdit";
 import CourseHistory from "./client/pages/CourseHistory";
 import ResultEdit from "./client/pages/ResultEdit";
@@ -98,6 +99,7 @@ export function App() {
             <Route path="/courses/:courseId/history" element={<CourseHistory />} />
             <Route path="/courses/:courseId/topics/:topicIndex/generated" element={<TopicGeneratedDataEdit />} />
             <Route path="/teachers" element={<TeachersList />} />
+            <Route path="/teachers/:id/timesheet" element={<TeacherWorkHours />} />
             <Route path="/teachers/:id" element={<TeacherEdit />} />
             <Route path="/specialties" element={<SpecialtiesList />} />
             <Route path="/specialties/:id" element={<SpecialtyEdit />} />

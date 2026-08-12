@@ -18,7 +18,9 @@ export async function loadTeacher(id: string): Promise<Teacher> {
       email: null,
       position: null,
       academic_title: null,
-      alt_names: []
+      alt_names: [],
+      mkr_department_id: null,
+      mkr_teacher_id: null,
     };
   }
 
@@ -40,7 +42,9 @@ export async function upsertTeacher(teacher: Teacher): Promise<void> {
     email: teacher.email, 
     position: teacher.position, 
     academic_title: teacher.academic_title,
-    alt_names: teacher.alt_names 
+    alt_names: teacher.alt_names,
+    mkr_department_id: teacher.mkr_department_id ?? null,
+    mkr_teacher_id: teacher.mkr_teacher_id ?? null,
   };
 
   const res = await fetch(url, {

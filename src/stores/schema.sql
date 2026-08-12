@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS teachers(
   position VARCHAR(512),
   academic_title VARCHAR(512),
   alt_names JSONB not null default '[]'::jsonb,
+  mkr_department_id INTEGER,
+  mkr_teacher_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

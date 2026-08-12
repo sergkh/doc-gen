@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { loadTeacher, upsertTeacher } from "../teachers";
 import { loadAllCourses } from "../courses";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSyncAlt, faBook, faExternalLinkAlt, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
+import { faSyncAlt, faBook, faExternalLinkAlt, faGraduationCap, faClock } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import {
   Title,
@@ -118,6 +118,11 @@ export default function TeacherEdit() {
       <Group justify="space-between">
         <Title order={2}>{item.id >= 0 ? "Редагувати викладача" : "Додати викладача"}</Title>
         <Group>
+          {item.id > 0 && (
+            <Button variant="default" leftSection={<FontAwesomeIcon icon={faClock} />} onClick={() => navigate(`/teachers/${item.id}/timesheet`)}>
+              Табель
+            </Button>
+          )}
           <Button variant="default" onClick={() => navigate("/teachers")}>Скасувати</Button>                  
           <Button onClick={handleSave} disabled={!isValid}>Зберегти</Button>
         </Group>
