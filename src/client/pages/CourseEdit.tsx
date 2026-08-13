@@ -362,7 +362,10 @@ export default function CourseEdit() {
             style={{ flex: 1 }}
             list={datalistId}
             value={dependencyInputs[field]}
-            onChange={(e) => setDependencyInputs((prev) => ({ ...prev, [field]: e.currentTarget.value }))}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              setDependencyInputs((prev) => ({ ...prev, [field]: value }));
+            }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddDependency(field); } }}
             placeholder="Почніть вводити назву дисципліни"
           />
