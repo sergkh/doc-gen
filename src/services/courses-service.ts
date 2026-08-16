@@ -239,7 +239,15 @@ async function updateCourse(id: number, updated: Course, reason: string): Promis
 
     if (await isTopicContentSubstantiallyChanged(previous, topic)) {
       console.log(`Clearing generated data for substantially changed topic ${topic.index} of course ${id}`);
-      return { ...topic, generated: {} } as CourseTopic;
+      const previousSubtopics = previous.generated?.subtopics ?? [];
+      const submittedSubtopics = topic.generated?.subtopics ?? [];
+      const subtopicsChanged = JSON.stringify(previousSubtopics) !== JSON.stringify(submittedSubtopics);
+      return {
+        ...topic,
+        // A user-edited subtopic list is the submitted course content. Keep it
+        // verbatim while invalidating only the other generated materials.
+        generated: subtopicsChanged ? { subtopics: submittedSubtopics } : {},
+      } as CourseTopic;
     }
 
     return topic;

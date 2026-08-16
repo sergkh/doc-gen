@@ -443,7 +443,10 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
         fulltime: { hours: form.hours, practical_hours: form.practicalHours, lab_hours: 0, srs_hours: form.srsHours },
         inabscentia: { hours: form.inabscentiaHours, practical_hours: form.inabscentiaPracticalHours, lab_hours: 0, srs_hours: form.inabscentiaSrsHours },
       },
-      generated: { subtopics: form.subtopics.split("\n").map((s) => s.trim()).filter(Boolean), keywords: [], topics: [], referats: [], quiz: [], keyQuestions: [], ...(editingTopic.generated || {}) },
+      generated: {
+        ...(editingTopic.generated || {}),
+        subtopics: form.subtopics.split("\n").map((s) => s.trim()).filter(Boolean),
+      },
     };
 
     if (isAddingTopic) {

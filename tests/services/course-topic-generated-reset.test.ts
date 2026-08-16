@@ -99,6 +99,21 @@ describe("course topic generated data reset", () => {
     expect(saveHistory).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps submitted subtopics when a substantial change invalidates other generated data", async () => {
+    const updated = await coursesService.updateCourse(1, {
+      ...course,
+      topics: [{
+        ...course.topics[0]!,
+        generated: { ...course.topics[0]!.generated, subtopics: ["Новий зміст", "Практичне застосування"] },
+      }],
+    } as any, "Updated by user");
+
+    expect(isTopicContentSubstantiallyChanged).toHaveBeenCalledTimes(1);
+    expect(updated.topics?.[0]?.generated).toEqual({
+      subtopics: ["Новий зміст", "Практичне застосування"],
+    });
+  });
+
   it("keeps generated fields when AI classifies the change as minor", async () => {
     isTopicContentSubstantiallyChanged.mockResolvedValueOnce(false);
 
