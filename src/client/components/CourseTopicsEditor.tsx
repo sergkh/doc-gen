@@ -1,11 +1,11 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import { Reorder, useDragControls } from "motion/react";
 import type { CoursePractice, CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
-import { generateCourseTopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
+import { generateCourseTopics, generateTopicSubtopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
 import { addGeneratedTopicsToCourseTopics, normalizeCoursePractices } from "./courseTopicsEditor.utils";
 import {
   Stack,
@@ -29,8 +29,6 @@ interface CourseTopicsEditorProps {
   topics: CourseTopic[];
   onChange: (topics: CourseTopic[]) => void;
 }
-
-type TopicWithNo = CourseTopic & { no?: number };
 
 type TopicFormState = {
   name: string;
@@ -59,19 +57,6 @@ const createTopicFormState = (): TopicFormState => ({
   inabscentiaSrsHours: 0,
   practices: [],
 });
-
-function getTopicNo(topic: CourseTopic): number {
-  const no = (topic as TopicWithNo).no;
-  return typeof no === "number" ? no : topic.index;
-}
-
-function getTopicIdentifier(topic: CourseTopic): string {
-  return `no:${getTopicNo(topic)}`;
-}
-
-function getNextTopicNo(items: CourseTopic[]): number {
-  return items.reduce((max, t) => Math.max(max, getTopicNo(t)), 0) + 1;
-}
 
 interface TopicItemProps {
   topic: CourseTopic;
@@ -217,11 +202,14 @@ interface TopicFormProps {
   setForm: (patch: Partial<TopicFormState>) => void;
   isDragging: boolean;
   setIsDragging: (v: boolean) => void;
+  canGenerateSubtopics: boolean;
+  generatingSubtopics: boolean;
+  onGenerateSubtopics: () => void;
   onSave: () => void;
   onCancel: () => void;
 }
 
-function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, onSave, onCancel }: TopicFormProps) {
+function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, canGenerateSubtopics, generatingSubtopics, onGenerateSubtopics, onSave, onCancel }: TopicFormProps) {
   const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -270,7 +258,25 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
         </Group>
 
         <TextInput label="Назва теми" placeholder="Введіть назву теми" value={form.name} onChange={(e) => setForm({ name: e.currentTarget.value })} />
-        <Textarea label="Підтеми (по одній на рядок)" placeholder="Введіть підтеми, по одній на рядок" value={form.subtopics} onChange={(e) => setForm({ subtopics: e.currentTarget.value })} autosize minRows={2} />
+        <Stack gap={4}>
+          <Group justify="space-between" gap="xs">
+            <Text size="sm" fw={500}>Підтеми (по одній на рядок)</Text>
+            <Tooltip label="Згенерувати підтеми за допомогою AI">
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="blue"
+                aria-label="Згенерувати підтеми за допомогою AI"
+                loading={generatingSubtopics}
+                disabled={!canGenerateSubtopics || !form.name.trim()}
+                onClick={onGenerateSubtopics}
+              >
+                <FontAwesomeIcon icon={faWandMagicSparkles} size="xs" />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+          <Textarea aria-label="Підтеми (по одній на рядок)" placeholder="Введіть підтеми, по одній на рядок" value={form.subtopics} onChange={(e) => setForm({ subtopics: e.currentTarget.value })} autosize minRows={2} />
+        </Stack>
 
         <Divider label="Денна форма" labelPosition="left" />
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
@@ -342,11 +348,31 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function CourseTopicsEditor({ courseId, courseTotalHours, topics, onChange, coursePractType }: CourseTopicsEditorProps) {
+  // Topic position is mutable. Keep the drag identity in a WeakMap so it is
+  // never attached to, or persisted with, the course topic data.
+  const clientIds = useRef(new WeakMap<CourseTopic, number>());
+  const nextClientId = useRef(1);
+  const getClientId = (topic: CourseTopic): number => {
+    let clientId = clientIds.current.get(topic);
+    if (clientId === undefined) {
+      clientId = nextClientId.current++;
+      clientIds.current.set(topic, clientId);
+    }
+    return clientId;
+  };
+  const getTopicIdentifier = (topic: CourseTopic): string => {
+    return `client_id:${getClientId(topic)}`;
+  };
+  const preserveTopicIdentifier = (source: CourseTopic, copy: CourseTopic): CourseTopic => {
+    clientIds.current.set(copy, getClientId(source));
+    return copy;
+  };
   const [editingTopic, setEditingTopic] = useState<CourseTopic | null>(null);
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [form, setFormState] = useState<TopicFormState>(createTopicFormState);
   const [isDragging, setIsDragging] = useState(false);
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
+  const [subtopicsLoading, setSubtopicsLoading] = useState(false);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
   const resetForm = () => {
@@ -384,7 +410,6 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
       data: { attestation: 1, practices: [], fulltime: { hours: 2, practical_hours: 0, lab_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0 } },
       generated: {},
     } as CourseTopic;
-    (newTopic as TopicWithNo).no = getNextTopicNo(topics);
     setEditingTopic(newTopic);
     setIsAddingTopic(true);
   };
@@ -422,15 +447,16 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     };
 
     if (isAddingTopic) {
-      const nextNo = getNextTopicNo(topics);
-      (saved as TopicWithNo).no = nextNo;
+      getTopicIdentifier(saved);
       onChange([...topics, saved]);
       resetForm();
       return;
     }
 
     const editingKey = getTopicIdentifier(editingTopic);
-    onChange(topics.map((t) => (getTopicIdentifier(t) === editingKey ? saved : t)));
+    onChange(topics.map((t) => (
+      getTopicIdentifier(t) === editingKey ? preserveTopicIdentifier(t, saved) : t
+    )));
     resetForm();
   };
 
@@ -439,11 +465,22 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     onChange(topics.filter((t) => getTopicIdentifier(t) !== getTopicIdentifier(topic)));
   };
 
-  const handleReorder = (newOrder: CourseTopic[]) => onChange(newOrder.map((t, i) => ({ ...t, index: i + 1 })));
+  const handleReorder = (newOrder: CourseTopic[]) => onChange(
+    newOrder.map((topic, index) => preserveTopicIdentifier(topic, {
+      ...topic,
+      // Reorder.Item and its React key must retain the same identity while
+      // `index` changes, otherwise a drag is remounted on every movement.
+      index: index + 1,
+    })),
+  );
 
   const patchTopic = (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
     const key = getTopicIdentifier(topic);
-    onChange(topics.map((t) => (getTopicIdentifier(t) === key ? { ...t, data: { ...t.data, ...patch } } : t)));
+    onChange(topics.map((t) => (
+      getTopicIdentifier(t) === key
+        ? preserveTopicIdentifier(t, { ...t, data: { ...t.data, ...patch } })
+        : t
+    )));
   };
 
   const handleUpdateAttestation = (topic: CourseTopic, v: number) => patchTopic(topic, { attestation: v });
@@ -459,6 +496,27 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     try { setGeneratedTopics(await generateCourseTopics(courseId)); }
     catch { alert("Не вдалося згенерувати теми"); }
     finally { setAiTopicsLoading(false); }
+  };
+
+  const handleGenerateSubtopics = async () => {
+    if (courseId <= 0 || !form.name.trim()) return;
+    setSubtopicsLoading(true);
+    try {
+      const subtopics = await generateTopicSubtopics(courseId, {
+        name: form.name.trim(),
+        lection: form.lection.trim(),
+      });
+      if (subtopics.length === 0) {
+        alert("AI не згенерував підтеми");
+        return;
+      }
+      setForm({ subtopics: subtopics.join("\n") });
+    } catch (error) {
+      console.error("Error generating topic subtopics via AI:", error);
+      alert("Не вдалося згенерувати підтеми");
+    } finally {
+      setSubtopicsLoading(false);
+    }
   };
 
   const handleAddGeneratedTopic = (gen: AIGeneratedTopic) => {
@@ -483,7 +541,18 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     setGeneratedTopics(null);
   };
 
-  const formProps = { coursePractType, form, setForm: setForm, isDragging, setIsDragging, onSave: handleSaveTopic, onCancel: resetForm };
+  const formProps = {
+    coursePractType,
+    form,
+    setForm,
+    isDragging,
+    setIsDragging,
+    canGenerateSubtopics: courseId > 0,
+    generatingSubtopics: subtopicsLoading,
+    onGenerateSubtopics: handleGenerateSubtopics,
+    onSave: handleSaveTopic,
+    onCancel: resetForm,
+  };
 
   const summary = useMemo(() => {
     const collectTotals = (mode: "fulltime" | "inabscentia") => {

@@ -6,6 +6,7 @@ import { parseSylabusOrProgram } from "@/docx/parse";
 import { verifyCourse } from "@/docx/verification";
 import { deepEquals } from "bun";
 import { runCoursePrompts } from "@/ai/generator";
+import { isTopicContentSubstantiallyChanged, topicContentFingerprint } from "@/ai/topic-change";
 import { create } from "jsondiffpatch";
 import type { Delta } from "jsondiffpatch";
 
@@ -95,7 +96,7 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
 
   merged.sort((a, b) => a.index - b.index);
   course.topics = merged;
-  await courses.update(course);
+  await updateCourse(courseId, course, "Merged course topics");
 }
 
 function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
@@ -179,6 +180,47 @@ async function updateCourseInt(updated: Course, old: Course, reason: string): Pr
   await history.saveHistory(old, updated, reason, "course");
 }
 
+function matchTopicsBeforeSave(previousTopics: CourseTopic[], nextTopics: CourseTopic[]): Map<CourseTopic, CourseTopic> {
+  const available = new Set(previousTopics);
+  const matches = new Map<CourseTopic, CourseTopic>();
+  const byContent = new Map<string, CourseTopic[]>();
+
+  for (const topic of previousTopics) {
+    const key = topicContentFingerprint(topic);
+    byContent.set(key, [...(byContent.get(key) ?? []), topic]);
+  }
+
+  // First match identical topics regardless of index. This handles reordering
+  // without invoking the AI classifier or touching generated fields.
+  for (const topic of nextTopics) {
+    const candidates = byContent.get(topicContentFingerprint(topic)) ?? [];
+    const previous = candidates.find((candidate) => available.has(candidate));
+    if (previous) {
+      matches.set(topic, previous);
+      available.delete(previous);
+    }
+  }
+
+  const reordered = [...matches].some(([next, previous]) => next.index !== previous.index);
+  for (const topic of nextTopics) {
+    if (matches.has(topic)) continue;
+
+    // When order is unchanged, the index is still a reliable pairing for an
+    // edited topic. After a reorder, only pair the final unambiguous remainder;
+    // preserving generated data is safer than clearing it against a wrong topic.
+    const sameIndex = !reordered
+      ? [...available].find((candidate) => candidate.index === topic.index)
+      : undefined;
+    const previous = sameIndex ?? (available.size === 1 ? available.values().next().value : undefined);
+    if (previous) {
+      matches.set(topic, previous);
+      available.delete(previous);
+    }
+  }
+
+  return matches;
+}
+
 async function updateCourse(id: number, updated: Course, reason: string): Promise<Course> {
   const oldCourse = await coursesService.getCourseById(Number(id));
       
@@ -186,10 +228,28 @@ async function updateCourse(id: number, updated: Course, reason: string): Promis
     throw new CourseNotFoundError(id);
   }
 
-  console.log("Updating course with ID:", id, updated); 
+  const previousTopicsByNextTopic = matchTopicsBeforeSave(oldCourse.topics ?? [], updated.topics ?? []);
+  const sanitizedTopics = await Promise.all((updated.topics ?? []).map(async (topic) => {
+    const previous = previousTopicsByNextTopic.get(topic);
+    if (!previous || !Object.keys(previous.generated ?? {}).length) return topic;
 
-  await updateCourseInt(updated, oldCourse, reason);
-  return {...updated, version: updated.version + 1 };
+    // Exact content match means this is only a move; do not spend an AI call
+    // and never discard its generated subtopics.
+    if (topicContentFingerprint(previous) === topicContentFingerprint(topic)) return topic;
+
+    if (await isTopicContentSubstantiallyChanged(previous, topic)) {
+      console.log(`Clearing generated data for substantially changed topic ${topic.index} of course ${id}`);
+      return { ...topic, generated: {} } as CourseTopic;
+    }
+
+    return topic;
+  }));
+  const courseToSave = updated.topics ? { ...updated, topics: sanitizedTopics } : updated;
+
+  console.log("Updating course with ID:", id, courseToSave);
+
+  await updateCourseInt(courseToSave, oldCourse, reason);
+  return {...courseToSave, version: courseToSave.version + 1 };
 }
 
 async function updateCourseGeneratedData(
@@ -227,7 +287,7 @@ async function updateCourseFromParsed(course: Course & ParsedData, dbCourse: Cou
   
   if (dbCourse) {
     updated.topics = course.topics;
-    await updateCourseInt(updated, dbCourse, `Doc upload`);
+    await updateCourse(dbCourse.id, updated, `Doc upload`);
   } else {
     updated.topics = course.topics;
     const stored = await createCourse(updated, 'Doc upload');

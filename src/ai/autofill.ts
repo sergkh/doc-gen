@@ -70,6 +70,10 @@ const attestationRenameSchema = z.object({
   name: z.string()
 });
 
+const topicSubtopicsSchema = z.object({
+  subtopics: z.array(z.string()),
+});
+
 export function buildAttestationRenamePrompt(courseName: string, attestationIndex: number, topics: CourseTopic[]): string {
   const topicLines = topics.length > 0
     ? topics.map((topic) => {
@@ -115,6 +119,29 @@ export async function renameAttestationName(
 
   const suggestedName = response?.name ?? "";
   return normalizeAttestationName(suggestedName, `Атестація ${attestationIndex}`);
+}
+
+export async function generateTopicSubtopics(
+  course: Course,
+  topic: Pick<CourseTopic, "name" | "lection">,
+  model: string = "gpt-5-2025-08-07",
+  apiKey?: string,
+): Promise<string[]> {
+  const response = await extractInformationAI(
+    "Ти допомагаєш створювати зміст університетської навчальної дисципліни українською мовою.",
+    `Дисципліна: ${course.name}
+Опис дисципліни: ${course.data.description || "не вказано"}
+
+Тема: ${topic.name}
+Текст лекції: ${topic.lection || "не вказано"}
+
+Запропонуй 2–5 стислих підтем для цієї теми. Підтеми мають конкретизувати тему, не дублювати її назву та бути придатними для навчальної програми.`,
+    topicSubtopicsSchema,
+    model,
+    apiKey ?? null,
+  );
+
+  return (response?.subtopics ?? []).map((subtopic) => subtopic.trim()).filter(Boolean);
 }
 
 export async function generateCourseTopics(

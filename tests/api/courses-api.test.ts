@@ -45,10 +45,12 @@ mock.module("@/api/utils/files", () => ({ computeFileHash }));
 
 const autofillCourseResults = mock(async () => [] as any[]);
 const generateCourseTopics = mock(async () => [] as any[]);
+const generateTopicSubtopics = mock(async () => [] as string[]);
 const renameAttestationName = mock(async () => "Generated name");
 mock.module("@/ai/autofill", () => ({
   autofillCourseResults,
   generateCourseTopics,
+  generateTopicSubtopics,
   renameAttestationName,
 }));
 
@@ -74,7 +76,7 @@ describe("coursesApi", () => {
       coursesGet, coursesUpdate, oldTopicsAll, resultsBySpecialty, specialtiesGet,
       getCourses, createCourse, getCourseById, updateCourse, updateCourseGeneratedData, deleteCourse,
       parseCourseDataUpload, getCourseHistory, revertToHistory, resetCourseHistory, computeFileHash,
-      autofillCourseResults, generateCourseTopics, renameAttestationName,
+      autofillCourseResults, generateCourseTopics, generateTopicSubtopics, renameAttestationName,
     ]) fn.mockClear();
   });
 
@@ -302,6 +304,29 @@ describe("coursesApi", () => {
       const response = await api["/api/courses/:id/topics/generate"].POST(request({ id: "1" }));
       expect(response.status).toBe(500);
       expect(await text(response)).toContain("database offline");
+    });
+
+    it("generates editable subtopics for a topic draft", async () => {
+      const course = { id: 1, name: "AI", data: { description: "Desc" } };
+      coursesGet.mockResolvedValueOnce(course as any);
+      generateTopicSubtopics.mockResolvedValueOnce(["Основні поняття", "Приклади"]);
+
+      const route = api["/api/courses/:id/topics/subtopics/generate"];
+      const response = await route.POST(request({ id: "1" }, { name: "Вступ", lection: "План лекції" }));
+
+      expect(await response.json()).toEqual({ subtopics: ["Основні поняття", "Приклади"] });
+      expect(generateTopicSubtopics).toHaveBeenCalledWith(course, { name: "Вступ", lection: "План лекції" }, "gpt-5.6-luna");
+    });
+
+    it("validates a subtopic draft and handles generation failures", async () => {
+      const route = api["/api/courses/:id/topics/subtopics/generate"];
+      expect((await route.POST(request({ id: "1" }, { name: " " }))).status).toBe(400);
+
+      coursesGet.mockResolvedValueOnce({ id: 1 } as any);
+      generateTopicSubtopics.mockRejectedValueOnce(new Error("AI unavailable"));
+      const response = await route.POST(request({ id: "1" }, { name: "Вступ", lection: "" }));
+      expect(response.status).toBe(500);
+      expect(await text(response)).toContain("AI unavailable");
     });
   });
 

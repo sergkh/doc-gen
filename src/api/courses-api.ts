@@ -4,7 +4,7 @@ import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/sto
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
-import { autofillCourseResults, generateCourseTopics, renameAttestationName } from "@/ai/autofill";
+import { autofillCourseResults, generateCourseTopics, generateTopicSubtopics, renameAttestationName } from "@/ai/autofill";
 import { coursesService } from "@/services/courses-service";
 import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 
@@ -202,16 +202,17 @@ const coursesApi = {
       if (!course) {
         return new Response("Course not found", { status: 404 });
       }
-      const topics = course.topics ?? [];
+      const topics = [...(course.topics ?? [])];
       const idx = topics.findIndex((t) => t.index === Number(index));
       if (idx === -1) {
         return new Response("Topic not found", { status: 404 });
       }
-      topics[idx] = { ...topics[idx], ...updatedTopic, index: Number(index), course_id: Number(courseId) };
-      course.topics = topics;
+      const replacement = { ...topics[idx], ...updatedTopic, index: Number(index), course_id: Number(courseId) };
+      topics[idx] = replacement;
+      const courseWithUpdatedTopic = { ...course, topics };
       console.log("Updating topic with index:", index, updatedTopic);
-      await courses.update(course);
-      return Response.json(topics[idx]);
+      const savedCourse = await coursesService.updateCourse(Number(courseId), courseWithUpdatedTopic, "Updated topic by user");
+      return Response.json(savedCourse.topics?.find((topic) => topic.index === Number(index)) ?? replacement);
     },
     async DELETE(req: BunRequest) {
       const { courseId, index } = req.params as { courseId: string; index: string };
@@ -353,6 +354,33 @@ const coursesApi = {
         return new Response(`Error generating topics: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
       }
     }
+  },
+  "/api/courses/:id/topics/subtopics/generate": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const body = await req.json() as Pick<CourseTopic, "name" | "lection">;
+      const topic = {
+        name: body.name?.trim(),
+        lection: body.lection?.trim() ?? "",
+      };
+
+      if (!topic.name) {
+        return new Response("Topic name is required", { status: 400 });
+      }
+
+      try {
+        const course = await courses.get(Number(id));
+        if (!course) {
+          return new Response("Course not found", { status: 404 });
+        }
+
+        const subtopics = await generateTopicSubtopics(course, topic, DEFAULT_AGENT_MODEL);
+        return Response.json({ subtopics });
+      } catch (error) {
+        console.error("Error generating topic subtopics:", error);
+        return new Response(`Error generating topic subtopics: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+      }
+    },
   },
   "/api/courses/:id/history": {
     async GET(req: BunRequest) {

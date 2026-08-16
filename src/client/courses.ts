@@ -230,6 +230,26 @@ export async function renameAttestation(courseId: number, attestationIndex: numb
   return body.name;
 }
 
+export async function generateTopicSubtopics(
+  courseId: number,
+  topic: Pick<CourseTopic, "name" | "lection">,
+): Promise<string[]> {
+  const res = await fetch(`/api/courses/${courseId}/topics/subtopics/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(topic),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка генерації підтеми: ${res.status}`);
+  }
+
+  const body = await res.json() as { subtopics: string[] };
+  return body.subtopics;
+}
+
 export type AIGeneratedTopic = {
   name: string;
   subtopics: string[];
