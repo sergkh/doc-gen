@@ -143,6 +143,41 @@ describe("formatPrompt", () => {
     });
   });
 
+  describe("handle arrays", () => {
+    it("should format array values", () => {
+      expect(formatPrompt("Items: {{items}}", { items: ["item1", "item2"] })).toBe("Items: \"item1\", \"item2\"");
+    });
+  });
+
+  describe("array filters", () => {
+    const course = {
+      items: [
+        { name: "Алгоритми", author: { name: "Кнут" } },
+        { name: "Структури даних", author: { name: "Вірт" } },
+      ],
+    };
+
+    it("should map an object property from every array item", () => {
+      expect(formatPrompt("{{course.items | map:name}}", { course }))
+        .toBe('"Алгоритми", "Структури даних"');
+    });
+
+    it("should map properties and join them with a custom separator", () => {
+      expect(formatPrompt("Предмети: {{course.items | map:name | join: \"; \"}}", { course }))
+        .toBe("Предмети: Алгоритми; Структури даних");
+    });
+
+    it("should map a nested property", () => {
+      expect(formatPrompt("{{course.items | map:author.name | join:\", \"}}", { course }))
+        .toBe("Кнут, Вірт");
+    });
+
+    it("should reject map on a non-array value", () => {
+      expect(() => formatPrompt("{{course.items.0 | map:name}}", { course }))
+        .toThrow("The map filter requires an array: course.items.0");
+    });
+  });
+
   describe("edge cases", () => {
     it("should handle empty placeholder", () => {
       expect(formatPrompt("Hello {{}}!", { "": "World" })).toBe("Hello World!");

@@ -212,7 +212,7 @@ const coursesApi = {
       const courseWithUpdatedTopic = { ...course, topics };
       console.log("Updating topic with index:", index, updatedTopic);
       const savedCourse = await coursesService.updateCourse(Number(courseId), courseWithUpdatedTopic, "Updated topic by user");
-      return Response.json(savedCourse.topics?.find((topic) => topic.index === Number(index)) ?? replacement);
+      return Response.json(savedCourse?.topics?.find((topic) => topic.index === Number(index)) ?? replacement);
     },
     async DELETE(req: BunRequest) {
       const { courseId, index } = req.params as { courseId: string; index: string };

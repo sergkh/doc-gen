@@ -68,6 +68,10 @@ mock.module("@/stores/db", () => {
       delete: nullValue,
       deleteByTeacher: nullValue,
     },
+    teacherTimesheets: {
+      get: nullValue,
+      save: async () => ({}),
+    },
     templates: {
       all: emptyArray,
       get: nullValue,

@@ -187,7 +187,9 @@ describe("coursesApi", () => {
       coursesGet.mockResolvedValueOnce(course as any);
       const response = await api["/api/courses/:courseId/topics/:index"].PUT(request({ courseId: "5", index: "2" }, { index: 9, name: "New" }));
       expect(await response.json()).toEqual({ course_id: 5, index: 2, name: "New", data: { hours: 1 } });
-      expect(coursesUpdate).toHaveBeenCalledWith(course);
+      expect(updateCourse).toHaveBeenCalledWith(5, {
+        topics: [{ course_id: 5, index: 2, name: "New", data: { hours: 1 } }],
+      }, "Updated topic by user");
     });
 
     it("returns 404 when updating a missing course or topic", async () => {
@@ -287,7 +289,7 @@ describe("coursesApi", () => {
       generateCourseTopics.mockResolvedValueOnce([{ name: "Intro" }] as any);
       const response = await api["/api/courses/:id/topics/generate"].POST(request({ id: "1" }));
       expect(await response.json()).toEqual([{ name: "Intro" }]);
-      expect(generateCourseTopics).toHaveBeenCalledWith("AI", "Desc", "F2 Engineering", 5, "gpt-4o-mini", null);
+      expect(generateCourseTopics).toHaveBeenCalledWith("AI", "Desc", "F2 Engineering", 5, "gpt-5.6-luna", null);
     });
 
     it("requires both course and specialty for topic generation", async () => {

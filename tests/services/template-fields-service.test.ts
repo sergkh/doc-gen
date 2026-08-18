@@ -65,6 +65,19 @@ describe("template field manifest", () => {
       { field: "subtopics", scope: "topic", relation: "all_topics" },
     ]);
   });
+
+  it("parses the source field of a placeholder with map filters", () => {
+    const dependent = prompt("summary");
+    dependent.prompt = "Names: {{ items | map:name | join: \", \" }}";
+    const manifest = buildTemplateManifest(template([
+      { ...prompt("items"), format: "list" },
+      dependent,
+    ]));
+
+    expect(manifest.generatedFields[1]?.dependsOn).toEqual([
+      { field: "items", scope: "course", relation: "single" },
+    ]);
+  });
 });
 
 describe("applyTemplateFields", () => {

@@ -31,7 +31,7 @@ const topic = {
 describe("update_course_topics input", () => {
   it("accepts practice objects with a short description", () => {
     const result = UpdateCourseTopicsInput.safeParse({
-      attestations: ["Module 1", "Module 2"],
+      attestations: [{ name: "Module 1" }, { name: "Module 2" }],
       topics: [topic],
     });
 
@@ -41,7 +41,7 @@ describe("update_course_topics input", () => {
 
   it("rejects the legacy list of practice strings", () => {
     const result = UpdateCourseTopicsInput.safeParse({
-      attestations: ["Module 1", "Module 2"],
+      attestations: [{ name: "Module 1" }, { name: "Module 2" }],
       topics: [
         {
           ...topic,
@@ -58,7 +58,7 @@ describe("update_course_topics input", () => {
 
   it("requires a non-empty description for each practice", () => {
     const result = UpdateCourseTopicsInput.safeParse({
-      attestations: ["Module 1", "Module 2"],
+      attestations: [{ name: "Module 1" }, { name: "Module 2" }],
       topics: [
         {
           ...topic,
@@ -76,7 +76,7 @@ describe("update_course_topics input", () => {
   it("allows practices to be omitted when an existing topic is not changing them", () => {
     const { practices: _practices, ...dataWithoutPractices } = topic.data;
     const result = UpdateCourseTopicsInput.safeParse({
-      attestations: ["Module 1", "Module 2"],
+      attestations: [{ name: "Module 1" }, { name: "Module 2" }],
       topics: [
         {
           ...topic,

@@ -31,7 +31,8 @@ function promptReferences(prompt: Prompt): string[] {
   const expression = /\{\{\s*([^{}]+?)\s*\}\}/g;
   for (const source of [prompt.system_prompt, prompt.prompt]) {
     for (const match of source.matchAll(expression)) {
-      const root = match[1]?.trim().split(".")[0];
+      const path = match[1]?.split("|", 1)[0]?.trim();
+      const root = path?.split(".")[0];
       if (root) references.add(root);
     }
   }
