@@ -2,7 +2,7 @@ import type { Template, TemplateParameter, Prompt } from "@/stores/models";
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
-import { loadTemplate, upsertTemplate } from "../templates";
+import { loadAllTemplates, loadTemplate, upsertTemplate } from "../templates";
 import toast from "react-hot-toast";
 import TemplateParametersEditor from "../components/TemplateParametersEditor";
 import TemplatePromptsEditor from "../components/TemplatePromptsEditor";
@@ -17,6 +17,8 @@ import {
   Box,
   Loader,
   Center,
+  Code,
+  MultiSelect,
 } from "@mantine/core";
 
 export default function TemplateEdit() {
@@ -25,6 +27,7 @@ export default function TemplateEdit() {
   const [item, setItem] = useState<Template | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>([]);
 
   useEffect(() => {
     loadTemplate(id || "new")
@@ -34,6 +37,10 @@ export default function TemplateEdit() {
       })
       .catch(console.error);
   }, [id]);
+
+  useEffect(() => {
+    loadAllTemplates().then(setTemplates).catch(console.error);
+  }, []);
 
   const update = (json: Partial<Template>) => {
     if (!item) return;
@@ -48,6 +55,14 @@ export default function TemplateEdit() {
   const handlePromptsChange = (prompts: Prompt[]) => {
     if (!item) return;
     setItem({ ...item, prompts } as Template);
+  };
+
+  const handleDependenciesChange = (dependencyIds: string[]) => {
+    if (!item) return;
+    setItem({
+      ...item,
+      data: { ...item.data, dependencies: dependencyIds.map(Number) }
+    } as Template);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -88,6 +103,28 @@ export default function TemplateEdit() {
     return item.name.trim() !== "" && (item.id >= 0 || selectedFile !== null);
   }, [item, selectedFile]);
 
+  const dependencyTemplates = useMemo(() => {
+    const templatesById = new Map(templates.map((template) => [template.id, template]));
+    const ordered: Template[] = [];
+    const resolved = new Set<number>();
+    const visiting = new Set<number>();
+
+    const visit = (templateId: number) => {
+      if (resolved.has(templateId) || visiting.has(templateId)) return;
+      const template = templatesById.get(templateId);
+      if (!template) return;
+
+      visiting.add(templateId);
+      for (const dependencyId of template.data?.dependencies || []) visit(dependencyId);
+      visiting.delete(templateId);
+      resolved.add(templateId);
+      ordered.push(template);
+    };
+
+    for (const dependencyId of item?.data?.dependencies || []) visit(dependencyId);
+    return ordered;
+  }, [item?.data?.dependencies, templates]);
+
   if (!item) {
     return (
       <Center h={200}>
@@ -113,6 +150,39 @@ export default function TemplateEdit() {
             value={item.name}
             onChange={(e) => update({ name: e.currentTarget.value })}
           />
+
+          <MultiSelect
+            label="Залежить від шаблонів"
+            description="Їхні дані буде згенеровано перед даними цього шаблону."
+            data={templates
+              .filter((template) => template.id !== item.id)
+              .map((template) => ({ value: String(template.id), label: template.name }))}
+            value={(item.data?.dependencies || []).map(String)}
+            onChange={handleDependenciesChange}
+            searchable
+            clearable
+            placeholder="Оберіть шаблони"
+          />
+
+          {dependencyTemplates.length > 0 && (
+            <Stack gap="xs">
+              <Text fw={500} size="sm">Поля із залежних шаблонів (у порядку генерації)</Text>
+              {dependencyTemplates.map((template) => (
+                <Box key={template.id}>
+                  <Text size="sm" fw={500}>{template.name}</Text>
+                  {template.prompts.length > 0 ? (
+                    <Group gap="xs" mt={4}>
+                      {template.prompts.map((prompt, index) => (
+                        <Code key={`${prompt.field}-${index}`}>{prompt.field}</Code>
+                      ))}
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed">Немає налаштованих полів</Text>
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          )}
 
           <Stack gap="xs">
             <Text fw={500} size="sm">

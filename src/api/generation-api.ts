@@ -1,9 +1,9 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, specialties, templates } from "@/stores/db";
-import type { Course, GeneratedTopicData, Prompt, Template } from "@/stores/models";
+import type { Course, GeneratedTopicData, Prompt, Template, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
-import { runCoursePrompts, runTopicPrompts } from "@/ai/generator";
+import { runTopicPrompts } from "@/ai/generator";
 import { coursesService } from "@/services/courses-service";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
@@ -228,6 +228,7 @@ const generationApi = {
       const allTopics = course.topics ?? [];
       const topic = allTopics.find((t) => {
         const numericIdentifier = Number(resolvedTopicIndex);
+        
         if (!Number.isNaN(numericIdentifier)) {
           return t.index === numericIdentifier || ((t as CourseTopic & { id?: number }).id === numericIdentifier);
         }

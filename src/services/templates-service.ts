@@ -3,6 +3,40 @@ import type { Template } from "@/stores/models";
 import path from "path";
 import { deleteOldFile, saveUploadedFile } from "@/api/utils/files";
 
+function dependencyIds(data: unknown): number[] {
+  if (!data || typeof data !== "object") return [];
+  const dependencies = (data as Template["data"]).dependencies;
+  if (!Array.isArray(dependencies)) return [];
+  return [...new Set(dependencies.filter(Number.isInteger))];
+}
+
+async function validateDependencies(data: unknown, templateId?: number): Promise<void> {
+  const ids = dependencyIds(data);
+  if (templateId !== undefined && ids.includes(templateId)) {
+    throw new Error("A template cannot depend on itself");
+  }
+
+  const allTemplates = await templates.all();
+  const byId = new Map(allTemplates.map((template) => [template.id, template]));
+  for (const id of ids) {
+    if (!byId.has(id)) throw new Error(`Dependent template ${id} was not found`);
+  }
+
+  const visit = (id: number, path: Set<number>): void => {
+    if (templateId !== undefined && id === templateId) {
+      throw new Error("Template dependencies cannot contain a cycle");
+    }
+    if (path.has(id)) throw new Error("Template dependencies cannot contain a cycle");
+
+    const dependency = byId.get(id);
+    if (!dependency) return;
+    const nextPath = new Set(path).add(id);
+    for (const dependencyId of dependencyIds(dependency.data)) visit(dependencyId, nextPath);
+  };
+
+  for (const id of ids) visit(id, new Set());
+}
+
 async function getAllTemplates(): Promise<Template[]> {
   const list = await templates.all();
   return await Promise.all(
@@ -24,6 +58,7 @@ async function createTemplate(
   data?: any,
   prompts?: any[]
 ): Promise<Template> {
+  await validateDependencies(data);
   const filePath = await saveUploadedFile(file);
   const template = { id: 0, name, file: filePath, data, prompts: prompts || [] } as Template;
   const result = await templates.add(template);
@@ -55,6 +90,7 @@ async function updateTemplate(
 
   const updatedData = data ?? existingTemplate.data;
   const updatedPrompts = prompts ?? (existingTemplate.prompts || []);
+  await validateDependencies(updatedData, id);
 
   const template = {
     id,
@@ -69,6 +105,11 @@ async function updateTemplate(
 }
 
 async function deleteTemplate(id: number): Promise<void> {
+  const dependents = (await templates.all()).filter((candidate) => dependencyIds(candidate.data).includes(id));
+  if (dependents.length > 0) {
+    throw new Error(`Template is required by: ${dependents.map((template) => template.name).join(", ")}`);
+  }
+
   const template = await templates.get(id);
   if (template) {
     await deleteOldFile(template.file);

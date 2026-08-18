@@ -1,6 +1,6 @@
 import { generateCourseInfo } from "@/ai/generator";
-import { courseResults, courses, teachers } from "@/stores/db";
-import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, GenerationPractice, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
+import { courseResults, courses, teachers, templates } from "@/stores/db";
+import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, DisciplineReference, GenerationPractice, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
 
 declare global {
   interface Array<T> {
@@ -150,6 +150,54 @@ function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): Gen
   return practices;
 }
 
+async function normalizeRequisiteCourses(names: string[]): Promise<DisciplineReference[]> {
+  return Promise.all(names.map(async (id) => {
+    
+    if (typeof id === 'number') {
+      const result = await courses.getShortInfos([id]);
+      return result[0] as DisciplineReference;
+    } else {
+      return { id: undefined, name: id } as DisciplineReference;
+    }
+  }));
+}
+
+function templateDependencyIds(template: Template): number[] {
+  return [...new Set((template.data?.dependencies || []).filter(Number.isInteger))];
+}
+
+/**
+ * Returns nested dependencies first and the requested template last. The cycle
+ * check keeps generation safe if legacy or manually edited data bypassed the UI.
+ */
+async function templatesInGenerationOrder(template: Template): Promise<Template[]> {
+  const ordered: Template[] = [];
+  const resolved = new Set<number>();
+  const visiting = new Set<number>();
+
+  const visit = async (current: Template): Promise<void> => {
+    if (resolved.has(current.id)) return;
+    if (visiting.has(current.id)) {
+      throw new Error(`Template dependency cycle detected at "${current.name}"`);
+    }
+
+    visiting.add(current.id);
+    for (const dependencyId of templateDependencyIds(current)) {
+      const dependency = await templates.get(dependencyId);
+      if (!dependency) {
+        throw new Error(`Dependent template ${dependencyId} for "${current.name}" was not found`);
+      }
+      await visit(dependency);
+    }
+    visiting.delete(current.id);
+    resolved.add(current.id);
+    ordered.push(current);
+  };
+
+  await visit(template);
+  return ordered;
+}
+
 /*
  * Loads all possible course information into a single JS object for rendering.
  * Some fields are duplicated to simplify rendering.
@@ -159,7 +207,7 @@ function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): Gen
  * Hours are mostly calculated from the hours set in course topics data.
  */
 export async function loadFullCourseInfo(
-  template: Template,
+  template: Template | null,
   course: Course, 
   specialty: Specialty,
   topics: CourseTopic[],
@@ -184,24 +232,39 @@ export async function loadFullCourseInfo(
   
   // Generate course info - this is the slowest part (as might use AI)
   // Progress from 5% to 70% (65% for AI generation)
-  const { course: updatedCourse, topics: updatedTopics } = await generateCourseInfo(template, course, topics, (progress: number) => {
-    onProgress?.(5 + progress * 0.65); // Scale progress to 65%
-  }, apiKey);
+  let updatedCourse = course;
+  let updatedTopics = topics;
+  if (template) {
+    const generationTemplates = await templatesInGenerationOrder(template);
+    const totalPrompts = generationTemplates.reduce((count, current) => count + current.prompts.length, 0);
+    let completedPrompts = 0;
+
+    for (const currentTemplate of generationTemplates) {
+      const promptCount = currentTemplate.prompts.length;
+      const result = await generateCourseInfo(currentTemplate, updatedCourse, updatedTopics, (progress: number) => {
+        const completed = completedPrompts + (promptCount * progress / 100);
+        onProgress?.(5 + (totalPrompts === 0 ? 65 : completed / totalPrompts * 65));
+      }, apiKey);
+      updatedCourse = result.course;
+      updatedTopics = result.topics;
+      completedPrompts += promptCount;
+    }
+  }
   
   // Estimate progress: if we have N topics, each topic is roughly 65% / N
   // For now, we'll report 70% after generation completes
-  onProgress?.(70);
+  onProgress?.(90);
+  
+  const prerequisites = await normalizeRequisiteCourses(course.data.prerequisites);
+  onProgress?.(93);
 
-  // TODO: add back prerequisites/postrequisites fetching if needed
-  const prerequisites = await courses.getShortInfos(course.data.prerequisites.filter((id) => typeof id === 'number').map((id) => id as number));
-  onProgress?.(80);
-  const postrequisites = await courses.getShortInfos(course.data.postrequisites.filter((id) => typeof id === 'number').map((id) => id as number));
-  onProgress?.(85);
+  const postrequisites = await normalizeRequisiteCourses(course.data.postrequisites);
+  onProgress?.(95);
 
   const teacher = await teachers.get(course.teacher_id);
 
   const results = await courseResults.list(course.data.results);
-  onProgress?.(90);
+  onProgress?.(97);
 
   const countedTopics = buildTopicHours(course, updatedTopics);
 
@@ -210,7 +273,7 @@ export async function loadFullCourseInfo(
   
   const oneSemesterOnly = course.data.attestations.every(a => a.semester === 1);
 
-  onProgress?.(95);
+  onProgress?.(99);
 
   const hours = {
     total: course.data.hours,

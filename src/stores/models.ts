@@ -206,6 +206,11 @@ export type GenerationPractice = {
   }
 } & CoursePractice
 
+export type DisciplineReference = {
+  id?: number,
+  name: string
+}
+
 // All course related data collected in one place used to generate any course related documents
 export type CourseGenerationData = {
   course: Course,
@@ -214,8 +219,8 @@ export type CourseGenerationData = {
   generalResults:CourseResult[],
   specialResults:CourseResult[],
   programResults:CourseResult[],
-  prerequisites: ShortCourseInfo[],
-  postrequisites: ShortCourseInfo[],
+  prerequisites: DisciplineReference[],
+  postrequisites: DisciplineReference[],
   // same data grouped by semester or plain attestations for easy access
   semesters: CourseSemester[],
   attestations: CourseAttestation[],
@@ -252,7 +257,9 @@ export type Template = {
   file: string,
   file_exists?: boolean,
   data: {
-    parameters?: TemplateParameter[]
+    parameters?: TemplateParameter[],
+    /** Templates whose prompts must be generated before this template. */
+    dependencies?: number[]
   },
   prompts: Prompt[]
 }
