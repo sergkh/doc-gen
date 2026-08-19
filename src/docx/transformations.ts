@@ -22,27 +22,38 @@ function randomizeQuestion(question: QuizQuestion, index: number): QuizQuestion 
   } as QuizQuestion;
 }
 
+type Hours = {    
+  hours: number,
+  practical_hours: number,
+  lab_hours: number,
+  srs_hours: number,
+  total_hours?: number
+};
+
+function computeHours(h: Hours | undefined, practices: boolean): Hours {
+  if (!h) {
+    return { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0, total_hours: 0 };
+  }
+
+  const hours = h.hours;
+  const practical_hours = practices ? (h.practical_hours ?? h.lab_hours ?? 0) : 0;
+  const lab_hours = practices ? 0 : (h.lab_hours ?? h.practical_hours ?? 0);
+  const srs_hours = h.srs_hours ?? 0;
+  const total_hours = hours + practical_hours + lab_hours + srs_hours;
+
+  return { hours, practical_hours, lab_hours, srs_hours, total_hours };
+}
+
 function buildTopicHours(course: Course, allTopics: CourseTopic[]): CourseTopic[] {
   const practices = course.data.practice_type === "practice";
+
   return allTopics.map((t) => {
     return {
       ...t, 
       data: {
         ...t.data,
-        fulltime: {
-          hours: t.data.fulltime.hours,
-          practical_hours: practices ? (t.data.fulltime.practical_hours ?? t.data.fulltime.lab_hours) : 0,
-          lab_hours: practices ? 0 : (t.data.fulltime.lab_hours ?? t.data.fulltime.practical_hours),
-          srs_hours: t.data.fulltime.srs_hours,
-          total_hours: t.data.fulltime.hours + t.data.fulltime.practical_hours + t.data.fulltime.lab_hours + t.data.fulltime.srs_hours
-        },
-        inabscentia: {
-          hours: t.data.inabscentia?.hours ?? 0,
-          practical_hours: practices ? (t.data.inabscentia?.practical_hours ?? t.data.fulltime.lab_hours ?? 0) : 0,
-          lab_hours: practices ? 0 : (t.data.inabscentia?.lab_hours ?? t.data.inabscentia?.practical_hours ?? 0),
-          srs_hours: t.data.inabscentia?.srs_hours ?? 0,
-          total_hours: (t.data.inabscentia?.hours ?? 0) + (t.data.inabscentia?.practical_hours ?? 0) + (t.data.inabscentia?.lab_hours ?? 0) + (t.data.inabscentia?.srs_hours ?? 0)
-        }
+        fulltime: computeHours(t.data.fulltime, practices),
+        inabscentia: computeHours(t.data.inabscentia, practices)
       }
     }
   });
