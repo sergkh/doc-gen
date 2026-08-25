@@ -31,13 +31,19 @@ type Hours = {
 };
 
 function computeHours(h: Hours | undefined, practices: boolean): Hours {
+  
   if (!h) {
     return { hours: 0, practical_hours: 0, lab_hours: 0, srs_hours: 0, total_hours: 0 };
   }
 
+  const firstNonZero = (values: (number | null)[]) => {
+    return values.find(v => v !== null && v !== undefined && v !== 0) ?? 0;
+  };
+
   const hours = h.hours;
-  const practical_hours = practices ? (h.practical_hours ?? h.lab_hours ?? 0) : 0;
-  const lab_hours = practices ? 0 : (h.lab_hours ?? h.practical_hours ?? 0);
+  // in old UI we don't set lab_hours correctly and might set them as practical hours this choses whatever is present
+  const practical_hours = practices ? firstNonZero([h.practical_hours, h.lab_hours]) : 0;
+  const lab_hours = practices ? 0 : firstNonZero([h.lab_hours, h.practical_hours]);
   const srs_hours = h.srs_hours ?? 0;
   const total_hours = hours + practical_hours + lab_hours + srs_hours;
 
@@ -46,7 +52,7 @@ function computeHours(h: Hours | undefined, practices: boolean): Hours {
 
 function buildTopicHours(course: Course, allTopics: CourseTopic[]): CourseTopic[] {
   const practices = course.data.practice_type === "practice";
-
+  
   return allTopics.map((t) => {
     return {
       ...t, 
