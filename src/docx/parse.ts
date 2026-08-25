@@ -658,7 +658,11 @@ async function parseSylabusOrProgramResults(text: string, specialty_id: number |
     }
 
     return result?.id;      
-  }).filter(r => r !== undefined) || [] as number[];
+  })
+  .concat(allResults.find(r => r.type === 'ІК')?.id)
+  .filter(r => r !== undefined) || [] as number[];
+
+  
 
   return { ids, warnings };
 }
