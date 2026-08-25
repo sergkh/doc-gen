@@ -5,7 +5,7 @@ import { faPlus, faTrash, faPen, faGripVertical, faEdit, faWandMagicSparkles } f
 import { Reorder, useDragControls } from "motion/react";
 import type { CoursePractice, CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
-import { generateCourseTopics, generateTopicSubtopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
+import { generateCourseTopics, generateTopicPractices, generateTopicSubtopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
 import { addGeneratedTopicsToCourseTopics, normalizeCoursePractices } from "./courseTopicsEditor.utils";
 import {
   Stack,
@@ -205,11 +205,14 @@ interface TopicFormProps {
   canGenerateSubtopics: boolean;
   generatingSubtopics: boolean;
   onGenerateSubtopics: () => void;
+  canGeneratePractices: boolean;
+  generatingPractices: boolean;
+  onGeneratePractices: () => void;
   onSave: () => void;
   onCancel: () => void;
 }
 
-function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, canGenerateSubtopics, generatingSubtopics, onGenerateSubtopics, onSave, onCancel }: TopicFormProps) {
+function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, canGenerateSubtopics, generatingSubtopics, onGenerateSubtopics, canGeneratePractices, generatingPractices, onGeneratePractices, onSave, onCancel }: TopicFormProps) {
   const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -296,6 +299,19 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
 
         <Divider label={practicesLabel} labelPosition="left" />
         <Stack gap="sm">
+          <Group justify="space-between" gap="xs">
+            <Text size="sm" fw={500}>{practicesLabel}</Text>
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<FontAwesomeIcon icon={faWandMagicSparkles} />}
+              loading={generatingPractices}
+              disabled={!canGeneratePractices || !form.name.trim()}
+              onClick={onGeneratePractices}
+            >
+              Згенерувати за допомогою AI
+            </Button>
+          </Group>
           {form.practices.length === 0 && (
             <Text size="sm" c="dimmed">Заняття ще не додані</Text>
           )}
@@ -373,6 +389,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
   const [isDragging, setIsDragging] = useState(false);
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
   const [subtopicsLoading, setSubtopicsLoading] = useState(false);
+  const [practicesLoading, setPracticesLoading] = useState(false);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
   const resetForm = () => {
@@ -522,6 +539,24 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     }
   };
 
+  const handleGeneratePractices = async () => {
+    if (courseId <= 0 || !form.name.trim()) return;
+    setPracticesLoading(true);
+    try {
+      const practices = await generateTopicPractices(courseId, {
+        name: form.name.trim(),
+        subtopics: form.subtopics.split("\n").map((subtopic) => subtopic.trim()).filter(Boolean),
+        practicalHours: form.practicalHours,
+      });
+      setForm({ practices });
+    } catch (error) {
+      console.error("Error generating topic practices via AI:", error);
+      alert("Не вдалося згенерувати практичні заняття");
+    } finally {
+      setPracticesLoading(false);
+    }
+  };
+
   const handleAddGeneratedTopic = (gen: AIGeneratedTopic) => {
     const result = addGeneratedTopicsToCourseTopics({
       topics,
@@ -553,6 +588,9 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     canGenerateSubtopics: courseId > 0,
     generatingSubtopics: subtopicsLoading,
     onGenerateSubtopics: handleGenerateSubtopics,
+    canGeneratePractices: courseId > 0,
+    generatingPractices: practicesLoading,
+    onGeneratePractices: handleGeneratePractices,
     onSave: handleSaveTopic,
     onCancel: resetForm,
   };

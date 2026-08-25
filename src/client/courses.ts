@@ -1,4 +1,4 @@
-import type { Course, CourseTopic, KeyValue } from "@/stores/models";
+import type { Course, CoursePractice, CourseTopic, KeyValue } from "@/stores/models";
 
 export const ATTESTATION_COLORS = [
   "var(--mantine-color-blue-light)",
@@ -248,6 +248,26 @@ export async function generateTopicSubtopics(
 
   const body = await res.json() as { subtopics: string[] };
   return body.subtopics;
+}
+
+export async function generateTopicPractices(
+  courseId: number,
+  topic: { name: string; subtopics: string[]; practicalHours: number },
+): Promise<CoursePractice[]> {
+  const res = await fetch(`/api/courses/${courseId}/topics/practices/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(topic),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Помилка генерації практичних занять: ${res.status}`);
+  }
+
+  const body = await res.json() as { practices: CoursePractice[] };
+  return body.practices;
 }
 
 export type AIGeneratedTopic = {

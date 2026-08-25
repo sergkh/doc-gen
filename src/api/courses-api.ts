@@ -3,7 +3,7 @@ import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/sto
 import type { BunRequest } from "bun";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
-import { autofillCourseResults, generateCourseTopics, generateTopicSubtopics, renameAttestationName } from "@/ai/autofill";
+import { autofillCourseResults, generateCourseTopics, generateTopicPractices, generateTopicSubtopics, renameAttestationName } from "@/ai/autofill";
 import { coursesService } from "@/services/courses-service";
 import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 
@@ -378,6 +378,42 @@ const coursesApi = {
       } catch (error) {
         console.error("Error generating topic subtopics:", error);
         return new Response(`Error generating topic subtopics: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
+      }
+    },
+  },
+  "/api/courses/:id/topics/practices/generate": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const body = await req.json() as { name?: string; subtopics?: unknown; practicalHours?: unknown };
+      const topic = {
+        name: body.name?.trim() ?? "",
+        subtopics: Array.isArray(body.subtopics)
+          ? body.subtopics.filter((subtopic): subtopic is string => typeof subtopic === "string").map((subtopic) => subtopic.trim()).filter(Boolean)
+          : [],
+        practicalHours: typeof body.practicalHours === "number" && Number.isFinite(body.practicalHours)
+          ? Math.max(0, body.practicalHours)
+          : 0,
+      };
+
+      if (!topic.name) {
+        return new Response("Topic name is required", { status: 400 });
+      }
+
+      if (topic.practicalHours === 0) {
+        return Response.json({ practices: [] });
+      }
+
+      try {
+        const course = await courses.get(Number(id));
+        if (!course) {
+          return new Response("Course not found", { status: 404 });
+        }
+
+        const practices = await generateTopicPractices(course, topic, DEFAULT_AGENT_MODEL);
+        return Response.json({ practices });
+      } catch (error) {
+        console.error("Error generating topic practices:", error);
+        return new Response(`Error generating topic practices: ${error instanceof Error ? error.message : "Unknown error"}`, { status: 500 });
       }
     },
   },

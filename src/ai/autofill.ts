@@ -74,6 +74,13 @@ const topicSubtopicsSchema = z.object({
   subtopics: z.array(z.string()),
 });
 
+const topicPracticesSchema = (count: number) => z.object({
+  practices: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+  })).length(count),
+});
+
 export function buildAttestationRenamePrompt(courseName: string, attestationIndex: number, topics: CourseTopic[]): string {
   const topicLines = topics.length > 0
     ? topics.map((topic) => {
@@ -142,6 +149,37 @@ export async function generateTopicSubtopics(
   );
 
   return (response?.subtopics ?? []).map((subtopic) => subtopic.trim()).filter(Boolean);
+}
+
+export async function generateTopicPractices(
+  course: Course,
+  topic: { name: string; subtopics: string[]; practicalHours: number },
+  model: string = "gpt-5-2025-08-07",
+  apiKey?: string,
+): Promise<Array<{ name: string; description: string }>> {
+  const practiceCount = Math.floor(topic.practicalHours / 2);
+  if (practiceCount === 0) return [];
+
+  const response = await extractInformationAI(
+    "Ти допомагаєш створювати короткі, практичні університетські заняття українською мовою.",
+    `Дисципліна: ${course.name}
+Опис дисципліни: ${course.data.description || "не вказано"}
+
+Тема: ${topic.name}
+Підтеми: ${topic.subtopics.length > 0 ? topic.subtopics.join("; ") : "не вказано"}
+Практичних годин для теми (денна форма): ${topic.practicalHours}
+
+Створи рівно ${practiceCount} ${practiceCount === 1 ? "практичне заняття" : "практичних заняття"}, по 2 години кожне. 
+Для кожного вкажи коротку конкретну назву без номера та опис: завдання студентів і очікуваний результат. 
+Заняття мають бути практичними (для ІТ дисциплін за компʼютерами) й практично закріплюівати цю тему та її підтеми, бути реалістичними для університетського курсу й не дублювати одне одного.`,
+    topicPracticesSchema(practiceCount),
+    model,
+    apiKey ?? null,
+  );
+
+  return (response?.practices ?? [])
+    .map((practice) => ({ name: practice.name.trim(), description: practice.description.trim() }))
+    .filter((practice) => practice.name && practice.description);
 }
 
 export async function generateCourseTopics(

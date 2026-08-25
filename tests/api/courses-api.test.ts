@@ -46,11 +46,13 @@ mock.module("@/api/utils/files", () => ({ computeFileHash }));
 const autofillCourseResults = mock(async () => [] as any[]);
 const generateCourseTopics = mock(async () => [] as any[]);
 const generateTopicSubtopics = mock(async () => [] as string[]);
+const generateTopicPractices = mock(async () => [] as any[]);
 const renameAttestationName = mock(async () => "Generated name");
 mock.module("@/ai/autofill", () => ({
   autofillCourseResults,
   generateCourseTopics,
   generateTopicSubtopics,
+  generateTopicPractices,
   renameAttestationName,
 }));
 
@@ -76,7 +78,7 @@ describe("coursesApi", () => {
       coursesGet, coursesUpdate, oldTopicsAll, resultsBySpecialty, specialtiesGet,
       getCourses, createCourse, getCourseById, updateCourse, updateCourseGeneratedData, deleteCourse,
       parseCourseDataUpload, getCourseHistory, revertToHistory, resetCourseHistory, computeFileHash,
-      autofillCourseResults, generateCourseTopics, generateTopicSubtopics, renameAttestationName,
+      autofillCourseResults, generateCourseTopics, generateTopicSubtopics, generateTopicPractices, renameAttestationName,
     ]) fn.mockClear();
   });
 
@@ -329,6 +331,32 @@ describe("coursesApi", () => {
       const response = await route.POST(request({ id: "1" }, { name: "Вступ", lection: "" }));
       expect(response.status).toBe(500);
       expect(await text(response)).toContain("AI unavailable");
+    });
+
+    it("generates one practical lesson for each two full-time practical hours", async () => {
+      const course = { id: 1, name: "AI", data: { description: "Desc" } };
+      const topic = { name: "Вступ", subtopics: ["Основи"], practicalHours: 4 };
+      const practices = [
+        { name: "Робота з поняттями", description: "Застосувати основні поняття." },
+        { name: "Аналіз прикладів", description: "Проаналізувати приклади застосування." },
+      ];
+      coursesGet.mockResolvedValueOnce(course as any);
+      generateTopicPractices.mockResolvedValueOnce(practices);
+
+      const route = api["/api/courses/:id/topics/practices/generate"];
+      const response = await route.POST(request({ id: "1" }, topic));
+
+      expect(await response.json()).toEqual({ practices });
+      expect(generateTopicPractices).toHaveBeenCalledWith(course, topic, "gpt-5.6-luna");
+    });
+
+    it("returns an empty practice list without calling AI when practical hours are zero", async () => {
+      const route = api["/api/courses/:id/topics/practices/generate"];
+      const response = await route.POST(request({ id: "1" }, { name: "Вступ", practicalHours: 0 }));
+
+      expect(await response.json()).toEqual({ practices: [] });
+      expect(coursesGet).not.toHaveBeenCalled();
+      expect(generateTopicPractices).not.toHaveBeenCalled();
     });
   });
 
