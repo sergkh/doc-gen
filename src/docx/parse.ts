@@ -728,20 +728,23 @@ export async function parseSpecialtyAndArea(text: string): Promise<SpecialtyInfo
   }
 
   const allSpecialties = await specialties.all();
+  console.log("Всі спеціальності:", allSpecialties.map((s) => `${s.code} – ${s.name} ${s.degree}`));
+
   const byDegree = allSpecialties.filter((s) => s.degree === specialtyDegree);
+  
+  console.log("Спеціальності з відповідним рівнем освіти:", byDegree.map((s) => `${s.code} – ${s.name} ${s.degree}`));
+
   const eq = (a?: string | null, b?: string | null) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 
   let spec: Specialty | null = null;
 
   if (specialtyCode) {
-    spec = byDegree.find((s) => eq(s.code, specialtyCode)) ?? null;
-  }
-
-  if (!spec && oldCode) {
-    spec = byDegree.find((s) => eq(s.code, oldCode) || eq(s.old_code, oldCode)) ?? null;
+    console.log("Шукаємо спеціальність за кодом:", specialtyCode);
+    spec = byDegree.find((s) => eq(s.code, specialtyCode) || eq(s.old_code, specialtyCode)) ?? null;
   }
 
   if (!spec && specialtyName) {
+    console.log("Шукаємо спеціальність за назвою:", specialtyName);
     spec = byDegree.find((s) => eq(s.name, specialtyName) || eq(s.old_name, specialtyName)) ?? null;
   }
 

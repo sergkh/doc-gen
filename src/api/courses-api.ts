@@ -1,4 +1,3 @@
-import { parseSylabusOrProgram } from "@/docx/parse";
 import { courses, courseTopics, teachers, courseResults, specialties } from "@/stores/db";
 import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
 import type { BunRequest } from "bun";
