@@ -69,7 +69,8 @@ export type CourseData = {
   literature: {
     main: string[],
     additional: string[],
-    internet: string[]
+    internet: string[],
+    method?: string[]
   },
   warnings?: string[]
 }

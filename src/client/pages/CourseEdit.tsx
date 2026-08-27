@@ -630,6 +630,14 @@ export default function CourseEdit() {
             autosize
             minRows={4}
           />
+          <Textarea
+            label="Методичні матеріали (один на рядок)"
+            placeholder="Методичні матеріали"
+            value={(item.data.literature?.method || []).join("\n")}
+            onChange={(e) => updateData({ literature: { ...item.data.literature, method: e.currentTarget.value.split("\n").map(stripNumbering).filter((l) => l.trim()) } })}
+            autosize
+            minRows={4}
+          />
         </Stack>
       </Paper>
     </Stack>

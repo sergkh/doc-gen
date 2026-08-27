@@ -6,7 +6,8 @@ import { getSessionContext, toolResult, ZodContext } from "./session-context";
 const ZodInput = z.object({
   main: z.array(z.string()).default([]),
   additional: z.array(z.string()).default([]),
-  internet: z.array(z.string()).default([])
+  internet: z.array(z.string()).default([]),
+  method: z.array(z.string()).optional(),
 });
 
 const ZodOutput = z.object({
@@ -19,11 +20,13 @@ const ZodOutput = z.object({
         main: z.array(z.string()),
         additional: z.array(z.string()),
         internet: z.array(z.string()),
+        method: z.array(z.string()),
       }),
       counts: z.object({
         main: z.number().int().nonnegative(),
         additional: z.number().int().nonnegative(),
         internet: z.number().int().nonnegative(),
+        method: z.number().int().nonnegative(),
       }),
     })
     .optional(),
@@ -41,7 +44,7 @@ export function registerUpdateCourseLiterature(server: McpServer) {
     "update_course_literature",
     {
       description:
-        "Оновлює літературу активної дисципліни основну (main), додаткову (additional), та інтернет джерела (internet). " +
+        "Оновлює літературу активної дисципліни: основну (main), додаткову (additional), інтернет-джерела (internet) та необов'язкові методичні матеріали (method). " +
         "Задай літературу в форматі ДСТУ 8302:2015. Наприклад: \"Пономарів О. Д. Культура слова: мовностилістичні поради. Київ : Либідь, 2001. 240 с.\"" +
         "Перед оновленням переконайся, що встановлено контекст спеціальності та дисципліни",
       inputSchema: ZodInput,
@@ -61,6 +64,7 @@ export function registerUpdateCourseLiterature(server: McpServer) {
         mainCount: args.main.length,
         additionalCount: args.additional.length,
         internetCount: args.internet.length,
+        methodCount: args.method?.length,
       });
 
       if (!current.specialty) {
@@ -87,6 +91,9 @@ export function registerUpdateCourseLiterature(server: McpServer) {
       const main = normalizeList(args.main);
       const additional = normalizeList(args.additional);
       const internet = normalizeList(args.internet);
+      const method = args.method === undefined
+        ? course.data.literature?.method ?? []
+        : normalizeList(args.method);
 
       const updated = {
         ...course,
@@ -96,13 +103,14 @@ export function registerUpdateCourseLiterature(server: McpServer) {
             main,
             additional,
             internet,
+            method,
           },
         },
       };
 
       await coursesService.updateCourse(course.id, updated, "Updated course literature via MCP");
 
-      const message = `Оновлено літературу дисципліни ${course.name}: основна=${main.length}, додаткова=${additional.length}, інтернет-ресурси=${internet.length}.`;
+      const message = `Оновлено літературу дисципліни ${course.name}: основна=${main.length}, додаткова=${additional.length}, інтернет-ресурси=${internet.length}, методичні матеріали=${method.length}.`;
 
       return {
         content: [{ type: "text", text: message }],
@@ -111,11 +119,12 @@ export function registerUpdateCourseLiterature(server: McpServer) {
           message,
           context: current,
           applied: {
-            literature: { main, additional, internet },
+            literature: { main, additional, internet, method },
             counts: {
               main: main.length,
               additional: additional.length,
               internet: internet.length,
+              method: method.length,
             },
           },
         },

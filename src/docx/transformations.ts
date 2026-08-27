@@ -247,6 +247,9 @@ export async function loadFullCourseInfo(
   course.data.practice_type = course.data.practice_type ?? "practice";
   course.data.specialty_full = specialty;
   
+  // normalize as this field is optional
+  course.data.literature.method = course.data.literature.method ?? [];
+  
   // Generate course info - this is the slowest part (as might use AI)
   // Progress from 5% to 70% (65% for AI generation)
   let updatedCourse = course;

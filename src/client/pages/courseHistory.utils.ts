@@ -68,6 +68,7 @@ const FIELD_LABELS: Record<string, string> = {
   main: "Основна",
   additional: "Додаткова",
   internet: "Інтернет-ресурси",
+  method: "Методичні матеріали",
   warnings: "Попередження",
   index: "Порядковий номер",
   lection: "Лекційний матеріал",

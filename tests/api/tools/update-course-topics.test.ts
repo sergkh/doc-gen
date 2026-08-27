@@ -56,7 +56,7 @@ describe("update_course_topics input", () => {
     expect(result.success).toBe(false);
   });
 
-  it("requires a non-empty description for each practice", () => {
+  it("allows an empty description for each practice", () => {
     const result = UpdateCourseTopicsInput.safeParse({
       attestations: [{ name: "Module 1" }, { name: "Module 2" }],
       topics: [
@@ -70,7 +70,30 @@ describe("update_course_topics input", () => {
       ],
     });
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    expect(result.data?.topics[0]?.data.practices).toEqual([
+      { name: "Merkle tree", description: "" },
+    ]);
+  });
+
+  it("defaults an omitted practice description to an empty string", () => {
+    const result = UpdateCourseTopicsInput.safeParse({
+      attestations: [{ name: "Module 1" }, { name: "Module 2" }],
+      topics: [
+        {
+          ...topic,
+          data: {
+            ...topic.data,
+            practices: [{ name: "Merkle tree" }],
+          },
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.topics[0]?.data.practices).toEqual([
+      { name: "Merkle tree", description: "" },
+    ]);
   });
 
   it("allows practices to be omitted when an existing topic is not changing them", () => {

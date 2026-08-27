@@ -444,8 +444,8 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
       name: practice.name.trim(),
       description: practice.description.trim(),
     }));
-    if (practices.some((practice) => !practice.name || !practice.description)) {
-      alert("Для кожного заняття вкажіть назву та короткий опис");
+    if (practices.some((practice) => !practice.name)) {
+      alert("Для кожного заняття вкажіть назву");
       return;
     }
 

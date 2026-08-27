@@ -43,6 +43,7 @@ const COMMON_COURSE_VARIABLES: PromptVariable[] = [
   { value: "course.data.literature.main", label: "Основна література", source: "course" },
   { value: "course.data.literature.additional", label: "Додаткова література", source: "course" },
   { value: "course.data.literature.internet", label: "Інтернет-ресурси", source: "course" },
+  { value: "course.data.literature.method", label: "Методичні матеріали", source: "course" },
 ];
 
 const COURSE_VARIABLES: PromptVariable[] = [
