@@ -62,8 +62,11 @@ function parseDisciplinesTable(table: DocTable | null): SpecialtyDisciplineConfi
 export function parseOPPResults(text: string, type: 'ЗК' | 'СК' | 'РН'): CourseResult[] {
   const results: CourseResult[] = [];
 
-  // They all ends with a dot or a newline.
-  const pattern = new RegExp(`${type}(\\d+)\\*?\\.?\\s{0,2}([ʼ\\s\\S]*?)(\\.|\\n)`, 'gs');
+  // Some OPPs call program learning results "ПР" rather than "РН".
+  // They are stored as the same "РН" result type in the application.
+  const marker = type === 'РН' ? '(?:РН|ПР)' : type;
+  // They all end with a dot or a newline.
+  const pattern = new RegExp(`${marker}\\s*(\\d+)\\*?\\.?\\s{0,2}([ʼ\\s\\S]*?)(\\.|\\n)`, 'gs');
   
   let match;
   while ((match = pattern.exec(text)) !== null) {
@@ -105,6 +108,7 @@ export function parseOPPIntegralResult(table: DocTable | null): CourseResult[] {
 export async function parseOPP(filepath: string): Promise<OPP | null> {
   try {    
     const text = await file2text(filepath);
+    console.log("Extracted text:", text.substring(0, 1000));
     
     const header = text.substring(0, 1000);
     const extractedSpecialty = await extractInformationAI(specialtyPrompt, header, SpecialtyExtraction);

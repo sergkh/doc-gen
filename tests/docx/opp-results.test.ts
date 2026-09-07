@@ -97,6 +97,15 @@ describe("parseOPPResults", () => {
       expect(results[1].no).toBe(2);
       expect(results[2].no).toBe(15);
     });
+
+    it("parses ПР markers as РН results", () => {
+      const text = "ПР1. Розробляти і приймати ефективні рішення. ПР2. Вільно спілкуватись українською та англійською мовами.";
+
+      expect(parseOPPResults(text, "РН")).toMatchObject([
+        { no: 1, type: "РН", name: "Розробляти і приймати ефективні рішення" },
+        { no: 2, type: "РН", name: "Вільно спілкуватись українською та англійською мовами" },
+      ]);
+    });
   });
 
   describe("Edge cases", () => {

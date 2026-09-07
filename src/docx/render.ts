@@ -123,6 +123,12 @@ const parser = expressionParser.configure({
         if (!input) return input;
         if (Array.isArray(input)) return input.map(n => shortenAcademicTitle(n))
         return shortenAcademicTitle(input);
+      },
+      withIndex(input) {
+        if (Array.isArray(input)) return input.map((itm, idx) => 
+          (typeof itm === 'object' && itm !== null) ? Object.assign({}, itm, {index: idx + 1}) : itm
+        )
+        return input;
       }
   }
 });
