@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash, faPen, faTable } from "@fortawesome/free-solid-svg-icons";
 import type { Teacher } from "@/stores/models";
 import { loadAllTeachers, deleteTeacher } from "../teachers";
 import { Title, Stack, Group, Paper, Text, ActionIcon, Tooltip, Box } from "@mantine/core";
@@ -48,6 +48,11 @@ export default function TeachersList() {
                   <Text size="sm" c="dimmed" truncate>{t.email}</Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">
+                  <Tooltip label="Табель">
+                    <ActionIcon variant="subtle" onClick={() => navigate(`/teachers/${t.id}/timesheet`)}>
+                      <FontAwesomeIcon icon={faTable} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Редагувати">
                     <ActionIcon variant="subtle" onClick={() => navigate(`/teachers/${t.id}`)}>
                       <FontAwesomeIcon icon={faPen} />

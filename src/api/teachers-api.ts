@@ -1,6 +1,18 @@
 import type { Teacher } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { teachersService } from "@/services/teachers-service";
+import { renderTimesheetDoc, type TimesheetPrintData } from "@/docx/timesheet";
+
+const timesheetDocxResponse = (document: ArrayBuffer, filename: string) => {
+  const utf8Filename = encodeURIComponent(filename);
+  return new Response(document, {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      // HTTP headers must be ASCII. filename* carries the original Ukrainian name.
+      "Content-Disposition": `attachment; filename="timesheet.docx"; filename*=UTF-8''${utf8Filename}`,
+    },
+  });
+};
 
 const teachersApi = {
   "/api/teachers": {
@@ -62,6 +74,23 @@ const teachersApi = {
       if (!/^\d{4}-\d{2}$/.test(period)) return new Response("Invalid timesheet period", { status: 400 });
       const data = await req.json() as Record<string, unknown>;
       return Response.json(await teachersService.saveTeacherTimesheet(Number(id), period, data));
+    },
+  },
+  "/api/teachers/:id/timesheet.docx": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const teacher = await teachersService.getTeacherById(Number(id));
+      if (!teacher) return new Response("Teacher not found", { status: 404 });
+
+      try {
+        const data = await req.json() as TimesheetPrintData;
+        const document = await renderTimesheetDoc({ ...data, teacher: teacher });
+        const filename = `Табель ${teacher.name} ${data.month} ${data.year}.docx`.replace(/[\\/:*?"<>|]/g, "-");
+        return timesheetDocxResponse(document, filename);
+      } catch (error) {
+        console.error("Failed to render timesheet DOCX", error);
+        return new Response(error instanceof Error ? error.message : "Failed to render timesheet DOCX", { status: 500 });
+      }
     },
   },
   "/api/teachers/:id/refresh-publications": {

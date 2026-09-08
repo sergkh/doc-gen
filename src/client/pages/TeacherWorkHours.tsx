@@ -180,6 +180,8 @@ const formatDuration = (minutes: number) => {
   return `${Math.floor(normalized / 60)}:${String(normalized % 60).padStart(2, "0")}`;
 };
 
+const formatNonZeroDuration = (minutes: number) => minutes > 0 ? formatDuration(minutes) : "";
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const allocateWorkloadSlots = (items: ScheduleItem[]) => {
@@ -240,6 +242,7 @@ export function App() {
   const [directoryState, setDirectoryState] = useState<LoadState>("idle");
   const [isSavingMkr, setIsSavingMkr] = useState(false);
   const [isSavingTimesheet, setIsSavingTimesheet] = useState(false);
+  const [isGeneratingDocx, setIsGeneratingDocx] = useState(false);
   const [timesheetState, setTimesheetState] = useState<"loading" | "new" | "saved">("loading");
   const [preserveSavedWorkHours, setPreserveSavedWorkHours] = useState(false);
   const [reportState, setReportState] = useState<LoadState>("idle");
@@ -633,6 +636,84 @@ export function App() {
     organizational: firstHalfTotals.organizational + secondHalfTotals.organizational,
   };
 
+  const makePrintSummary = (items: DailyWorkload[]) => {
+    const totals = totalForDays(items);
+    return {
+      no: "",
+      slots: [0, 1, 2, 3, 4].map((slot) => formatNonZeroDuration(items.reduce((sum, item) => sum + (item.slots[slot] ?? 0), 0) * 60)),
+      teaching: formatNonZeroDuration(totals.teaching),
+      science: formatNonZeroDuration(totals.science),
+      method: formatNonZeroDuration(totals.methodical),
+      org: formatNonZeroDuration(totals.organizational),
+      total: formatNonZeroDuration(totals.teaching + totals.science + totals.methodical + totals.organizational),
+      explanation: "",
+    };
+  };
+
+  const downloadTimesheetDocx = async (advanceOnly: boolean = false) => {
+    if (!teacher) return;
+
+    const firstHalfTotal = makePrintSummary(monthlyWorkload.slice(0, 15));
+    const secondHalfTotal = makePrintSummary(monthlyWorkload.slice(15));
+    const total = makePrintSummary(monthlyWorkload);
+    const days = monthlyWorkload.map((item) => {
+      const work = resolvedWorkByDay.get(item.day) ?? { science: 0, methodical: 0, organizational: 0 };
+      const teaching = Math.round(item.total * 60);
+      return {
+        no: String(item.day),
+        l1: item.slots[0] !== undefined ? (item.isDayOff ? "" : formatNonZeroDuration(item.slots[0] * 60)) : "",
+        l2: item.slots[1] !== undefined ? (item.isDayOff ? "" : formatNonZeroDuration(item.slots[1] * 60)) : "",
+        l3: item.slots[2] !== undefined ? (item.isDayOff ? "" : formatNonZeroDuration(item.slots[2] * 60)) : "",
+        l4: item.slots[3] !== undefined ? (item.isDayOff ? "" : formatNonZeroDuration(item.slots[3] * 60)) : "",
+        l5: item.slots[4] !== undefined ? (item.isDayOff ? "" : formatNonZeroDuration(item.slots[4] * 60)) : "",
+        teaching: item.isDayOff ? "" : formatNonZeroDuration(teaching),
+        science: item.isDayOff ? "" : formatNonZeroDuration(work.science),
+        method: item.isDayOff ? "" : formatNonZeroDuration(work.methodical),
+        org: item.isDayOff ? "" : formatNonZeroDuration(work.organizational),
+        total: item.isDayOff ? "вх" : formatDuration(teaching + work.science + work.methodical + work.organizational),
+        explanation: "",
+      };
+    });
+
+    const emptySummary = { no: "", l1: "", l2: "", l3: "", l4: "", l5: "", teaching: "", science: "", method: "", organizational: "", total: "", explanation: "" };
+    const printDays = advanceOnly
+      ? days.map((day, index) => index < 15 ? day : { ...day, ...emptySummary, explanation: "" })
+      : days;
+    const firstHalf = printDays.slice(0, 15);
+    const secondHalf = printDays.slice(15);
+
+    setIsGeneratingDocx(true);
+    try {
+      const response = await fetch(`/api/teachers/${teacher.id}/timesheet.docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacher,
+          month: getMonthLabel(startDate),
+          year: selectedYear,
+          first: firstHalf,
+          second: secondHalf,
+          firstHalfTotal,
+          secondHalfTotal: advanceOnly ? emptySummary : secondHalfTotal,
+          total: advanceOnly ? emptySummary : total,
+        }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${advanceOnly ? "Табель аванс" : "Табель"} ${teacher.name} ${reportMonth}.docx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не вдалося сформувати документ Word");
+    } finally {
+      setIsGeneratingDocx(false);
+    }
+  };
+
   const renderDurationInputs = (day: number, type: keyof WorkHours, minutes: number, disabled: boolean) => (
     <Group className="work-duration" gap={2} wrap="nowrap">
       <NumberInput
@@ -711,7 +792,8 @@ export function App() {
             <Button leftSection={<FontAwesomeIcon icon={faFloppyDisk} />} onClick={saveTimesheet} loading={isSavingTimesheet} disabled={reportState !== "ready"}>
               Зберегти
             </Button>
-            <Tooltip label="Надрукувати сформований звіт"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => window.print()} disabled={!sortedSchedule.length}>Друк</Button></Tooltip>
+            <Tooltip label="Завантажити табель у Word"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => downloadTimesheetDocx()} loading={isGeneratingDocx} disabled={reportState !== "ready"}>Друк</Button></Tooltip>
+            <Tooltip label="Завантажити авансовий табель за 1–15 дні"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => downloadTimesheetDocx(true)} loading={isGeneratingDocx} disabled={reportState !== "ready"}>Друк аванс</Button></Tooltip>
           </Group>
         </Group>
 
