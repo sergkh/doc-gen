@@ -186,13 +186,12 @@ function TopicItem({
 const hoursOptions = (vals: number[], suffix: string) =>
   vals.map((v) => ({ value: String(v), label: `${v} ${suffix}` }));
 
-const FULLTIME_HOURS_OPTS = hoursOptions([2, 4, 6, 8], "год.");
-const PRACTICAL_OPTS = hoursOptions([0, 2, 4, 6, 8], "год.");
-const SRS_OPTS = hoursOptions([0, 2, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18], "год.");
-const INABS_HOURS_OPTS = hoursOptions([0, 1, 2, 4, 6, 8], "год.");
+const FULLTIME_HOURS_OPTS = hoursOptions([1, 2, 3, 4, 6, 8], "год.");
+const PRACTICAL_OPTS = hoursOptions([0, 1, 2, 3, 4, 6, 8], "год.");
+const SRS_OPTS = hoursOptions([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18], "год.");
+const INABS_HOURS_OPTS = hoursOptions([0, 1, 2, 3, 4, 5, 6, 8], "год.");
 const ATTESTATION_INDEXES = Array.from({ length: 8 }, (_, index) => index + 1);
-const ATTESTATION_OPTS = ATTESTATION_INDEXES
-  .map((value) => ({ value: String(value), label: String(value) }));
+const ATTESTATION_OPTS = ATTESTATION_INDEXES.map((value) => ({ value: String(value), label: String(value) }));
 
 // ─── Topic form (shared for new & edit) ──────────────────────────────────────
 interface TopicFormProps {
