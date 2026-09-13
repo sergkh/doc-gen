@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import type { Course, CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { loadAllSpecialties, loadSpecialty } from "../specialties";
 import { loadResultsBySpecialty } from "../results";
-import { formatDisciplineCode, loadAllCourses } from "../courses";
+import { formatDisciplineCode, loadCoursesBySpecialty } from "../courses";
 import {
   Title,
   Stack,
@@ -71,31 +71,34 @@ export default function ResultsMatrix() {
   }, []);
 
   useEffect(() => {
-    setIsLoadingCourses(true);
-    loadAllCourses()
-      .then(setCourses)
-      .catch(() => toast.error("Не вдалося завантажити дисципліни"))
-      .finally(() => setIsLoadingCourses(false));
-  }, []);
-
-  useEffect(() => {
     if (!selectedSpecialtyId) {
       setSelectedSpecialty(null);
       setResults([]);
+      setCourses([]);
       return;
     }
     setIsLoadingSpecialty(true);
-    Promise.all([loadSpecialty(selectedSpecialtyId), loadResultsBySpecialty(Number(selectedSpecialtyId))])
-      .then(([specialty, specialtyResults]) => {
+    setIsLoadingCourses(true);
+    Promise.all([
+      loadSpecialty(selectedSpecialtyId),
+      loadResultsBySpecialty(Number(selectedSpecialtyId)),
+      loadCoursesBySpecialty(Number(selectedSpecialtyId)),
+    ])
+      .then(([specialty, specialtyResults, specialtyCourses]) => {
         setSelectedSpecialty(specialty);
         setResults(specialtyResults);
+        setCourses(specialtyCourses);
       })
       .catch(() => {
         toast.error("Не вдалося завантажити дані спеціальності");
         setSelectedSpecialty(null);
         setResults([]);
+        setCourses([]);
       })
-      .finally(() => setIsLoadingSpecialty(false));
+      .finally(() => {
+        setIsLoadingSpecialty(false);
+        setIsLoadingCourses(false);
+      });
   }, [selectedSpecialtyId]);
 
   const disciplineRows: MatrixRow[] = useMemo(() => {
