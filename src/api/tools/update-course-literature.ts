@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { coursesService } from "@/services/courses-service";
 import { getSessionContext, toolResult, ZodContext } from "./session-context";
+import { fixAItext } from "@/ai/common";
 
 const ZodInput = z.object({
   main: z.array(z.string()).default([]),
@@ -35,7 +36,7 @@ const ZodOutput = z.object({
 type Input = z.infer<typeof ZodInput>;
 
 function normalizeList(list: string[]): string[] {
-  const normalized = list.map((v) => v.trim()).filter(Boolean);
+  const normalized = list.map((v) => fixAItext(v.trim())).filter(Boolean);
   return Array.from(new Set(normalized));
 }
 

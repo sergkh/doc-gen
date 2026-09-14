@@ -1,4 +1,3 @@
-import { text } from "node_modules/cheerio/dist/esm/api/manipulation";
 import OpenAI from "openai";
 
 export function createOpenAIClient(apiKey?: string | null): OpenAI {

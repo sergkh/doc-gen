@@ -3,6 +3,7 @@ import type { McpServer, ServerContext } from "@modelcontextprotocol/server";
 import { coursesService } from "@/services/courses-service";
 import { getSessionContext, toolResult, type ToolResult } from "./session-context";
 import type { CoursePractice, CourseTopicData, GeneratedTopicData } from "@/stores/models";
+import { fixAItext } from "@/ai/common";
 
 const PracticeInput = z.object({
   name: z.string().min(1, "Вкажіть назву практичного заняття"),
@@ -92,7 +93,7 @@ export function registerUpdateCourseTopics(server: McpServer) {
         args.topics.map((topic) => ({
           course_id: current.course!.id,
           index: topic.index,
-          name: topic.name,
+          name: fixAItext(topic.name),
           lection: topic.lection,
           data: topic.data,
           generated: topic.generated

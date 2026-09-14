@@ -4,6 +4,7 @@ import { courses, specialties, teachers } from "@/stores/db";
 import { getSessionContext, setSessionCourse, toolResult, type ToolResult } from "./session-context";
 import type { Course, CourseData } from "@/stores/models";
 import { coursesService } from "@/services/courses-service";
+import { fixAItext } from "@/ai/common";
 
 const ZodInput = z.object({
   name: z.string().min(1, "Вкажіть назву курсу"),
@@ -26,7 +27,6 @@ const ZodInput = z.object({
   year: z.number().int().positive().default(1),
   semesters: z.array(z.number().int().positive()).min(1).default([1]),
   attestationsCount: z.number().int().positive().default(2),
-  confirm: z.boolean().default(false),
   description: z.string().min(1, "Вкажіть опис курсу")
 });
 
@@ -82,10 +82,6 @@ export function registerCreateCourse(server: McpServer) {
         return toolResult(`Викладача не знайдено за вказаним ПІБ: ${args.teacherName}`, current, "not_found");
       }
 
-      if (!args.confirm) {
-        return toolResult("Підтвердіть створення курсу: confirm=true", current, "missing_input");
-      }
-
       const optional = args.optional ?? /(^вк|вибір|^vk)/i.test(args.code.trim());
       const hasLabs = (args.hours.labs ?? 0) > 0;
       const hasPractice = (args.hours.practice ?? 0) > 0;
@@ -136,7 +132,7 @@ export function registerCreateCourse(server: McpServer) {
       } as CourseData;
 
       const insertPayload = {
-        name: args.name,
+        name: fixAItext(args.name),
         teacher_id: teacher.id,
         specialty_id: specialty.id,
         data: courseData,
