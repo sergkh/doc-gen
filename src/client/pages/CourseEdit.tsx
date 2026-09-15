@@ -455,6 +455,7 @@ export default function CourseEdit() {
             label="Назва"
             value={item.name}
             onChange={(e) => update({ name: e.currentTarget.value })}
+            onBlur={(e) => update({ name: e.currentTarget.value.trim() })}
           />
 
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -555,6 +556,7 @@ export default function CourseEdit() {
             label="Додатковий опис"
             value={item.data.description}
             onChange={(e) => updateData({ description: e.currentTarget.value })}
+            onBlur={(e) => updateData({ description: e.currentTarget.value.trim() })}
             autosize
             minRows={3}
           />
