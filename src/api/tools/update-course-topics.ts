@@ -7,7 +7,7 @@ import { fixAItext } from "@/ai/common";
 
 const PracticeInput = z.object({
   name: z.string().min(1, "Вкажіть назву практичного заняття"),
-  description: z.string().min(1, "Додайте короткий опис практичного заняття"),
+  description: z.string().default(""),
 }) as z.ZodType<CoursePractice>;
 
 const AttestationInput = z.object({

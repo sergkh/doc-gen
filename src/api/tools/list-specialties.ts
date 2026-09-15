@@ -10,6 +10,7 @@ const ZodOutput = z.object({
       code: z.string(),
       name: z.string(),
       area: z.string(),
+      degree: z.enum(["bachelor", "master"])
     })
   ),
   count: z.number(),
@@ -40,6 +41,7 @@ export function registerListSpecialties(server: McpServer) {
           code: spec.code,
           name: spec.name,
           area: spec.area,
+          degree: spec.degree
         }));
 
         const message = `Знайдено ${items.length} спеціальностей.`;
