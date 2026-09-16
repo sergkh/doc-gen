@@ -105,6 +105,16 @@ mock.module("@/ai/generator", () => ({
   runTopicPrompts: mockRunTopicPrompts,
 }));
 
+const mockStartCoursePrompt = mock(() => Promise.resolve({ responseId: "resp-course", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockStartTopicPrompt = mock(() => Promise.resolve({ responseId: "resp-topic", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockPollPromptResponse = mock(() => Promise.resolve({ status: "generating" }));
+
+mock.module("@/ai/background-prompt", () => ({
+  startCoursePrompt: mockStartCoursePrompt,
+  startTopicPrompt: mockStartTopicPrompt,
+  pollPromptResponse: mockPollPromptResponse,
+}));
+
 function makePOST(path: string, body?: any) {
   return {
     params: {} as Record<string, string>,
@@ -141,6 +151,9 @@ describe("generationApi", () => {
     mockRenderHandlebarsText.mockClear();
     mockRunCoursePrompts.mockClear();
     mockRunTopicPrompts.mockClear();
+    mockStartCoursePrompt.mockClear();
+    mockStartTopicPrompt.mockClear();
+    mockPollPromptResponse.mockClear();
 
   });
 
@@ -236,31 +249,33 @@ describe("generationApi", () => {
       expect(body.error).toContain("Промпт не містить обов'язкових полів");
     });
 
-    it("should run prompt and return result", async () => {
+    it("should start a prompt job and return its ID", async () => {
       mockCoursesGet.mockReturnValueOnce(Promise.resolve({ id: 1, name: "Course", topics: [{ id: 1 }], data: {} }));
-      mockRunCoursePrompts.mockReturnValueOnce(Promise.resolve([{ field: "description", result: "Generated description" }]));
       const req = makePOST("/api/courses/1/run-prompt", {
-        prompt: { field: "description", system_prompt: "System", prompt: "Generate description" },
+        prompt: { field: "description", type: "course", format: "text", model: "gpt-4o", system_prompt: "System", prompt: "Generate description" },
         apiKey: "test-key",
       });
       matchParams(req, { courseId: "1" });
       const resp = await route().POST(req);
-      expect(resp.status).toBe(200);
+      expect(resp.status).toBe(202);
       const body = await resp.json();
-      expect(body).toEqual({ field: "description", result: "Generated description" });
+      expect(body.status).toBe("queued");
+      expect(typeof body.jobId).toBe("string");
+      expect(body.jobId).not.toBe("undefined");
+      expect(mockStartCoursePrompt).toHaveBeenCalled();
     });
 
-    it("should return error when runPrompt returns empty", async () => {
+    it("should return an error when starting the job fails", async () => {
       mockCoursesGet.mockReturnValueOnce(Promise.resolve({ id: 1, name: "Course", topics: [{ id: 1 }], data: {} }));
-      mockRunCoursePrompts.mockReturnValueOnce(Promise.resolve([]));
+      mockStartCoursePrompt.mockRejectedValueOnce(new Error("API error"));
       const req = makePOST("/api/courses/1/run-prompt", {
-        prompt: { field: "description", system_prompt: "System", prompt: "Generate" },
+        prompt: { field: "description", type: "course", format: "text", model: "gpt-4o", system_prompt: "System", prompt: "Generate" },
       });
       matchParams(req, { courseId: "1" });
       const resp = await route().POST(req);
-      expect(resp.status).toBe(200);
+      expect(resp.status).toBe(500);
       const body = await resp.json();
-      expect(body.error).toBe("Не вдалося згенерувати результат");
+      expect(body.error).toBe("API error");
     });
   });
 
@@ -313,43 +328,77 @@ describe("generationApi", () => {
       expect(body.error).toBe("Тему не знайдено");
     });
 
-    it("should run topic prompt and return result", async () => {
+    it("should start a topic prompt job and return its ID", async () => {
       mockCoursesGet.mockReturnValueOnce(Promise.resolve(sampleCourse));
-      mockRunTopicPrompts.mockReturnValueOnce(Promise.resolve([{ field: "content", result: "Generated content" }]));
       const req = makePOST("/api/courses/1/topics/5/run-prompt", {
-        prompt: { field: "content", system_prompt: "S", prompt: "P" },
+        prompt: { field: "content", type: "topic", format: "text", model: "gpt-4o", system_prompt: "S", prompt: "P" },
       });
       matchParams(req, { courseId: "1", topicId: "5" });
       const resp = await route().POST(req);
-      expect(resp.status).toBe(200);
+      expect(resp.status).toBe(202);
       const body = await resp.json();
-      expect(body).toEqual({ field: "content", result: "Generated content" });
+      expect(body.status).toBe("queued");
+      expect(mockStartTopicPrompt).toHaveBeenCalled();
     });
 
-    it("should return error when topic prompt returns no results", async () => {
+    it("should return an error when starting the topic job fails", async () => {
       mockCoursesGet.mockReturnValueOnce(Promise.resolve(sampleCourse));
-      mockRunTopicPrompts.mockReturnValueOnce(Promise.resolve([]));
+      mockStartTopicPrompt.mockRejectedValueOnce(new Error("API error"));
       const req = makePOST("/api/courses/1/topics/5/run-prompt", {
-        prompt: { field: "content", system_prompt: "S", prompt: "P" },
-      });
-      matchParams(req, { courseId: "1", topicId: "5" });
-      const resp = await route().POST(req);
-      expect(resp.status).toBe(200);
-      const body = await resp.json();
-      expect(body.error).toBe("Не вдалося згенерувати результат");
-    });
-
-    it("should return 500 when runTopicPrompts throws", async () => {
-      mockCoursesGet.mockReturnValueOnce(Promise.resolve(sampleCourse));
-      mockRunTopicPrompts.mockRejectedValueOnce(new Error("API error"));
-      const req = makePOST("/api/courses/1/topics/5/run-prompt", {
-        prompt: { field: "content", system_prompt: "S", prompt: "P" },
+        prompt: { field: "content", type: "topic", format: "text", model: "gpt-4o", system_prompt: "S", prompt: "P" },
       });
       matchParams(req, { courseId: "1", topicId: "5" });
       const resp = await route().POST(req);
       expect(resp.status).toBe(500);
       const body = await resp.json();
       expect(body.error).toBe("API error");
+    });
+
+  });
+
+  describe("GET /api/prompt-generation-jobs/:jobId", () => {
+    const route = () => generationApi["/api/prompt-generation-jobs/:jobId"];
+    it("returns the completed structured result", async () => {
+      const course = {
+        id: 1,
+        name: "Course",
+        topics: [{ id: 5, name: "Topic", index: 1, data: { fulltime: { hours: 2, practical_hours: 0, srs_hours: 0 }, inabscentia: { hours: 0, practical_hours: 0, srs_hours: 0 } }, generated: {} }],
+        data: {},
+      };
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      const startRequest = makePOST("/api/courses/1/topics/5/run-prompt", {
+        prompt: { field: "content", type: "topic", format: "text", model: "gpt-4o", system_prompt: "System", prompt: "Prompt" },
+      });
+      matchParams(startRequest, { courseId: "1", topicId: "5" });
+      const startResponse = await generationApi["/api/courses/:courseId/topics/:topicId/run-prompt"].POST(startRequest);
+      const { jobId } = await startResponse.json();
+      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ status: "completed", item: "Generated content" }));
+      const req = makeGET("/api/prompt-generation-jobs/test");
+      matchParams(req, { jobId });
+      const resp = await route().GET(req);
+      expect(resp.status).toBe(200);
+      const body = await resp.json();
+      expect(body).toMatchObject({ status: "completed", result: "Generated content", field: "content" });
+
+      const retainedRequest = makeGET(`/api/prompt-generation-jobs/${jobId}`);
+      matchParams(retainedRequest, { jobId });
+      const retainedResponse = await route().GET(retainedRequest);
+      expect(await retainedResponse.json()).toMatchObject({ status: "completed", result: "Generated content" });
+      expect(mockPollPromptResponse).toHaveBeenCalledTimes(1);
+    });
+
+    it("recovers a job on another in-memory instance from the browser reference", async () => {
+      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ status: "completed", item: "Recovered content" }));
+      const req = makeGET("/api/prompt-generation-jobs/recovered");
+      req.headers = new Headers({
+        "X-Prompt-Response-Id": "resp-recovered",
+        "X-Prompt-Format": "text",
+        "X-Prompt-Field": "content",
+      });
+      matchParams(req, { jobId: "recovered" });
+      const resp = await route().GET(req);
+      expect(resp.status).toBe(200);
+      expect(await resp.json()).toMatchObject({ status: "completed", result: "Recovered content", field: "content" });
     });
   });
 

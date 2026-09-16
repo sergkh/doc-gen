@@ -258,6 +258,8 @@ export type Template = {
   file: string,
   file_exists?: boolean,
   data: {
+    /** Human-readable explanation of the template, when configured. */
+    description?: string,
     parameters?: TemplateParameter[],
     /** Templates whose prompts must be generated before this template. */
     dependencies?: number[]

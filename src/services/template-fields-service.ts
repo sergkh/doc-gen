@@ -22,6 +22,20 @@ export type TemplateFieldResult = {
   message?: string;
 };
 
+export type GeneratedTemplateField = {
+  templateId: number;
+  templateName: string;
+  templateDescription: string | null;
+  field: string;
+  description: string;
+  scope: "course" | "topic";
+  topicIndex?: number;
+  topicName?: string;
+  currentValue: unknown | null;
+  outputSchema: Record<string, unknown>;
+  dependsOn: TemplateFieldDependency[];
+};
+
 const BUILT_IN_CONTEXT_FIELDS = new Set([
   "courseName", "courseDescription", "name", "lection", "topics", "subtopics", "course", "hours",
 ]);
@@ -187,6 +201,34 @@ export function getFillableTemplateFields(template: Template, course: Course) {
         outputSchema: outputSchemaForPrompt(prompt),
       }];
     });
+  });
+}
+
+/**
+ * Lists every generated field defined by a template, rather than only fields
+ * that are currently ready to be generated. Topic fields are listed once for
+ * each existing course topic because their values are stored per topic.
+ */
+export function getGeneratedTemplateFields(template: Template, course: Course): GeneratedTemplateField[] {
+  const courseGenerated: Record<string, unknown> = course.generated ?? {};
+  const templateDescription = template.data?.description ?? null;
+
+  return template.prompts.flatMap((prompt) => {
+    const targets = prompt.type === "course" ? [undefined] : course.topics ?? [];
+    return targets.map((topic) => ({
+      templateId: template.id,
+      templateName: template.name,
+      templateDescription,
+      field: prompt.field,
+      description: prompt.name || prompt.field,
+      scope: prompt.type,
+      ...(topic ? { topicIndex: topic.index, topicName: topic.name } : {}),
+      currentValue: (prompt.type === "course"
+        ? courseGenerated[prompt.field]
+        : topic?.generated?.[prompt.field]) ?? null,
+      outputSchema: outputSchemaForPrompt(prompt),
+      dependsOn: getPromptDependencies(template, prompt),
+    }));
   });
 }
 

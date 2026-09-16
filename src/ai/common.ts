@@ -65,7 +65,7 @@ export async function retryWithBackoff<T>(
 }
 
 function fixAiStr(text: string): string {
-  return text.replaceAll('—', '–');
+  return text.replaceAll('—', '–').replaceAll('\n\n', '\n');
 }
 
 // Fixes AI text replacing common AI markings

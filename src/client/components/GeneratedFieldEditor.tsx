@@ -4,6 +4,7 @@ import { faPlus, faTrash, faRotateRight, faWandMagicSparkles } from "@fortawesom
 import type { Prompt, QuizQuestion } from "@/stores/models";
 import QuizEditor from "./QuizEditor";
 import toast from "react-hot-toast";
+import { startPromptGeneration, waitForPromptGeneration } from "@/client/prompt-generation";
 import {
   Stack,
   Group,
@@ -66,17 +67,11 @@ export default function GeneratedFieldEditor({
     try {
       let endpoint = `/api/courses/${courseId}/run-prompt`;
       if (topicId) endpoint = `/api/courses/${courseId}/topics/${topicId}/run-prompt`;
-      const r = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: { ...prompt, type: topicId ? "topic" : "course" }, ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}) }),
-      });
-      if (!r.ok) throw new Error((await r.text()) || "Не вдалося згенерувати елементи");
-      const data = await r.json();
-      if (data.item && Array.isArray(data.item)) {
-        if (format === "list") onChange([...listValue, ...data.item.filter((i: any) => typeof i === "string")]);
-        else if (format === "quiz") onChange([...quizValue, ...data.item.filter((i: any) => i?.question && Array.isArray(i.options) && typeof i.answerIndex === "number")]);
-      }
+      const job = await startPromptGeneration(endpoint, { ...prompt, type: topicId ? "topic" : "course" }, apiKey);
+      const data = await waitForPromptGeneration(job, undefined, apiKey);
+      if (format === "text" && typeof data.item === "string") onChange(data.item);
+      else if (format === "list" && Array.isArray(data.item)) onChange([...listValue, ...data.item.filter((i: any) => typeof i === "string")]);
+      else if (format === "quiz" && Array.isArray(data.item)) onChange([...quizValue, ...data.item.filter((i: any) => i?.question && Array.isArray(i.options) && typeof i.answerIndex === "number")]);
     } catch (error) {
       toast.error(`Не вдалося згенерувати: ${error instanceof Error ? error.message : "Unknown error"}`);
     }

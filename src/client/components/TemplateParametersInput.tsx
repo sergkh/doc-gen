@@ -161,6 +161,7 @@ export default function TemplateParametersInput({
           value={paramValue || ""}
           onChange={(val) => updateParameterValue(param.name, val || undefined)}
           disabled={disabled}
+          autoComplete="off"
         />
       );
     }
@@ -299,6 +300,7 @@ export default function TemplateParametersInput({
         value={paramValue || ""}
         onChange={(e) => updateParameterValue(param.name, e.currentTarget.value || undefined)}
         disabled={disabled}
+        autoComplete="off"
       />
     );
   };

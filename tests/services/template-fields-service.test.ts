@@ -4,6 +4,7 @@ import {
   applyTemplateFields,
   buildTemplateManifest,
   getFillableTemplateFields,
+  getGeneratedTemplateFields,
 } from "@/services/template-fields-service";
 
 function prompt(field: string, type: "course" | "topic" = "course", dependency?: string): Prompt {
@@ -139,5 +140,38 @@ describe("applyTemplateFields", () => {
   it("returns only currently fillable fields", () => {
     const definition = template([prompt("summary"), prompt("objectives", "course", "summary")]);
     expect(getFillableTemplateFields(definition, course()).map((item) => item.field)).toEqual(["summary"]);
+  });
+
+  it("lists all course and topic fields with their current values", () => {
+    const definition = template([prompt("summary"), prompt("keywords", "topic")]);
+    definition.data.description = "Template description";
+    const data = course();
+    data.generated = { programSubject: "", summary: "Existing summary" };
+    data.topics![0]!.generated = { keywords: ["existing"] };
+
+    expect(getGeneratedTemplateFields(definition, data)).toEqual([
+      expect.objectContaining({
+        templateId: 7,
+        templateName: "Test template",
+        templateDescription: "Template description",
+        field: "summary",
+        description: "summary",
+        scope: "course",
+        currentValue: "Existing summary",
+      }),
+      expect.objectContaining({
+        field: "keywords",
+        scope: "topic",
+        topicIndex: 1,
+        topicName: "Topic 1",
+        currentValue: ["existing"],
+      }),
+      expect.objectContaining({
+        field: "keywords",
+        scope: "topic",
+        topicIndex: 2,
+        currentValue: null,
+      }),
+    ]);
   });
 });

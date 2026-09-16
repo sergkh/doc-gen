@@ -255,7 +255,7 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
           <Text fw={600}>{title}</Text>
           <Group gap="xs">
             <Button variant="default" aria-label="Скасувати редагування теми" onClick={onCancel}>Скасувати</Button>
-            <Button aria-label="Зберегти тему" onClick={onSave}>Зберегти</Button>
+            <Button aria-label="Зберегти тему" onClick={onSave}>ОК</Button>
           </Group>
         </Group>
 

@@ -368,6 +368,7 @@ export default function GeneratorPage() {
           onChange={(e) => handleApiKeyChange(e.currentTarget.value)}
           disabled={isGenerating}
           placeholder="Ключ API OpenAI"
+          autoComplete="off"
           maw={480}
         />
         <Text size="sm" c="dimmed">

@@ -1,10 +1,10 @@
 import { renderDoc, renderHandlebarsText } from "@/docx/render";
 import { courses, specialties, templates } from "@/stores/db";
-import type { Course, GeneratedTopicData, Prompt, Template, CourseTopic } from "@/stores/models";
+import type { Course, GeneratedTopicData, Prompt, PromptResult, Template, CourseTopic } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
-import { runTopicPrompts } from "@/ai/generator";
 import { coursesService } from "@/services/courses-service";
+import { pollPromptResponse, startCoursePrompt, startTopicPrompt } from "@/ai/background-prompt";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -18,6 +18,27 @@ interface Job {
 }
 
 const jobs = new Map<string, Job>();
+
+type PromptGenerationJobStatus = "queued" | "generating" | "completed" | "error";
+
+interface PromptGenerationJob {
+  id: string;
+  courseId: number;
+  topicIndex: number | null;
+  field: string;
+  format: Prompt["format"];
+  model: string;
+  openaiResponseId: string;
+  systemPrompt: string;
+  userPrompt: string;
+  status: PromptGenerationJobStatus;
+  result?: PromptResult["item"];
+  error?: string;
+  finishedAt?: number;
+}
+
+const promptGenerationJobs = new Map<string, PromptGenerationJob>();
+const PROMPT_JOB_TTL_MS = 5 * 60 * 1000;
 
 function generateJobId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -34,6 +55,58 @@ function wordResp(file: ArrayBuffer, name: string = "result.docx"): Response {
 
 function jsonError(message: string, status: number = 400): Response {
   return Response.json({ error: message }, { status });
+}
+
+function requestApiKey(req: Request): string | undefined {
+  return req.headers?.get("X-OpenAI-Api-Key")?.trim() || undefined;
+}
+
+function recoverPromptJob(req: Request, jobId: string): PromptGenerationJob | null {
+  const responseId = req.headers.get("X-Prompt-Response-Id")?.trim();
+  const format = req.headers.get("X-Prompt-Format");
+  const field = req.headers.get("X-Prompt-Field")?.trim();
+  if (!responseId || !field || (format !== "text" && format !== "list" && format !== "quiz")) return null;
+
+  return {
+    id: jobId,
+    courseId: 0,
+    topicIndex: null,
+    field,
+    format,
+    model: "",
+    openaiResponseId: responseId,
+    systemPrompt: "",
+    userPrompt: "",
+    status: "generating",
+  };
+}
+
+function isCompletePromptJob(job: PromptGenerationJob): boolean {
+  return job.status === "completed" || job.status === "error";
+}
+
+function pruneExpiredPromptJobs(): void {
+  const oldestAllowed = Date.now() - PROMPT_JOB_TTL_MS;
+  for (const [id, job] of promptGenerationJobs) {
+    if (job.finishedAt !== undefined && job.finishedAt < oldestAllowed) promptGenerationJobs.delete(id);
+  }
+}
+
+function rememberPromptJob(job: PromptGenerationJob): void {
+  pruneExpiredPromptJobs();
+  promptGenerationJobs.set(job.id, job);
+}
+
+function promptJobResponse(job: PromptGenerationJob): Response {
+  return Response.json({
+    id: job.id,
+    status: job.status,
+    field: job.field,
+    system_prompt: job.systemPrompt,
+    prompt: job.userPrompt,
+    result: job.result ?? null,
+    error: job.error ?? null,
+  });
 }
 
 async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string, parameters?: Record<string, any>) {
@@ -135,8 +208,38 @@ const generationApi = {
         return jsonError("Промпт не містить обов'язкових полів (field, system_prompt, prompt)", 400);
       }
 
-      const results = await coursesService.runPrompt(Number(courseId), prompt, apiKey);
-      return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) return jsonError("Дисципліну не знайдено", 404);
+      const topics = course.topics ?? [];
+      if (topics.length === 0) return jsonError("У дисципліни немає тем", 404);
+
+      try {
+        const started = await startCoursePrompt(prompt, course, topics, apiKey ?? requestApiKey(req));
+        const job: PromptGenerationJob = {
+          id: crypto.randomUUID(),
+          courseId: course.id,
+          topicIndex: null,
+          field: prompt.field,
+          format: prompt.format,
+          model: prompt.model,
+          openaiResponseId: started.responseId,
+          systemPrompt: started.systemPrompt,
+          userPrompt: started.userPrompt,
+          status: started.status,
+        };
+        rememberPromptJob(job);
+        return Response.json({
+          jobId: job.id,
+          status: job.status,
+          responseId: job.openaiResponseId,
+          field: job.field,
+          format: job.format,
+          system_prompt: job.systemPrompt,
+          prompt: job.userPrompt,
+        }, { status: 202 });
+      } catch (error) {
+        return jsonError(error instanceof Error ? error.message : "Не вдалося запустити генерацію", 500);
+      }
     }
   },
   "/api/courses/:courseId/topics/:topicId/run-prompt": {
@@ -173,16 +276,76 @@ const generationApi = {
         return jsonError("Тему не знайдено", 404);
       }
 
-      console.log(`Running prompt for topic: ${topic.name}, with prompt:`, prompt);
+      try {
+        const started = await startTopicPrompt(prompt, course, topic, allTopics, apiKey ?? requestApiKey(req));
+        const job: PromptGenerationJob = {
+          id: crypto.randomUUID(),
+          courseId: course.id,
+          topicIndex: topic.index,
+          field: prompt.field,
+          format: prompt.format,
+          model: prompt.model,
+          openaiResponseId: started.responseId,
+          systemPrompt: started.systemPrompt,
+          userPrompt: started.userPrompt,
+          status: started.status,
+        };
+        rememberPromptJob(job);
+        return Response.json({
+          jobId: job.id,
+          status: job.status,
+          responseId: job.openaiResponseId,
+          field: job.field,
+          format: job.format,
+          system_prompt: job.systemPrompt,
+          prompt: job.userPrompt,
+        }, { status: 202 });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Не вдалося запустити генерацію";
+        console.error("Start topic prompt error:", error);
+        return jsonError(message, 500);
+      }
+    }
+  },
+  "/api/prompt-generation-jobs/:jobId": {
+    async GET(req: BunRequest) {
+      const { jobId } = req.params as { jobId: string };
+      pruneExpiredPromptJobs();
+      const job = promptGenerationJobs.get(jobId) ?? recoverPromptJob(req, jobId);
+      if (!job) return jsonError("Завдання генерації не знайдено", 404);
+      rememberPromptJob(job);
+      if (isCompletePromptJob(job)) return promptJobResponse(job);
 
       try {
-        const results = await runTopicPrompts([prompt], course, topic, allTopics, apiKey ?? null, true);
-        console.log(`Prompt results for topic ${topic.name}:`, results);
-        return Response.json(results[0] ?? { error: "Не вдалося згенерувати результат" });
+        const result = await pollPromptResponse(job.openaiResponseId, job.format, requestApiKey(req));
+        if (result.status === "completed") {
+          job.status = "completed";
+          job.result = result.item;
+          job.finishedAt = Date.now();
+          return promptJobResponse(job);
+        }
+        if (result.status === "error") {
+          job.status = "error";
+          job.error = result.error;
+          job.finishedAt = Date.now();
+          return promptJobResponse(job);
+        }
+        if (result.status === "generating") job.status = "generating";
+        return Response.json({
+          id: job.id,
+          status: result.status,
+          field: job.field,
+          system_prompt: job.systemPrompt,
+          prompt: job.userPrompt,
+          result: null,
+          error: null,
+        });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Невідома помилка при виконанні промпту";
-        console.error("Run topic prompt error:", error);
-        return jsonError(message, 500);
+        const message = error instanceof Error ? error.message : "Не вдалося перевірити стан генерації";
+        job.status = "error";
+        job.error = message;
+        job.finishedAt = Date.now();
+        return promptJobResponse(job);
       }
     }
   },

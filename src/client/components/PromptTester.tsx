@@ -21,6 +21,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { DEFAULT_AGENT_MODEL } from "@/ai/models";
+import { startPromptGeneration, waitForPromptGeneration } from "@/client/prompt-generation";
 
 interface PromptTesterProps {
   prompt: Prompt;
@@ -273,13 +274,8 @@ export default function PromptTester({
     setSaveSuccess(false);
 
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: payload, ...(savedApiKey ? { apiKey: savedApiKey } : {}) }),
-      });
-      if (!response.ok) throw new Error(await extractErrorMessage(response, "Не вдалося протестувати промпт"));
-      setTestResult(await response.json() as PromptResult);
+      const job = await startPromptGeneration(endpoint, payload, savedApiKey ?? undefined);
+      setTestResult(await waitForPromptGeneration(job, undefined, savedApiKey ?? undefined));
     } catch (error) {
       setTestError(error instanceof Error ? error.message : "Сталася невідома помилка");
     } finally {
