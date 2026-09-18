@@ -26,6 +26,29 @@ interface TemplateParametersInputProps {
   onChange: (values: Record<string, any>) => void;
 }
 
+type SelectOption = { id: string | number; name: string; [key: string]: any };
+
+function normalizeOptions(data: unknown): SelectOption[] {
+  if (!Array.isArray(data)) return [];
+
+  const seenIds = new Set<string>();
+
+  return data.flatMap((item, index) => {
+    const option = typeof item === "object" && item !== null
+      ? {
+          ...item,
+          id: item.id ?? item.value ?? item.name ?? item.label ?? index,
+          name: item.name ?? item.label ?? String(item.id ?? item.value ?? index),
+        }
+      : { id: item, name: String(item) };
+    const id = String(option.id);
+
+    if (seenIds.has(id)) return [];
+    seenIds.add(id);
+    return [option];
+  });
+}
+
 export default function TemplateParametersInput({
   parameters,
   values,
@@ -33,9 +56,7 @@ export default function TemplateParametersInput({
   courseId,
   onChange,
 }: TemplateParametersInputProps) {
-  const [optionsCache, setOptionsCache] = useState<
-    Record<string, Array<{ id: string | number; name: string; [key: string]: any }>>
-  >({});
+  const [optionsCache, setOptionsCache] = useState<Record<string, SelectOption[]>>({});
   const [loadingOptions, setLoadingOptions] = useState<Record<string, boolean>>({});
 
   const resolveUrl = (url: string): string =>
@@ -53,14 +74,7 @@ export default function TemplateParametersInput({
             const response = await fetch(resolvedUrl);
             if (response.ok) {
               const data = await response.json();
-              const options = Array.isArray(data)
-                ? data.map((item: any) =>
-                    typeof item === "object" && item !== null && (item.id !== undefined || item.name !== undefined)
-                      ? item
-                      : { id: item.id ?? item.value ?? item, name: item.name ?? item.label ?? String(item) }
-                  )
-                : [];
-              setOptionsCache((prev) => ({ ...prev, [resolvedUrl]: options }));
+              setOptionsCache((prev) => ({ ...prev, [resolvedUrl]: normalizeOptions(data) }));
             } else {
               toast.error(`Помилка завантаження опцій для ${param.name}`);
             }
