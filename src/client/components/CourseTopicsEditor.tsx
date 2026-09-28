@@ -29,6 +29,7 @@ interface CourseTopicsEditorProps {
   coursePractType: "practice" | "lab",
   topics: CourseTopic[];
   onChange: (topics: CourseTopic[]) => void;
+  onOpenPracticeGenerated: (topics: CourseTopic[], topicIndex: number, practiceIndex: number) => Promise<void>;
 }
 
 type TopicFormState = {
@@ -63,6 +64,7 @@ interface TopicItemProps {
   topic: CourseTopic;
   courseId: number;
   practiceStartIndex: number;
+  onOpenPracticeGenerated: (topicIndex: number, practiceIndex: number) => void;
   coursePractType: "practice" | "lab";
   onEdit: (topic: CourseTopic) => void;
   onDelete: (topic: CourseTopic) => void;
@@ -76,7 +78,7 @@ interface TopicItemProps {
 }
 
 function TopicItem({
-  topic, courseId, practiceStartIndex,
+  topic, courseId, practiceStartIndex, onOpenPracticeGenerated,
   coursePractType,
   onEdit, onDelete,
   onUpdateAttestation, onUpdateFulltimeHours, onUpdatePracticalHours,
@@ -178,8 +180,9 @@ function TopicItem({
                         {practice.description ? ` — ${practice.description}` : ""}
                       </Text>
                       <Tooltip label="Згенеровані дані заняття">
-                        <ActionIcon size="xs" variant="subtle" aria-label={`Згенеровані дані заняття ${practiceIndex}`}
-                          onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/practices/${practiceIndex}/generated`)}>
+                        <ActionIcon size="xs" variant="subtle"
+                          disabled={courseId <= 0}
+                          onClick={() => onOpenPracticeGenerated(topic.index, practiceIndex)}>
                           <FontAwesomeIcon icon={faEdit} />
                         </ActionIcon>
                       </Tooltip>
@@ -222,9 +225,12 @@ interface TopicFormProps {
   onGeneratePractices: () => void;
   onSave: () => void;
   onCancel: () => void;
+  onOpenPracticeGenerated: (practicePosition: number) => void;
+  openingPracticeIndex: number | null;
+  canOpenPracticeGenerated: boolean;
 }
 
-function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, canGenerateSubtopics, generatingSubtopics, onGenerateSubtopics, canGeneratePractices, generatingPractices, onGeneratePractices, onSave, onCancel }: TopicFormProps) {
+function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDragging, canGenerateSubtopics, generatingSubtopics, onGenerateSubtopics, canGeneratePractices, generatingPractices, onGeneratePractices, onSave, onCancel, onOpenPracticeGenerated, openingPracticeIndex, canOpenPracticeGenerated }: TopicFormProps) {
   const handleFileDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     setIsDragging(false);
@@ -334,16 +340,28 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
                   <Text size="sm" fw={600}>
                     {coursePractType === "practice" ? "Практична робота" : "Лабораторна робота"} {index + 1}
                   </Text>
-                  <Tooltip label="Видалити заняття">
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      aria-label={`Видалити ${practiceLabel} ${index + 1}`}
-                      onClick={() => removePractice(index)}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </ActionIcon>
-                  </Tooltip>
+                  <Group gap="xs">
+                    <Tooltip label={canOpenPracticeGenerated ? "Зберегти курс і редагувати згенеровані дані" : "Спочатку збережіть курс"}>
+                      <ActionIcon
+                        variant="subtle"
+                        disabled={!canOpenPracticeGenerated || openingPracticeIndex !== null}
+                        loading={openingPracticeIndex === index}
+                        onClick={() => onOpenPracticeGenerated(index)}
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Видалити заняття">
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        aria-label={`Видалити ${practiceLabel} ${index + 1}`}
+                        onClick={() => removePractice(index)}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Group>
                 </Group>
                 <TextInput
                   label="Назва"
@@ -375,7 +393,7 @@ function TopicForm({ title, coursePractType, form, setForm, isDragging, setIsDra
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function CourseTopicsEditor({ courseId, courseTotalHours, topics, onChange, coursePractType }: CourseTopicsEditorProps) {
+export default function CourseTopicsEditor({ courseId, courseTotalHours, topics, onChange, onOpenPracticeGenerated, coursePractType }: CourseTopicsEditorProps) {
   // Topic position is mutable. Keep the drag identity in a WeakMap so it is
   // never attached to, or persisted with, the course topic data.
   const clientIds = useRef(new WeakMap<CourseTopic, number>());
@@ -402,6 +420,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
   const [aiTopicsLoading, setAiTopicsLoading] = useState(false);
   const [subtopicsLoading, setSubtopicsLoading] = useState(false);
   const [practicesLoading, setPracticesLoading] = useState(false);
+  const [openingPracticeIndex, setOpeningPracticeIndex] = useState<number | null>(null);
   const [generatedTopics, setGeneratedTopics] = useState<AIGeneratedTopic[] | null>(null);
 
   const resetForm = () => {
@@ -449,9 +468,9 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     fillFormFromTopic(topic);
   };
 
-  const handleSaveTopic = () => {
-    if (!editingTopic) return;
-    if (!form.name.trim()) { alert("Назва теми обов'язкова"); return; }
+  const buildSavedTopic = (): CourseTopic | null => {
+    if (!editingTopic) return null;
+    if (!form.name.trim()) { alert("Назва теми обов'язкова"); return null; }
     const practices = form.practices.map((practice) => ({
       ...practice,
       name: practice.name.trim(),
@@ -459,10 +478,10 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     }));
     if (practices.some((practice) => !practice.name)) {
       alert("Для кожного заняття вкажіть назву");
-      return;
+      return null;
     }
 
-    const saved: CourseTopic = {
+    return {
       ...editingTopic,
       name: form.name.trim(),
       lection: form.lection.trim(),
@@ -478,19 +497,51 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
         subtopics: form.subtopics.split("\n").map((s) => s.trim()).filter(Boolean),
       },
     };
+  };
 
+  const topicsWithSavedTopic = (saved: CourseTopic): CourseTopic[] => {
     if (isAddingTopic) {
       getTopicIdentifier(saved);
-      onChange(numberCoursePractices([...topics, saved]));
-      resetForm();
-      return;
+      return numberCoursePractices([...topics, saved]);
     }
 
-    const editingKey = getTopicIdentifier(editingTopic);
-    onChange(numberCoursePractices(topics.map((t) => (
+    const editingKey = getTopicIdentifier(editingTopic!);
+    return numberCoursePractices(topics.map((t) => (
       getTopicIdentifier(t) === editingKey ? preserveTopicIdentifier(t, saved) : t
-    ))));
+    )));
+  };
+
+  const handleSaveTopic = () => {
+    const saved = buildSavedTopic();
+    if (!saved) return;
+    onChange(topicsWithSavedTopic(saved));
     resetForm();
+  };
+
+  const handleOpenPracticeFromForm = async (practicePosition: number) => {
+    if (courseId <= 0 || openingPracticeIndex !== null) return;
+    const saved = buildSavedTopic();
+    if (!saved) return;
+    const updatedTopics = topicsWithSavedTopic(saved);
+    const savedPractice = updatedTopics.find((topic) => topic.index === saved.index)?.data?.practices?.[practicePosition];
+    if (!savedPractice?.index) return;
+
+    setOpeningPracticeIndex(practicePosition);
+    try {
+      await onOpenPracticeGenerated(updatedTopics, saved.index, savedPractice.index);
+    } finally {
+      setOpeningPracticeIndex(null);
+    }
+  };
+
+  const handleOpenSavedPractice = async (topicIndex: number, practiceIndex: number) => {
+    if (openingPracticeIndex !== null) return;
+    setOpeningPracticeIndex(practiceIndex);
+    try {
+      await onOpenPracticeGenerated(topics, topicIndex, practiceIndex);
+    } finally {
+      setOpeningPracticeIndex(null);
+    }
   };
 
   const handleDeleteTopic = (topic: CourseTopic) => {
@@ -606,6 +657,9 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     onGeneratePractices: handleGeneratePractices,
     onSave: handleSaveTopic,
     onCancel: resetForm,
+    onOpenPracticeGenerated: (practicePosition: number) => { void handleOpenPracticeFromForm(practicePosition); },
+    openingPracticeIndex,
+    canOpenPracticeGenerated: courseId > 0,
   };
 
   const summary = useMemo(() => {
@@ -704,6 +758,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
                   topic={topic}
                   courseId={courseId}
                   practiceStartIndex={topics.slice(0, topicArrayIndex).reduce((count, previous) => count + normalizeCoursePractices(previous.data?.practices).length, 0)}
+                  onOpenPracticeGenerated={(topicIndex, practiceIndex) => { void handleOpenSavedPractice(topicIndex, practiceIndex); }}
                   coursePractType={coursePractType}
                   onEdit={handleEditTopic}
                   onDelete={handleDeleteTopic}
