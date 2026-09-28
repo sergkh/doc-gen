@@ -262,6 +262,7 @@ export async function generateCourseInfo(
       for (let topicIndex = 0; topicIndex < curTopics.length; topicIndex++) {
         const topic = curTopics[topicIndex]!;
         const practices = [...(topic.data?.practices ?? [])];
+
         for (let practiceIndex = 0; practiceIndex < practices.length; practiceIndex++) {
           const practice = practices[practiceIndex]!;
           const generated = packIntoObject(await runPracticePrompts([prompt], { ...curCourse, topics: curTopics }, topic, practice, curTopics, key));
@@ -275,6 +276,7 @@ export async function generateCourseInfo(
       }
     } else throw new Error('Unknown prompt type');
   }
+
   if (totalItems === 0) progress(100);
 
   // Persist updated topics back to course

@@ -411,7 +411,7 @@ export default function PromptTester({
               )}
               {promptType === "practice" && (
                 <Select
-                  label="Практичне/лабораторне заняття"
+                  label="Практична"
                   placeholder="Оберіть заняття"
                   data={practiceOptions}
                   value={selectedPracticeIndex || null}

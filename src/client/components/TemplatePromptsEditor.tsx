@@ -229,7 +229,7 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
           data={[
             { value: "course", label: "Дисципліна" },
             { value: "topic", label: "Тема" },
-            { value: "practice", label: "Практичне/лабораторне" },
+            { value: "practice", label: "Практична" },
           ]}
           value={selectedPromptType}
           onChange={(v) => v && setSelectedPromptType(v as Prompt["type"])}
