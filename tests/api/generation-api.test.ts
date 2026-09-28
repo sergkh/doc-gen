@@ -107,11 +107,13 @@ mock.module("@/ai/generator", () => ({
 
 const mockStartCoursePrompt = mock(() => Promise.resolve({ responseId: "resp-course", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
 const mockStartTopicPrompt = mock(() => Promise.resolve({ responseId: "resp-topic", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockStartPracticePrompt = mock(() => Promise.resolve({ responseId: "resp-practice", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
 const mockPollPromptResponse = mock(() => Promise.resolve({ status: "generating" }));
 
 mock.module("@/ai/background-prompt", () => ({
   startCoursePrompt: mockStartCoursePrompt,
   startTopicPrompt: mockStartTopicPrompt,
+  startPracticePrompt: mockStartPracticePrompt,
   pollPromptResponse: mockPollPromptResponse,
 }));
 
@@ -153,6 +155,7 @@ describe("generationApi", () => {
     mockRunTopicPrompts.mockClear();
     mockStartCoursePrompt.mockClear();
     mockStartTopicPrompt.mockClear();
+    mockStartPracticePrompt.mockClear();
     mockPollPromptResponse.mockClear();
 
   });
@@ -441,6 +444,45 @@ describe("generationApi", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // POST /api/courses/:courseId/topics/:topicId/save-prompt-result
+  // ---------------------------------------------------------------------------
+  describe("practice prompt routes", () => {
+    const params = { courseId: "1", topicIndex: "1", practiceIndex: "2" };
+    const course = () => ({
+      id: 1, name: "Course", data: {}, topics: [{
+        index: 1, name: "Topic", data: { practices: [
+          { name: "First", description: "" },
+          { name: "Second", description: "", generated: { existing: "Keep" } },
+        ] }, generated: {},
+      }],
+    });
+
+    it("starts a prompt for the selected practice number", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course()));
+      const req = makePOST("", { prompt: {
+        field: "instructions", type: "practice", model: "test", format: "text",
+        system_prompt: "System", prompt: "Write {{name}}",
+      } });
+      matchParams(req, params);
+      const response = await generationApi["/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/run-prompt"].POST(req);
+      expect(response.status).toBe(202);
+      expect(mockStartPracticePrompt.mock.calls[0]?.[3]).toMatchObject({ index: 2, name: "Second" });
+    });
+
+    it("saves a result only on the selected practice", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course()));
+      const req = makePOST("", { field: "instructions", item: "Steps" });
+      matchParams(req, params);
+      const response = await generationApi["/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/save-prompt-result"].POST(req);
+      expect(response.status).toBe(200);
+      const saved = mockCoursesUpdate.mock.calls[0]?.[0];
+      expect(saved.topics[0].data.practices).toMatchObject([
+        { index: 1, name: "First" },
+        { index: 2, generated: { existing: "Keep", instructions: "Steps" } },
+      ]);
+    });
+  });
+
   // POST /api/courses/:courseId/topics/:topicId/save-prompt-result
   // ---------------------------------------------------------------------------
   describe("POST /api/courses/:courseId/topics/:topicId/save-prompt-result", () => {

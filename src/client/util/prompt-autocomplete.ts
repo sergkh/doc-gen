@@ -1,7 +1,7 @@
 export type PromptVariable = {
   value: string;
   label?: string;
-  source: "course" | "topic" | "ai";
+  source: "course" | "topic" | "practice" | "ai";
 };
 
 export type PlaceholderMatch = {

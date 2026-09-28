@@ -25,6 +25,7 @@ type GeneratedFieldEditorProps = {
   onChange: (value: string | string[] | QuizQuestion[] | null) => void;
   courseId?: number;
   topicId?: number;
+  practiceId?: number;
   prompt?: Prompt;
   apiKey?: string;
 };
@@ -46,7 +47,7 @@ function GenerateItemButton({ prompt, onGenerate }: { prompt?: Prompt; onGenerat
 }
 
 export default function GeneratedFieldEditor({
-  field, promptName, format, value, onChange, courseId, topicId, prompt, apiKey,
+  field, promptName, format, value, onChange, courseId, topicId, practiceId, prompt, apiKey,
 }: GeneratedFieldEditorProps) {
   const [newListItem, setNewListItem] = useState("");
 
@@ -67,7 +68,8 @@ export default function GeneratedFieldEditor({
     try {
       let endpoint = `/api/courses/${courseId}/run-prompt`;
       if (topicId) endpoint = `/api/courses/${courseId}/topics/${topicId}/run-prompt`;
-      const job = await startPromptGeneration(endpoint, { ...prompt, type: topicId ? "topic" : "course" }, apiKey);
+      if (topicId && practiceId) endpoint = `/api/courses/${courseId}/topics/${topicId}/practices/${practiceId}/run-prompt`;
+      const job = await startPromptGeneration(endpoint, { ...prompt, type: practiceId ? "practice" : topicId ? "topic" : "course" }, apiKey);
       const data = await waitForPromptGeneration(job, undefined, apiKey);
       if (format === "text" && typeof data.item === "string") onChange(data.item);
       else if (format === "list" && Array.isArray(data.item)) onChange([...listValue, ...data.item.filter((i: any) => typeof i === "string")]);

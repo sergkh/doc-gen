@@ -1,6 +1,7 @@
 import { courses, courseTopics, teachers, courseResults, specialties } from "@/stores/db";
 import type { Course, CourseTopic, GeneratedCourseData, ParsedData } from "@/stores/models";
 import type { BunRequest } from "bun";
+import { numberCoursePractices } from "@/stores/practices";
 import path from "path";
 import { computeFileHash } from "@/api/utils/files";
 import { autofillCourseResults, generateCourseTopics, generateTopicPractices, generateTopicSubtopics, renameAttestationName } from "@/ai/autofill";
@@ -224,6 +225,32 @@ const coursesApi = {
       await courses.update(course);
       return Response.json({ success: true });
     }
+  },
+  "/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/generated": {
+    async GET(req: BunRequest) {
+      const { courseId, topicIndex, practiceIndex } = req.params as { courseId: string; topicIndex: string; practiceIndex: string };
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) return Response.json({ error: "Дисципліну не знайдено" }, { status: 404 });
+      const topic = numberCoursePractices(course.topics ?? []).find((item) => item.index === Number(topicIndex));
+      const practice = topic?.data?.practices?.find((item) => item.index === Number(practiceIndex));
+      return practice ? Response.json(practice) : Response.json({ error: "Заняття не знайдено" }, { status: 404 });
+    },
+    async PUT(req: BunRequest) {
+      const { courseId, topicIndex, practiceIndex } = req.params as { courseId: string; topicIndex: string; practiceIndex: string };
+      const body = await req.json() as { generated?: Record<string, unknown> };
+      if (!body?.generated || typeof body.generated !== "object" || Array.isArray(body.generated)) {
+        return Response.json({ error: "Некоректні згенеровані дані" }, { status: 400 });
+      }
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) return Response.json({ error: "Дисципліну не знайдено" }, { status: 404 });
+      const topics = numberCoursePractices(course.topics ?? []);
+      const topic = topics.find((item) => item.index === Number(topicIndex));
+      const practice = topic?.data?.practices?.find((item) => item.index === Number(practiceIndex));
+      if (!topic || !practice) return Response.json({ error: "Заняття не знайдено" }, { status: 404 });
+      practice.generated = body.generated as typeof practice.generated;
+      await coursesService.updateCourse(course.id, { ...course, topics }, "Updated generated practice data by user");
+      return Response.json(practice);
+    },
   },
   "/api/courses/:courseId/topics/order": {
     async PUT(req: BunRequest) {

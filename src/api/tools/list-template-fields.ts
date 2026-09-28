@@ -7,8 +7,8 @@ import { getSessionContext, toolResult, ZodContext, type ToolContentResult } fro
 
 const ZodDependency = z.object({
   field: z.string(),
-  scope: z.enum(["course", "topic"]),
-  relation: z.enum(["single", "same_topic", "all_topics"]),
+  scope: z.enum(["course", "topic", "practice"]),
+  relation: z.enum(["single", "same_topic", "all_topics", "same_practice", "all_practices", "practices_of_topic"]),
 });
 
 const ZodGeneratedField = z.object({
@@ -17,9 +17,11 @@ const ZodGeneratedField = z.object({
   templateDescription: z.string().nullable(),
   field: z.string(),
   description: z.string(),
-  scope: z.enum(["course", "topic"]),
+  scope: z.enum(["course", "topic", "practice"]),
   topicIndex: z.number().int().positive().optional(),
   topicName: z.string().optional(),
+  practiceIndex: z.number().int().positive().optional(),
+  practiceName: z.string().optional(),
   currentValue: z.unknown().nullable(),
   outputSchema: z.record(z.string(), z.unknown()),
   dependsOn: z.array(ZodDependency),

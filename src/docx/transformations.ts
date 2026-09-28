@@ -1,6 +1,7 @@
 import { generateCourseInfo } from "@/ai/generator";
 import { courseResults, courses, teachers, templates } from "@/stores/db";
 import type { Course, CourseAttestation, CourseGenerationData, CourseSemester, CourseTopic, DisciplineReference, GenerationPractice, HoursStruct, QuizQuestion, Specialty, Template } from "@/stores/models";
+import { normalizePractices, numberCoursePractices } from "@/stores/practices";
 
 declare global {
   interface Array<T> {
@@ -130,7 +131,7 @@ function buildSemesters(attestations: CourseAttestation[]): CourseSemester[] {
   return semesters;
 }
 
-function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): GenerationPractice[] {
+export function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): GenerationPractice[] {
   const practices: GenerationPractice[] = [];
 
   let index = startIndexAt;
@@ -138,7 +139,7 @@ function buildPracticalLessons(topics: CourseTopic[], startIndexAt: number): Gen
     if (topic.data.practices) {
       let inAbscHours = topic.data.inabscentia?.practical_hours ?? 0;
       
-      for (const practice of topic.data.practices) {
+      for (const practice of normalizePractices(topic.data.practices)) {
         
         practices.push({ 
           ...practice, 
@@ -286,7 +287,7 @@ export async function loadFullCourseInfo(
   const results = await courseResults.list(course.data.results);
   onProgress?.(97);
 
-  const countedTopics = buildTopicHours(course, updatedTopics);
+  const countedTopics = buildTopicHours(course, numberCoursePractices(updatedTopics));
 
   const attestations = buildAttestations(course, countedTopics);
   const semesters: CourseSemester[] = buildSemesters(attestations);

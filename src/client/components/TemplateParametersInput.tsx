@@ -147,6 +147,7 @@ export default function TemplateParametersInput({
           disabled={disabled || isOptionsLoading || isCourseIdMissing}
           clearable
           searchable
+          autoComplete="off"
         />
       );
     }
@@ -164,6 +165,7 @@ export default function TemplateParametersInput({
             disabled={disabled || isOptionsLoading || isCourseIdMissing}
             clearable
             searchable
+            autoComplete="off"
           />
         );
       }
@@ -252,6 +254,7 @@ export default function TemplateParametersInput({
               onChange={(val) => { handleAddItem(val); }}
               disabled={disabled || isOptionsLoading || options.length === 0 || isCourseIdMissing}
               searchable
+              autoComplete="off"
             />
             {options.length > 0 && availableOptions.length > 0 && (
               <ActionIcon
@@ -302,6 +305,7 @@ export default function TemplateParametersInput({
           disabled={disabled || isOptionsLoading || isCourseIdMissing}
           clearable
           searchable
+          autoComplete="off"
         />
       );
     }

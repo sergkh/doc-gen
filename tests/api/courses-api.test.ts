@@ -139,6 +139,25 @@ describe("coursesApi", () => {
   });
 
   describe("topic routes", () => {
+    it("updates generated practice fields without replacing sibling practices", async () => {
+      const course = { id: 3, topics: [{ index: 1, name: "Topic", generated: {}, data: {
+        practices: [
+          { name: "First", description: "" },
+          { name: "Second", description: "", generated: { existing: "Keep" } },
+        ],
+      } }] };
+      const params = { courseId: "3", topicIndex: "1", practiceIndex: "2" };
+      getCourseById.mockResolvedValueOnce(course as any);
+      const route = api["/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/generated"];
+      const response = await route.PUT(request(params, { generated: { existing: "Keep", steps: "New" } }));
+      expect(response.status).toBe(200);
+      const updated = updateCourse.mock.calls[0]?.[1] as any;
+      expect(updated.topics[0].data.practices).toMatchObject([
+        { index: 1, name: "First" },
+        { index: 2, generated: { existing: "Keep", steps: "New" } },
+      ]);
+    });
+
     it("migrates legacy topics into the course", async () => {
       const course = { id: 1, topics: [] as any[] };
       const legacy = [{ course_id: 1, index: 1, name: "Legacy" }];

@@ -1,4 +1,5 @@
-import type { Course, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
+import type { Course, CoursePractice, CourseTopic, GeneratedCourseData, GeneratedTopicData, Prompt, PromptResult, QuizQuestion, Template } from "@/stores/models.ts";
+import { numberCoursePractices } from "@/stores/practices";
 import { courses, history } from "@/stores/db.ts";
 import { createOpenAIClient, fixAItext, retryWithBackoff } from "./common";
 import { z } from 'zod';
@@ -43,7 +44,7 @@ function zodPromptFormat(format: "text" | "list" | "quiz"): z.ZodType {
 export async function runPrompts(
   prompts: Prompt[],
   state: Record<string, any>,
-  type: "topic" | "course",
+  type: Prompt["type"],
   forceRecreate: boolean = false,
   apiKey: string | null,
   contextProvider: (context: Record<string, any>) => Record<string, any>  
@@ -131,6 +132,33 @@ export function runTopicPrompts(
   }));
 }
 
+export function runPracticePrompts(
+  prompts: Prompt[],
+  course: Course,
+  topic: CourseTopic,
+  practice: CoursePractice,
+  allTopics: CourseTopic[],
+  apiKey: string | null,
+  forceRecreate: boolean = false
+): Promise<PromptResult[]> {
+  return runPrompts(prompts, practice.generated ?? {}, "practice", forceRecreate, apiKey, (state) => ({
+    ...practice.generated ?? {},
+    ...state,
+    name: practice.name,
+    description: practice.description,
+    practiceIndex: practice.index,
+    practice,
+    topicName: topic.name,
+    lection: topic.lection || topic.name,
+    subtopics: topic.generated?.subtopics ?? [],
+    topic,
+    courseName: course.name,
+    courseDescription: course.data.description ?? "",
+    topics: allTopics.map((item) => item.name).join('\", \"'),
+    course,
+  }));
+}
+
 export function runCoursePrompts(
   prompts: Prompt[],
   course: Course,
@@ -179,19 +207,23 @@ export async function generateCourseInfo(
   const key = apiKey ?? null;
   
   let curCourse = {...course};
-  let curTopics = [...topics];
+  let curTopics = numberCoursePractices(topics);
+  const totalItems = template.prompts.reduce((count, prompt) => count + (
+    prompt.type === "course" ? 1 : prompt.type === "topic" ? curTopics.length
+      : curTopics.reduce((sum, topic) => sum + (topic.data?.practices?.length ?? 0), 0)
+  ), 0);
+  let completedItems = 0;
+  const advance = () => progress(totalItems === 0 ? 100 : ++completedItems / totalItems * 100);
 
   // run promtps sequantially disregarding the type 
   // as some prompts might be dependent on the previous ones
   // also do not parallelize as it might be rate limited by the OpenAI API
   for (const prompt of template.prompts) {
-
-    progress((template.prompts.indexOf(prompt) + 1) / template.prompts.length * 100);
     
     if (prompt.type == 'course') {
       const prevCourse = { ...curCourse };  
       
-      const prompts = packIntoObject(await runCoursePrompts([prompt], curCourse, curTopics, key));
+      const prompts = packIntoObject(await runCoursePrompts([prompt], { ...curCourse, topics: curTopics }, curTopics, key));
 
       curCourse = {
         ...curCourse, 
@@ -206,9 +238,10 @@ export async function generateCourseInfo(
         console.log(`\n\n\nSaving updated course with generated fields ${fields.join(", ")}\n\n\n`);
         curCourse = await updateCourse(prevCourse, curCourse, `Updated course with generated fields ${fields.join(", ")}`);
       }
+      advance();
     } else if (prompt.type == 'topic') {
       for (const topic of curTopics) {
-        const prompts = packIntoObject(await runTopicPrompts([prompt], curCourse, topic, curTopics, key));
+        const prompts = packIntoObject(await runTopicPrompts([prompt], { ...curCourse, topics: curTopics }, topic, curTopics, key));
 
         const updated = {
           ...topic,
@@ -223,9 +256,26 @@ export async function generateCourseInfo(
           const idx = curTopics.indexOf(topic);
           curTopics[idx] = updated;
         }
+        advance();
+      }
+    } else if (prompt.type === "practice") {
+      for (let topicIndex = 0; topicIndex < curTopics.length; topicIndex++) {
+        const topic = curTopics[topicIndex]!;
+        const practices = [...(topic.data?.practices ?? [])];
+        for (let practiceIndex = 0; practiceIndex < practices.length; practiceIndex++) {
+          const practice = practices[practiceIndex]!;
+          const generated = packIntoObject(await runPracticePrompts([prompt], { ...curCourse, topics: curTopics }, topic, practice, curTopics, key));
+          practices[practiceIndex] = {
+            ...practice,
+            generated: { ...(practice.generated ?? {}), ...generated },
+          };
+          advance();
+        }
+        curTopics[topicIndex] = { ...topic, data: { ...topic.data, practices } };
       }
     } else throw new Error('Unknown prompt type');
   }
+  if (totalItems === 0) progress(100);
 
   // Persist updated topics back to course
   if (curTopics.length > 0) {

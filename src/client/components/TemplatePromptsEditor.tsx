@@ -63,18 +63,32 @@ const TOPIC_VARIABLES: PromptVariable[] = [
   ...COMMON_COURSE_VARIABLES,
 ];
 
+const PRACTICE_VARIABLES: PromptVariable[] = [
+  { value: "name", label: "Назва заняття", source: "practice" },
+  { value: "description", label: "Короткий опис заняття", source: "practice" },
+  { value: "practiceIndex", label: "Номер заняття", source: "practice" },
+  { value: "topicName", label: "Назва теми", source: "topic" },
+  { value: "subtopics", label: "Підтеми", source: "topic" },
+  { value: "topic.generated", label: "Згенеровані поля теми", source: "topic" },
+  ...COMMON_COURSE_VARIABLES,
+];
+
 function variablesForPrompt(prompts: Prompt[], index: number): PromptVariable[] {
   const current = prompts[index];
   const generated = prompts.slice(0, index)
-    .filter((candidate) => candidate.field.trim())
+    .filter((candidate) => candidate.field.trim() && (
+      candidate.type === current?.type || candidate.type === "course"
+      || (candidate.type === "topic" && current?.type === "practice")
+    ))
     .map((candidate) => ({
-      value: candidate.field,
+      value: candidate.type === current?.type ? candidate.field
+        : `${candidate.type}.generated.${candidate.field}`,
       label: candidate.name || candidate.field,
       source: "ai" as const,
     }));
   return [
     ...generated,
-    ...(current?.type === "topic" ? TOPIC_VARIABLES : COURSE_VARIABLES),
+    ...(current?.type === "practice" ? PRACTICE_VARIABLES : current?.type === "topic" ? TOPIC_VARIABLES : COURSE_VARIABLES),
   ];
 }
 
@@ -121,7 +135,7 @@ function PromptItem({ prompt, index, dragDisabled, onEdit, onDuplicate, onDelete
           <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
             <Text fw={600} truncate>
               {prompt.field || "(Без назви)"}{" "}
-              <Text span c="dimmed" size="sm">({prompt.type === "course" ? "Дисципліна" : "Тема"})</Text>
+              <Text span c="dimmed" size="sm">({prompt.type === "course" ? "Дисципліна" : prompt.type === "topic" ? "Тема" : "Заняття"})</Text>
             </Text>
             <Text size="xs" c="dimmed">Модель: {prompt.model}</Text>
           </Stack>
@@ -150,7 +164,7 @@ function PromptItem({ prompt, index, dragDisabled, onEdit, onDuplicate, onDelete
 
 export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePromptsEditorProps) {
   const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
-  const [selectedPromptType, setSelectedPromptType] = useState<"course" | "topic">("course");
+  const [selectedPromptType, setSelectedPromptType] = useState<Prompt["type"]>("course");
 
   const handleAddPrompt = () => {
     const newPrompt: Prompt = {
@@ -215,10 +229,11 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
           data={[
             { value: "course", label: "Дисципліна" },
             { value: "topic", label: "Тема" },
+            { value: "practice", label: "Практичне/лабораторне" },
           ]}
           value={selectedPromptType}
-          onChange={(v) => v && setSelectedPromptType(v as "course" | "topic")}
-          w={160}
+          onChange={(v) => v && setSelectedPromptType(v as Prompt["type"])}
+          w={220}
         />
         <Button leftSection={<FontAwesomeIcon icon={faPlus} />} variant="default" onClick={handleAddPrompt}>
           Додати промпт
@@ -230,6 +245,7 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
           Немає промптів. Промпти використовуються для генерації контенту за допомогою AI й результати можуть
           бути використані в шаблоні як параметри. Наприклад, промпт з назвою 'selfMethodGoal' для дисципліни
           буде доступний в шаблоні як 'course.generated.selfMethodGoal'.
+          Для промпта заняття використовуйте 'generated.назваПоля' всередині циклу занять.
         </Text>
       ) : (
         <Reorder.Group

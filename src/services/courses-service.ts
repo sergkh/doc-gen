@@ -1,5 +1,6 @@
 import { courses, history, teachers } from "@/stores/db";
 import type { Course, CoursePractice, CourseTopic, DocVersionRecord, GeneratedCourseData, ParsedData, Prompt, PromptResult } from "@/stores/models";
+import { normalizePractices, numberCoursePractices } from "@/stores/practices";
 import { dropEmpty } from "@/client/util/util";
 import { CourseNotFoundError } from "./errors";
 import { parseSylabusOrProgram } from "@/docx/parse";
@@ -95,7 +96,7 @@ async function mergeCourseTopics(courseId: number, parsedTopics: CourseTopic[]) 
   }
 
   merged.sort((a, b) => a.index - b.index);
-  course.topics = merged;
+  course.topics = numberCoursePractices(merged);
   await updateCourse(courseId, course, "Merged course topics");
 }
 
@@ -110,22 +111,20 @@ function mergeCourseTopic(existing: CourseTopic, parsed: CourseTopic) {
     ),
   }) as T;
 
-  const normalizePractices = (
-    practices: Array<CoursePractice | string> | undefined
-  ): CoursePractice[] | undefined => practices?.map((practice) =>
-    typeof practice === "string"
-      ? { name: practice, description: "" }
-      : practice
-  );
-
   const mergedData = {
     ...existing.data,
     ...parsed.data,
     attestation: parsed.data?.attestation ?? existing.data?.attestation,
-    practices: normalizePractices(
-      parsed.data?.practices ??
-        (existing.data?.practices as Array<CoursePractice | string> | undefined)
-    ),
+    practices: (parsed.data?.practices ?? existing.data?.practices) === undefined
+      ? undefined
+      : parsed.data?.practices === undefined
+        ? normalizePractices(existing.data?.practices)
+        : normalizePractices(parsed.data.practices).map((practice, position) => {
+          const previous = normalizePractices(existing.data?.practices).find((item) =>
+            practice.index !== undefined && item.index === practice.index)
+            ?? normalizePractices(existing.data?.practices)[position];
+          return { ...previous, ...practice, generated: practice.generated ?? previous?.generated };
+        }),
     fulltime: mergeDefined(existing.data?.fulltime, parsed.data?.fulltime),
     ...(parsed.data?.inabscentia || existing.data?.inabscentia
       ? {
@@ -252,7 +251,7 @@ async function updateCourse(id: number, updated: Course, reason: string): Promis
 
     return topic;
   }));
-  const courseToSave = updated.topics ? { ...updated, topics: sanitizedTopics } : updated;
+  const courseToSave = updated.topics ? { ...updated, topics: numberCoursePractices(sanitizedTopics) } : updated;
 
   console.log("Updating course with ID:", id, courseToSave);
 

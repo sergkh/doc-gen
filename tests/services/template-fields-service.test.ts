@@ -7,7 +7,7 @@ import {
   getGeneratedTemplateFields,
 } from "@/services/template-fields-service";
 
-function prompt(field: string, type: "course" | "topic" = "course", dependency?: string): Prompt {
+function prompt(field: string, type: Prompt["type"] = "course", dependency?: string): Prompt {
   return {
     name: field,
     field,
@@ -77,6 +77,54 @@ describe("template field manifest", () => {
 
     expect(manifest.generatedFields[1]?.dependsOn).toEqual([
       { field: "items", scope: "course", relation: "single" },
+    ]);
+  });
+});
+
+describe("practice template fields", () => {
+  it("lists and numbers practice fields separately for each saved practice", () => {
+    const data = course();
+    data.topics![0]!.data.practices = [
+      { name: "First", description: "" },
+      { name: "Second", description: "", generated: { instructions: "Existing" } },
+    ];
+    data.topics![1]!.data.practices = [{ name: "Third", description: "" }];
+
+    const fields = getGeneratedTemplateFields(template([prompt("instructions", "practice")]), data);
+    expect(fields.map((field) => [field.topicIndex, field.practiceIndex, field.currentValue])).toEqual([
+      [1, 1, null], [1, 2, "Existing"], [2, 3, null],
+    ]);
+    expect(getFillableTemplateFields(template([prompt("instructions", "practice")]), data)
+      .map((field) => field.practiceIndex)).toEqual([1, 3]);
+  });
+
+  it("saves only the selected practice and checks same-practice dependencies", () => {
+    const data = course();
+    data.topics![0]!.data.practices = [
+      { name: "First", description: "" }, { name: "Second", description: "" },
+    ];
+    const definition = template([
+      prompt("instructions", "practice"),
+      prompt("questions", "practice", "instructions"),
+    ]);
+    const result = applyTemplateFields(definition, data, [
+      { field: "questions", scope: "practice", topicIndex: 1, practiceIndex: 1, value: "Q" },
+      { field: "instructions", scope: "practice", topicIndex: 1, practiceIndex: 1, value: "Steps" },
+      { field: "questions", scope: "practice", topicIndex: 1, practiceIndex: 2, value: "Blocked" },
+    ]);
+    expect(result.results.filter((item) => item.status === "accepted")).toHaveLength(2);
+    expect(result.results.find((item) => item.practiceIndex === 2)?.missingDependencies)
+      .toEqual(["practice[2].instructions"]);
+    expect(result.course.topics?.[0]?.data.practices?.[0]?.generated).toEqual({ instructions: "Steps", questions: "Q" });
+    expect(result.course.topics?.[0]?.data.practices?.[1]?.generated).toEqual({});
+  });
+
+  it("tracks a parent topic field referenced by a practice prompt", () => {
+    const dependent = prompt("instructions", "practice");
+    dependent.prompt = "Use {{topic.generated.keywords}}";
+    const manifest = buildTemplateManifest(template([prompt("keywords", "topic"), dependent]));
+    expect(manifest.generatedFields[1]?.dependsOn).toEqual([
+      { field: "keywords", scope: "topic", relation: "same_topic" },
     ]);
   });
 });

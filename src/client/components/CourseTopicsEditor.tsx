@@ -7,6 +7,7 @@ import type { CoursePractice, CourseTopic } from "@/stores/models";
 import InPlaceEditor from "./InPlaceEditor";
 import { generateCourseTopics, generateTopicPractices, generateTopicSubtopics, getAttestationColor, type AIGeneratedTopic } from "../courses";
 import { addGeneratedTopicsToCourseTopics, normalizeCoursePractices } from "./courseTopicsEditor.utils";
+import { numberCoursePractices } from "@/stores/practices";
 import {
   Stack,
   Group,
@@ -61,6 +62,7 @@ const createTopicFormState = (): TopicFormState => ({
 interface TopicItemProps {
   topic: CourseTopic;
   courseId: number;
+  practiceStartIndex: number;
   coursePractType: "practice" | "lab";
   onEdit: (topic: CourseTopic) => void;
   onDelete: (topic: CourseTopic) => void;
@@ -74,7 +76,7 @@ interface TopicItemProps {
 }
 
 function TopicItem({
-  topic, courseId,
+  topic, courseId, practiceStartIndex,
   coursePractType,
   onEdit, onDelete,
   onUpdateAttestation, onUpdateFulltimeHours, onUpdatePracticalHours,
@@ -167,12 +169,23 @@ function TopicItem({
                 <Text size="xs" fw={600}>
                   {coursePractType === "practice" ? "Практичні заняття" : "Лабораторні заняття"}
                 </Text>
-                {practices.map((practice, index) => (
-                  <Text key={`${practice.name}-${index}`} size="xs" c="dimmed">
-                    {index + 1}. <Text component="span" inherit fw={500}>{practice.name}</Text>
-                    {practice.description ? ` — ${practice.description}` : ""}
-                  </Text>
-                ))}
+                {practices.map((practice, index) => {
+                  const practiceIndex = practiceStartIndex + index + 1;
+                  return (
+                    <Group key={`${practice.name}-${index}`} gap={4} wrap="nowrap">
+                      <Text size="xs" c="dimmed">
+                        {practiceIndex}. <Text component="span" inherit fw={500}>{practice.name}</Text>
+                        {practice.description ? ` — ${practice.description}` : ""}
+                      </Text>
+                      <Tooltip label="Згенеровані дані заняття">
+                        <ActionIcon size="xs" variant="subtle" aria-label={`Згенеровані дані заняття ${practiceIndex}`}
+                          onClick={() => navigate(`/courses/${courseId}/topics/${topic.index}/practices/${practiceIndex}/generated`)}>
+                          <FontAwesomeIcon icon={faEdit} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  );
+                })}
               </Stack>
             )}
           </Stack>
@@ -440,6 +453,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
     if (!editingTopic) return;
     if (!form.name.trim()) { alert("Назва теми обов'язкова"); return; }
     const practices = form.practices.map((practice) => ({
+      ...practice,
       name: practice.name.trim(),
       description: practice.description.trim(),
     }));
@@ -467,30 +481,30 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
 
     if (isAddingTopic) {
       getTopicIdentifier(saved);
-      onChange([...topics, saved]);
+      onChange(numberCoursePractices([...topics, saved]));
       resetForm();
       return;
     }
 
     const editingKey = getTopicIdentifier(editingTopic);
-    onChange(topics.map((t) => (
+    onChange(numberCoursePractices(topics.map((t) => (
       getTopicIdentifier(t) === editingKey ? preserveTopicIdentifier(t, saved) : t
-    )));
+    ))));
     resetForm();
   };
 
   const handleDeleteTopic = (topic: CourseTopic) => {
     if (!confirm("Ви впевнені, що хочете видалити цю тему?")) return;
-    onChange(topics.filter((t) => getTopicIdentifier(t) !== getTopicIdentifier(topic)));
+    onChange(numberCoursePractices(topics.filter((t) => getTopicIdentifier(t) !== getTopicIdentifier(topic))));
   };
 
   const handleReorder = (newOrder: CourseTopic[]) => onChange(
-    newOrder.map((topic, index) => preserveTopicIdentifier(topic, {
+    numberCoursePractices(newOrder.map((topic, index) => preserveTopicIdentifier(topic, {
       ...topic,
       // Reorder.Item and its React key must retain the same identity while
       // `index` changes, otherwise a drag is remounted on every movement.
       index: index + 1,
-    })),
+    }))),
   );
 
   const patchTopic = (topic: CourseTopic, patch: Partial<CourseTopic["data"]>) => {
@@ -674,7 +688,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
           <Text c="dimmed" size="sm">Немає тем</Text>
         ) : (
           <Reorder.Group axis="y" values={topics} onReorder={handleReorder} style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            {topics.map((topic) => {
+            {topics.map((topic, topicArrayIndex) => {
               const topicKey = getTopicIdentifier(topic);
               const editingKey = editingTopic ? getTopicIdentifier(editingTopic) : null;
               if (editingKey && editingKey === topicKey) {
@@ -689,6 +703,7 @@ export default function CourseTopicsEditor({ courseId, courseTotalHours, topics,
                   key={`topic-item-${topicKey}`}
                   topic={topic}
                   courseId={courseId}
+                  practiceStartIndex={topics.slice(0, topicArrayIndex).reduce((count, previous) => count + normalizeCoursePractices(previous.data?.practices).length, 0)}
                   coursePractType={coursePractType}
                   onEdit={handleEditTopic}
                   onDelete={handleDeleteTopic}
