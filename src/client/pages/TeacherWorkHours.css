@@ -113,6 +113,29 @@
   text-underline-offset: 3px;
 }
 
+button.lesson-hours {
+  display: block;
+  width: 100%;
+  min-width: 2.5rem;
+  min-height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.lesson-hours:hover {
+  background: #eaf2f8;
+}
+
+button.lesson-hours:focus-visible {
+  outline: 2px solid #1f5f8f;
+  outline-offset: 2px;
+}
+
 .work-duration {
   min-width: 96px;
 }

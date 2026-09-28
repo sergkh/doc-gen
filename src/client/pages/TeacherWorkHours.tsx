@@ -17,6 +17,7 @@ import {
   Slider,
   Stack,
   Text,
+  TextInput,
   Title,
   Tooltip,
 } from "@mantine/core";
@@ -61,16 +62,16 @@ type SavedTimesheetData = {
   additionalDaysOff?: number[];
   sciencePercentage?: number;
   workByDay?: Record<string, WorkHours>;
+  lessonHoursByDay?: Record<string, number[]>;
 };
 
 type LoadState = "idle" | "loading" | "ready" | "error";
 
 const STRUCTURE_ID = "0";
-const MAX_WEEKDAY_HOURS = 7.2;
-const MAX_LESSONS_PER_WEEKDAY = Math.floor(MAX_WEEKDAY_HOURS / 2);
-const MAX_WEEKDAY_MINUTES = Math.round(MAX_WEEKDAY_HOURS * 60);
+const DEFAULT_DAILY_TARGET_MINUTES = (7 * 60) + 12;
 const MAX_MANUAL_WORK_MINUTES = (23 * 60) + 59;
 const WORK_SHIFT_MINUTES = 60;
+const MANUAL_LESSON_HOURS = 2;
 
 const lessonTypeLabels: Record<LessonType, string> = {
   lection: "Лекція",
@@ -184,6 +185,35 @@ const formatNonZeroDuration = (minutes: number) => minutes > 0 ? formatDuration(
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+const toTimeInputValue = (minutes: number) => {
+  const normalized = clamp(Math.round(minutes), 0, MAX_MANUAL_WORK_MINUTES);
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+};
+
+const parseTimeInputValue = (value: string) => {
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return DEFAULT_DAILY_TARGET_MINUTES;
+  const totalMinutes = (hours * 60) + minutes;
+  return totalMinutes > 0
+    ? clamp(totalMinutes, 1, MAX_MANUAL_WORK_MINUTES)
+    : DEFAULT_DAILY_TARGET_MINUTES;
+};
+
+const dailyTargetStorageKey = (teacherId: number) => `doc-gen:teacher-timesheet:daily-target-minutes:${teacherId}`;
+
+const loadDailyTargetMinutes = (teacherId: number) => {
+  try {
+    const storedValue = window.localStorage.getItem(dailyTargetStorageKey(teacherId));
+    if (storedValue === null) return DEFAULT_DAILY_TARGET_MINUTES;
+    const savedValue = Number(storedValue);
+    return Number.isFinite(savedValue) && savedValue > 0
+      ? clamp(savedValue, 1, MAX_MANUAL_WORK_MINUTES)
+      : DEFAULT_DAILY_TARGET_MINUTES;
+  } catch {
+    return DEFAULT_DAILY_TARGET_MINUTES;
+  }
+};
+
 const allocateWorkloadSlots = (items: ScheduleItem[]) => {
   const slots = [0, 0, 0, 0, 0];
   const lateLessons: ScheduleItem[] = [];
@@ -237,8 +267,10 @@ export function App() {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [reportMonth, setReportMonth] = useState(defaultRange.month);
   const [additionalDaysOff, setAdditionalDaysOff] = useState<Set<number>>(() => new Set());
+  const [dailyTargetMinutes, setDailyTargetMinutes] = useState(DEFAULT_DAILY_TARGET_MINUTES);
   const [sciencePercentage, setSciencePercentage] = useState(50);
   const [workByDay, setWorkByDay] = useState<Record<number, WorkHours>>({});
+  const [lessonHoursByDay, setLessonHoursByDay] = useState<Record<number, number[]>>({});
   const [directoryState, setDirectoryState] = useState<LoadState>("idle");
   const [isSavingMkr, setIsSavingMkr] = useState(false);
   const [isSavingTimesheet, setIsSavingTimesheet] = useState(false);
@@ -258,6 +290,7 @@ export function App() {
   });
 
   const updateReportMonth = (year: string, month: string) => setReportMonth(`${year}-${month}`);
+  const maxLessonsPerWeekday = Math.floor(dailyTargetMinutes / (MANUAL_LESSON_HOURS * 60));
 
   const needsMkrSelection = Boolean(teacher && (!teacher.mkr_department_id || !teacher.mkr_teacher_id));
 
@@ -293,6 +326,7 @@ export function App() {
           additionalDaysOff: [...additionalDaysOff],
           sciencePercentage,
           workByDay,
+          lessonHoursByDay,
         } satisfies SavedTimesheetData),
       });
       if (!response.ok) throw new Error(await response.text());
@@ -308,12 +342,23 @@ export function App() {
     if (!id) return;
     loadTeacher(id)
       .then((loadedTeacher) => {
+        setDailyTargetMinutes(loadDailyTargetMinutes(loadedTeacher.id));
         setTeacher(loadedTeacher);
         setSelectedChairId(loadedTeacher.mkr_department_id ? String(loadedTeacher.mkr_department_id) : "");
         setSelectedTeacherId(loadedTeacher.mkr_teacher_id ? String(loadedTeacher.mkr_teacher_id) : "");
       })
       .catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, [id]);
+
+  useEffect(() => {
+    if (!teacher) return;
+
+    try {
+      window.localStorage.setItem(dailyTargetStorageKey(teacher.id), String(dailyTargetMinutes));
+    } catch {
+      // The timesheet remains usable when browser storage is unavailable.
+    }
+  }, [dailyTargetMinutes, teacher?.id]);
 
   useEffect(() => {
     if (!teacher) return;
@@ -332,6 +377,7 @@ export function App() {
         if (!timesheet) {
           setAdditionalDaysOff(new Set());
           setWorkByDay({});
+          setLessonHoursByDay({});
           setTimesheetState("new");
           return;
         }
@@ -340,6 +386,7 @@ export function App() {
         setAdditionalDaysOff(new Set(data.additionalDaysOff ?? []));
         setSciencePercentage(data.sciencePercentage ?? 50);
         setWorkByDay(data.workByDay ?? {});
+        setLessonHoursByDay(data.lessonHoursByDay ?? {});
         setPreserveSavedWorkHours(true);
         setTimesheetState("saved");
       })
@@ -424,7 +471,7 @@ export function App() {
 
     const nextAvailableWeekday = (afterDay: number) => {
       for (let day = afterDay + 1; day <= daysInMonth; day += 1) {
-        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < MAX_LESSONS_PER_WEEKDAY) {
+        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < maxLessonsPerWeekday) {
           return day;
         }
       }
@@ -433,7 +480,7 @@ export function App() {
 
     const previousAvailableWeekday = (beforeDay: number) => {
       for (let day = beforeDay - 1; day >= 1; day -= 1) {
-        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < MAX_LESSONS_PER_WEEKDAY) {
+        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < maxLessonsPerWeekday) {
           return day;
         }
       }
@@ -457,7 +504,7 @@ export function App() {
         continue;
       }
 
-      while (lessons.length > MAX_LESSONS_PER_WEEKDAY) {
+      while (lessons.length > maxLessonsPerWeekday) {
         const lesson = lessons.pop();
         const targetDay = nextAvailableWeekday(day) ?? previousAvailableWeekday(day);
         if (!lesson || !targetDay) {
@@ -469,7 +516,7 @@ export function App() {
     }
 
     return lessonsByDay;
-  }, [additionalDaysOff, reportMonth, sortedSchedule]);
+  }, [additionalDaysOff, maxLessonsPerWeekday, reportMonth, sortedSchedule]);
 
   const monthlyWorkload = useMemo(() => {
     const [year = 0, month = 1] = reportMonth.split("-").map(Number);
@@ -481,17 +528,24 @@ export function App() {
       const weekend = isWeekend(year, monthIndex, day);
       const dayOff = isDayOff(year, monthIndex, day, additionalDaysOff);
       const allocation = allocateWorkloadSlots(adjustedLessonsByDay.get(day) ?? []);
+      const savedSlots = lessonHoursByDay[day];
+      const slots = [0, 1, 2, 3, 4].map((slot) => {
+        const savedHours = savedSlots?.[slot];
+        return typeof savedHours === "number" && Number.isFinite(savedHours)
+          ? Math.max(0, savedHours)
+          : allocation.slots[slot] ?? 0;
+      });
 
       return {
         day,
-        slots: allocation.slots,
-        total: Number(allocation.slots.reduce((sum, hours) => sum + hours, 0).toFixed(2)),
+        slots,
+        total: Number(slots.reduce((sum, hours) => sum + hours, 0).toFixed(2)),
         explanation: allocation.explanation,
         isWeekend: weekend,
         isDayOff: dayOff,
       };
     });
-  }, [additionalDaysOff, adjustedLessonsByDay, reportMonth]);
+  }, [additionalDaysOff, adjustedLessonsByDay, lessonHoursByDay, reportMonth]);
 
   const resolvedWorkByDay = useMemo(() => {
     const work = new Map<number, WorkHours>();
@@ -502,7 +556,7 @@ export function App() {
         continue;
       }
 
-      const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(item.total * 60));
+      const availableMinutes = Math.max(0, dailyTargetMinutes - Math.round(item.total * 60));
       const organizational = clamp(workByDay[item.day]?.organizational ?? 0, 0, MAX_MANUAL_WORK_MINUTES);
       const remainingMinutes = Math.max(0, availableMinutes - organizational);
       const science = workByDay[item.day]?.science ?? Math.round((remainingMinutes * sciencePercentage) / 100);
@@ -516,7 +570,7 @@ export function App() {
     }
 
     return work;
-  }, [monthlyWorkload, sciencePercentage, workByDay]);
+  }, [dailyTargetMinutes, monthlyWorkload, sciencePercentage, workByDay]);
 
   useEffect(() => {
     setWorkByDay(current => {
@@ -530,7 +584,7 @@ export function App() {
           continue;
         }
 
-        const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(item.total * 60));
+        const availableMinutes = Math.max(0, dailyTargetMinutes - Math.round(item.total * 60));
         const organizational = clamp(current[item.day]?.organizational ?? 0, 0, availableMinutes);
         const remainingMinutes = availableMinutes - organizational;
         const science = Math.round((remainingMinutes * sciencePercentage) / 100);
@@ -544,14 +598,14 @@ export function App() {
 
       return next;
     });
-  }, [monthlyWorkload, preserveSavedWorkHours, sciencePercentage]);
+  }, [dailyTargetMinutes, monthlyWorkload, preserveSavedWorkHours, sciencePercentage]);
 
   const updateWorkHours = (day: number, type: keyof WorkHours, minutes: number) => {
     const workload = monthlyWorkload.find(item => item.day === day);
     if (!workload || workload.isDayOff) return;
 
     setWorkByDay(current => {
-      const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(workload.total * 60));
+      const availableMinutes = Math.max(0, dailyTargetMinutes - Math.round(workload.total * 60));
       const existing = resolvedWorkByDay.get(day) ?? { science: 0, methodical: 0, organizational: 0 };
       const next = { ...existing };
 
@@ -570,6 +624,21 @@ export function App() {
     });
   };
 
+  const toggleLessonHours = (day: number, slot: number, currentSlots: number[]) => {
+    const workload = monthlyWorkload.find(item => item.day === day);
+    if (!workload || workload.isDayOff) return;
+
+    setLessonHoursByDay(current => {
+      const slots = [...(current[day] ?? currentSlots)];
+      const currentHours = slots[slot] ?? 0;
+      slots[slot] = currentHours > 0
+        ? Math.max(0, Number((currentHours - MANUAL_LESSON_HOURS).toFixed(2)))
+        : MANUAL_LESSON_HOURS;
+
+      return { ...current, [day]: slots };
+    });
+  };
+
   const shiftScienceMethodical = (day: number, deltaMinutes: number) => {
     const workload = monthlyWorkload.find(item => item.day === day);
     if (!workload || workload.isDayOff) return;
@@ -577,7 +646,7 @@ export function App() {
     const work = resolvedWorkByDay.get(day);
     if (!work) return;
 
-    const availableMinutes = Math.max(0, MAX_WEEKDAY_MINUTES - Math.round(workload.total * 60));
+    const availableMinutes = Math.max(0, dailyTargetMinutes - Math.round(workload.total * 60));
     const totalPairMinutes = Math.max(0, availableMinutes - work.organizational);
 
     if (totalPairMinutes <= 0) return;
@@ -784,6 +853,13 @@ export function App() {
           <Group gap="xs">
             <Select aria-label="Місяць" data={monthOptions} value={selectedMonth} onChange={value => value && updateReportMonth(selectedYear, value)} w={150} />
             <Select aria-label="Рік" data={yearOptions} value={selectedYear} onChange={value => value && updateReportMonth(value, selectedMonth)} w={100} />
+            <TextInput
+              aria-label="Норма робочого дня"
+              type="time"
+              value={toTimeInputValue(dailyTargetMinutes)}
+              onChange={event => setDailyTargetMinutes(parseTimeInputValue(event.currentTarget.value))}
+              w={120}
+            />
             {timesheetState === "saved" && (
               <Tooltip label="Табель завантажено з бази даних">
                 <FontAwesomeIcon icon={faDatabase} color="var(--mantine-color-green-6)" />
@@ -864,7 +940,7 @@ export function App() {
                 {monthlyWorkload.map((item, index) => {
                   const work = resolvedWorkByDay.get(item.day) ?? { science: 0, methodical: 0, organizational: 0 };
                   const totalMinutes = Math.round(item.total * 60) + work.science + work.methodical + work.organizational;
-                  const hasIncorrectTotal = !item.isDayOff && totalMinutes !== MAX_WEEKDAY_MINUTES;
+                  const hasIncorrectTotal = !item.isDayOff && totalMinutes !== dailyTargetMinutes;
                   const rowClassNames = [item.isDayOff ? "weekend-row" : "", hasIncorrectTotal ? "over-limit" : ""]
                     .filter(Boolean)
                     .join(" ") || undefined;
@@ -894,9 +970,23 @@ export function App() {
                       </td>
                       {item.slots.map((hours, slot) => (
                         <td key={slot}>
-                          {item.isDayOff ? "вх" : hours ? (
-                            <span className="lesson-hours">{formatDuration(hours * 60)}</span>
-                          ) : ""}
+                          {item.isDayOff ? "вх" : (
+                            <Tooltip
+                              label={hours > 0
+                                ? "Клацніть, щоб прибрати 2:00 навчального навантаження"
+                                : "Клацніть, щоб додати 2:00 навчального навантаження"}
+                              withArrow
+                            >
+                              <button
+                                type="button"
+                                className="lesson-hours"
+                                onClick={() => toggleLessonHours(item.day, slot, item.slots)}
+                                aria-label={`${hours > 0 ? "Прибрати" : "Додати"} 2 години навчального навантаження: день ${item.day}, пара ${slot + 1}`}
+                              >
+                                {hours > 0 ? formatDuration(hours * 60) : ""}
+                              </button>
+                            </Tooltip>
+                          )}
                         </td>
                       ))}
                       <td className="workload-total">
