@@ -52,6 +52,34 @@
   font-size: 20px;
 }
 
+.type-summary .teaching-summary-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+}
+
+.type-summary .teaching-summary-table th,
+.type-summary .teaching-summary-table td {
+  padding: 8px 12px;
+  border: 1px solid #d8e1ea;
+  text-align: center;
+}
+
+.type-summary .teaching-summary-table thead th {
+  color: #253748;
+  background: #eaf2f8;
+}
+
+.type-summary .teaching-summary-table tbody th,
+.type-summary .teaching-summary-table tfoot th {
+  text-align: left;
+}
+
+.type-summary .teaching-summary-table tfoot {
+  font-weight: 800;
+  background: #eff6ee;
+}
+
 .form-preview {
   overflow: hidden;
 }

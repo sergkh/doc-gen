@@ -58,6 +58,18 @@ type WorkHours = {
   organizational: number;
 };
 
+type TeachingFormSummary = {
+  lessons: number;
+  hours: number;
+};
+
+type TeachingTypeSummary = {
+  key: "lection" | "practice" | "exam";
+  label: string;
+  fulltime: TeachingFormSummary;
+  inAbsentia: TeachingFormSummary;
+};
+
 type SavedTimesheetData = {
   additionalDaysOff?: number[];
   sciencePercentage?: number;
@@ -86,6 +98,14 @@ const workTypeLabels: Record<keyof WorkHours, string> = {
   methodical: "Методика",
   organizational: "Організаційна робота",
 };
+
+const isInAbsentiaGroup = (group: string) => /\.з\s*$/iu.test(group.trim());
+
+const teachingSummaryTypes = [
+  { key: "lection", label: "Лекції", matches: (type: LessonType) => type === "lection" || type === "lection_in_absentia" },
+  { key: "practice", label: "Практичні заняття", matches: (type: LessonType) => type === "practice" || type === "practice_in_absentia" },
+  { key: "exam", label: "Екзамени", matches: (type: LessonType) => type === "exam" },
+] as const;
 
 const apiGet = async <T,>(path: string): Promise<T> => {
   const response = await fetch(path);
@@ -453,6 +473,42 @@ export function App() {
       [...schedule].sort((first, second) => parseApiDate(first.start).getTime() - parseApiDate(second.start).getTime()),
     [schedule],
   );
+
+  const teachingSummary = useMemo((): TeachingTypeSummary[] => teachingSummaryTypes.map(({ key, label, matches }) => {
+    const summary: TeachingTypeSummary = {
+      key,
+      label,
+      fulltime: { lessons: 0, hours: 0 },
+      inAbsentia: { lessons: 0, hours: 0 },
+    };
+
+    for (const item of sortedSchedule) {
+      if (!matches(item.type)) continue;
+
+      const form = isInAbsentiaGroup(item.group) ? summary.inAbsentia : summary.fulltime;
+      form.lessons += 1;
+      form.hours += academicHours(item.start, item.end);
+    }
+
+    return summary;
+  }), [sortedSchedule]);
+
+  const teachingSummaryTotal = useMemo(() => teachingSummary.reduce(
+    (total, item) => ({
+      fulltime: {
+        lessons: total.fulltime.lessons + item.fulltime.lessons,
+        hours: total.fulltime.hours + item.fulltime.hours,
+      },
+      inAbsentia: {
+        lessons: total.inAbsentia.lessons + item.inAbsentia.lessons,
+        hours: total.inAbsentia.hours + item.inAbsentia.hours,
+      },
+    }),
+    {
+      fulltime: { lessons: 0, hours: 0 },
+      inAbsentia: { lessons: 0, hours: 0 },
+    },
+  ), [teachingSummary]);
 
   const adjustedLessonsByDay = useMemo(() => {
     const [year = 0, month = 1] = reportMonth.split("-").map(Number);
@@ -1075,6 +1131,37 @@ export function App() {
               </tfoot>
             </table>
           </div>
+        </section>
+      )}
+
+      {reportState === "ready" && (
+        <section className="type-summary" aria-labelledby="teaching-summary-title">
+          <h2 id="teaching-summary-title">Зведенні години</h2>
+          <table className="teaching-summary-table">
+            <thead>
+              <tr>
+                <th>Вид</th>
+                <th>Денна (год)</th>
+                <th>Заочна (год)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachingSummary.map((item) => (
+                <tr key={item.key}>
+                  <th scope="row">{item.label}</th>
+                  <td>{item.fulltime.hours}</td>
+                  <td>{item.inAbsentia.hours}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Усього</th>
+                <td>{teachingSummaryTotal.fulltime.hours}</td>
+                <td>{teachingSummaryTotal.inAbsentia.hours}</td>
+              </tr>
+            </tfoot>
+          </table>
         </section>
       )}
 
