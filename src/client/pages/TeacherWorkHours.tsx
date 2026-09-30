@@ -1136,7 +1136,7 @@ export function App() {
 
       {reportState === "ready" && (
         <section className="type-summary" aria-labelledby="teaching-summary-title">
-          <h2 id="teaching-summary-title">Зведенні години</h2>
+          <h2 id="teaching-summary-title">Зведені години</h2>
           <table className="teaching-summary-table">
             <thead>
               <tr>
