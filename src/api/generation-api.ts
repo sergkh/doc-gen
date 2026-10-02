@@ -4,7 +4,8 @@ import type { Course, GeneratedTopicData, Prompt, PromptResult, Template, Course
 import type { BunRequest } from "bun";
 import { loadFullCourseInfo } from "@/docx/transformations";
 import { coursesService } from "@/services/courses-service";
-import { pollPromptResponse, startCoursePrompt, startTopicPrompt } from "@/ai/background-prompt";
+import { pollPromptResponse, startCoursePrompt, startTopicPrompt, startPracticePrompt } from "@/ai/background-prompt";
+import { numberCoursePractices } from "@/stores/practices";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -307,6 +308,39 @@ const generationApi = {
       }
     }
   },
+  "/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/run-prompt": {
+    async POST(req: BunRequest) {
+      const { courseId, topicIndex, practiceIndex } = req.params as { courseId: string; topicIndex: string; practiceIndex: string };
+      let body: { prompt: Prompt; apiKey?: string };
+      try { body = await req.json(); } catch { return jsonError("Невалідний JSON у запиті", 400); }
+      const { prompt, apiKey } = body ?? {};
+      if (prompt?.type !== "practice" || !prompt.field?.trim() || !prompt.system_prompt?.trim() || !prompt.prompt?.trim()) {
+        return jsonError("Некоректний промпт заняття", 400);
+      }
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) return jsonError("Дисципліну не знайдено", 404);
+      const topics = numberCoursePractices(course.topics ?? []);
+      const topic = topics.find((item) => item.index === Number(topicIndex));
+      const practice = topic?.data?.practices?.find((item) => item.index === Number(practiceIndex));
+      if (!topic || !practice) return jsonError("Заняття не знайдено", 404);
+      try {
+        const started = await startPracticePrompt(prompt, course, topic, practice, topics, apiKey ?? requestApiKey(req));
+        const job: PromptGenerationJob = {
+          id: crypto.randomUUID(), courseId: course.id, topicIndex: topic.index,
+          field: prompt.field, format: prompt.format, model: prompt.model,
+          openaiResponseId: started.responseId, systemPrompt: started.systemPrompt,
+          userPrompt: started.userPrompt, status: started.status,
+        };
+        rememberPromptJob(job);
+        return Response.json({
+          jobId: job.id, status: job.status, responseId: job.openaiResponseId,
+          field: job.field, format: job.format, system_prompt: job.systemPrompt, prompt: job.userPrompt,
+        }, { status: 202 });
+      } catch (error) {
+        return jsonError(error instanceof Error ? error.message : "Не вдалося запустити генерацію", 500);
+      }
+    },
+  },
   "/api/prompt-generation-jobs/:jobId": {
     async GET(req: BunRequest) {
       const { jobId } = req.params as { jobId: string };
@@ -411,6 +445,23 @@ const generationApi = {
 
       return Response.json({ success: true, field: body.field });
     }
+  },
+  "/api/courses/:courseId/topics/:topicIndex/practices/:practiceIndex/save-prompt-result": {
+    async POST(req: BunRequest) {
+      const { courseId, topicIndex, practiceIndex } = req.params as { courseId: string; topicIndex: string; practiceIndex: string };
+      let body: { field: string; item: unknown };
+      try { body = await req.json(); } catch { return jsonError("Невалідний JSON у запиті", 400); }
+      if (!body?.field?.trim()) return jsonError("Поле field є обов'язковим", 400);
+      const course = await coursesService.getCourseById(Number(courseId));
+      if (!course) return jsonError("Дисципліну не знайдено", 404);
+      const topics = numberCoursePractices(course.topics ?? []);
+      const topic = topics.find((item) => item.index === Number(topicIndex));
+      const practice = topic?.data?.practices?.find((item) => item.index === Number(practiceIndex));
+      if (!topic || !practice) return jsonError("Заняття не знайдено", 404);
+      practice.generated = { ...(practice.generated ?? {}), [body.field]: body.item } as typeof practice.generated;
+      await courses.update({ ...course, topics });
+      return Response.json({ success: true, field: body.field });
+    },
   },
   "/api/courses/:courseId/generate/:templateId/data": {
     async GET(req: BunRequest) {

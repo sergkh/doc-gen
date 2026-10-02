@@ -374,6 +374,25 @@ describe("coursesService", () => {
       expect(result.data.practices).toEqual(practices);
     });
 
+    it("preserves generated practice fields when a topic update omits them", () => {
+      const existing = {
+        ...existingTopic,
+        data: { ...existingTopic.data, practices: [
+          { index: 1, name: "Practice", description: "Before", generated: { instructions: "Keep" } },
+        ] },
+      };
+      const incoming = {
+        data: { ...existingTopic.data, practices: [
+          { index: 1, name: "Practice", description: "After" },
+        ] },
+        generated: null,
+      };
+      const result = coursesService.mergeCourseTopic(existing as any, incoming as any);
+      expect(result.data.practices).toEqual([
+        { index: 1, name: "Practice", description: "After", generated: { instructions: "Keep" } },
+      ]);
+    });
+
     it("should normalize legacy string practices when preserving them", () => {
       const legacyTopic = {
         ...existingTopic,

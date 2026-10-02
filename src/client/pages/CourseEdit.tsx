@@ -1,4 +1,4 @@
-import type { Course, Teacher, ShortCourseInfo, CourseResult, Specialty } from "@/stores/models";
+import type { Course, CourseTopic, Teacher, ShortCourseInfo, CourseResult, Specialty } from "@/stores/models";
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,6 +11,7 @@ import { loadAllTeachers } from "../teachers";
 import { loadResultsBySpecialty } from "../results";
 import { loadAllSpecialties } from "../specialties";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
+import toast from "react-hot-toast";
 import AttestationsEditor from "../components/AttestationsEditor";
 import ResultsEditor from "../components/ResultsEditor";
 import {
@@ -286,6 +287,20 @@ export default function CourseEdit() {
     () => !!item && item.name.trim() !== "" && item.data.credits > 0 && item.data.hours > 0 && item.specialty_id > 0,
     [item]
   );
+
+  const handleOpenPracticeGenerated = async (topics: CourseTopic[], topicIndex: number, practiceIndex: number) => {
+    if (!item || item.id <= 0 || !isValid) {
+      toast.error("Заповніть обов'язкові поля дисципліни перед редагуванням заняття");
+      return;
+    }
+    try {
+      await upsertCourse({ ...item, topics });
+      navigate(`/courses/${item.id}/topics/${topicIndex}/practices/${practiceIndex}/generated`);
+    } catch (error) {
+      console.error("Error saving course before editing practice generated data:", error);
+      toast.error("Не вдалося зберегти дисципліну");
+    }
+  };
 
   const validationWarnings = useMemo(() => {
     if (!item) return [];
@@ -622,6 +637,7 @@ export default function CourseEdit() {
         courseTotalHours={item.data.hours}
         topics={item.topics ?? []}
         onChange={(topics) => setItem({ ...item, topics })}
+        onOpenPracticeGenerated={handleOpenPracticeGenerated}
       />
 
       <Paper withBorder p="md">

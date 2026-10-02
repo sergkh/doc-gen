@@ -22,7 +22,7 @@ const AVAILABLE_FORMATS: Array<{ value: Prompt["format"]; label: string }> = [
 
 interface PromptEditorProps {
   prompt: Prompt;
-  selectedType: "course" | "topic";
+  selectedType: Prompt["type"];
   onSave: (prompt: Prompt) => Promise<void>;
   onCancel: () => void;
   availableVariables?: PromptVariable[];

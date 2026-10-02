@@ -148,8 +148,11 @@ export type GeneratedTopicData = {
 } & Record<string, any>;
 
 export type CoursePractice = {
+  /** Course-wide display number. Older saved practices may not have one yet. */
+  index?: number,
   name: string,
-  description: string
+  description: string,
+  generated?: Record<string, string | string[] | QuizQuestion[]>
 };
 
 export type CourseTopicData = { 
@@ -269,7 +272,7 @@ export type Template = {
 
 export type Prompt = {
   name: string,
-  type: "course" | "topic",
+  type: "course" | "topic" | "practice",
   field: string,
   model: string,
   system_prompt: string,

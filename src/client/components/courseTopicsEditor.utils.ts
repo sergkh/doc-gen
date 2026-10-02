@@ -1,4 +1,5 @@
 import type { CoursePractice, CourseTopic } from "@/stores/models";
+import { normalizePractices } from "@/stores/practices";
 import type { AIGeneratedTopic } from "../courses";
 
 interface AddGeneratedTopicsArgs {
@@ -8,25 +9,7 @@ interface AddGeneratedTopicsArgs {
 }
 
 export function normalizeCoursePractices(practices: unknown): CoursePractice[] {
-  if (!Array.isArray(practices)) return [];
-
-  return practices.flatMap((practice) => {
-    if (typeof practice === "string") {
-      const name = practice.trim();
-      return name ? [{ name, description: "" }] : [];
-    }
-
-    if (!practice || typeof practice !== "object") return [];
-
-    const name = "name" in practice && typeof practice.name === "string"
-      ? practice.name
-      : "";
-    const description = "description" in practice && typeof practice.description === "string"
-      ? practice.description
-      : "";
-
-    return name || description ? [{ name, description }] : [];
-  });
+  return normalizePractices(practices);
 }
 
 export function addGeneratedTopicsToCourseTopics({ topics, generatedTopics, courseId }: AddGeneratedTopicsArgs) {

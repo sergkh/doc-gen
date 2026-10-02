@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
-import type { Course, CourseTopic, Prompt, PromptResult } from "@/stores/models";
+import type { Course, CoursePractice, CourseTopic, Prompt, PromptResult } from "@/stores/models";
 import { createOpenAIClient, fixAItext } from "./common";
 import { formatPrompt } from "./prompt";
 
@@ -33,6 +33,24 @@ function topicContext(course: Course, topic: CourseTopic, allTopics: CourseTopic
     lection: topic.lection || topic.name,
     topics: allTopics.map((current) => current.name).join('", "'),
     subtopics: topic.generated?.subtopics ?? "",
+    course,
+  };
+}
+
+function practiceContext(course: Course, topic: CourseTopic, practice: CoursePractice, allTopics: CourseTopic[]): Record<string, unknown> {
+  return {
+    ...practice.generated ?? {},
+    name: practice.name,
+    description: practice.description,
+    practiceIndex: practice.index,
+    practice,
+    topicName: topic.name,
+    lection: topic.lection || topic.name,
+    subtopics: topic.generated?.subtopics ?? [],
+    topic,
+    courseName: course.name,
+    courseDescription: course.data.description ?? "",
+    topics: allTopics.map((item) => item.name).join('\", \"'),
     course,
   };
 }
@@ -91,6 +109,10 @@ export function startCoursePrompt(prompt: Prompt, course: Course, topics: Course
 
 export function startTopicPrompt(prompt: Prompt, course: Course, topic: CourseTopic, allTopics: CourseTopic[], apiKey?: string | null) {
   return start(prompt, topicContext(course, topic, allTopics), apiKey);
+}
+
+export function startPracticePrompt(prompt: Prompt, course: Course, topic: CourseTopic, practice: CoursePractice, allTopics: CourseTopic[], apiKey?: string | null) {
+  return start(prompt, practiceContext(course, topic, practice, allTopics), apiKey);
 }
 
 export async function pollPromptResponse(responseId: string, format: Prompt["format"], apiKey?: string | null): Promise<PolledPrompt> {

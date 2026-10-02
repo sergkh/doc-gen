@@ -6,8 +6,10 @@ import type { CoursePractice, CourseTopicData, GeneratedTopicData } from "@/stor
 import { fixAItext } from "@/ai/common";
 
 const PracticeInput = z.object({
+  index: z.number().int().positive().optional(),
   name: z.string().min(1, "Вкажіть назву практичного заняття"),
   description: z.string().default(""),
+  generated: z.record(z.string(), z.unknown()).optional(),
 }) as z.ZodType<CoursePractice>;
 
 const AttestationInput = z.object({

@@ -8,6 +8,8 @@ import { getSessionContext, toolResult, ZodContext, type ToolContentResult } fro
 const ZodFieldInput = z.object({
   field: z.string().min(1),
   topicIndex: z.number().int().positive().optional(),
+  practiceIndex: z.number().int().positive().optional(),
+  scope: z.enum(["course", "topic", "practice"]).optional(),
   value: z.unknown(),
 });
 
@@ -18,8 +20,9 @@ const ZodInput = z.object({
 
 const ZodFieldResult = z.object({
   field: z.string(),
-  scope: z.enum(["course", "topic"]),
+  scope: z.enum(["course", "topic", "practice"]),
   topicIndex: z.number().int().positive().optional(),
+  practiceIndex: z.number().int().positive().optional(),
   status: z.enum(["accepted", "blocked", "invalid"]),
   missingDependencies: z.array(z.string()).optional(),
   message: z.string().optional(),
@@ -41,7 +44,7 @@ export function registerSetTemplateFields(server: McpServer) {
     {
       description:
         "Встановлює одне або кілька AI-полів указаного шаблону для активної дисципліни. "
-        + "Для поля області topic передайте topicIndex із list_template_fields. "
+        + "Для поля області topic передайте topicIndex, для practice — topicIndex і practiceIndex із list_template_fields. "
         + "Перевіряє тип значення і залежності; залежні поля в одному запиті можна передавати в будь-якому порядку.",
       inputSchema: ZodInput,
       outputSchema: ZodOutput,

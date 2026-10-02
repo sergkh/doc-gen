@@ -22,10 +22,11 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { DEFAULT_AGENT_MODEL } from "@/ai/models";
 import { startPromptGeneration, waitForPromptGeneration } from "@/client/prompt-generation";
+import { numberCoursePractices } from "@/stores/practices";
 
 interface PromptTesterProps {
   prompt: Prompt;
-  promptType: "course" | "topic";
+  promptType: Prompt["type"];
   field: string;
   model: string;
   format: Prompt["format"];
@@ -82,6 +83,7 @@ export default function PromptTester({
   const [topicsError, setTopicsError] = useState<string | null>(null);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
   const [selectedTopicIndex, setSelectedTopicIndex] = useState<string>("");
+  const [selectedPracticeIndex, setSelectedPracticeIndex] = useState<string>("");
 
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<PromptResult | null>(null);
@@ -191,7 +193,7 @@ export default function PromptTester({
 
   useEffect(() => {
     if (!opened) return;
-    if (promptType !== "topic") {
+    if (promptType === "course") {
       setTopics([]);
       setSelectedTopicIndex("");
       setTopicsError(null);
@@ -221,10 +223,11 @@ export default function PromptTester({
       })
       .then((data) => {
         if (aborted) return;
-        setTopics(data);
+        const numbered = numberCoursePractices(data);
+        setTopics(numbered);
         setSelectedTopicIndex((prev) => {
-          if (prev && data.some((t) => t.index === Number(prev))) return prev;
-          return data[0] ? String(data[0].index) : "";
+          if (prev && numbered.some((t) => t.index === Number(prev))) return prev;
+          return numbered[0] ? String(numbered[0].index) : "";
         });
       })
       .catch((error) => {
@@ -238,11 +241,22 @@ export default function PromptTester({
     return () => { aborted = true; };
   }, [opened, promptType, selectedCourseId]);
 
+  const selectedTopic = topics.find((topic) => topic.index === Number(selectedTopicIndex));
+  const practiceOptions = (selectedTopic?.data?.practices ?? []).map((practice) => ({
+    value: String(practice.index), label: `${practice.index}. ${practice.name}`,
+  }));
+
+  useEffect(() => {
+    setSelectedPracticeIndex((current) => practiceOptions.some((option) => option.value === current)
+      ? current : practiceOptions[0]?.value ?? "");
+  }, [selectedTopicIndex, topics]);
+
   const canTest = useMemo(() => {
     if (isTesting || !selectedCourseId) return false;
     if (promptType === "topic" && !selectedTopicIndex) return false;
+    if (promptType === "practice" && (!selectedTopicIndex || !selectedPracticeIndex)) return false;
     return !!(field.trim() && systemPrompt.trim() && userPrompt.trim());
-  }, [isTesting, selectedCourseId, selectedTopicIndex, promptType, field, systemPrompt, userPrompt]);
+  }, [isTesting, selectedCourseId, selectedTopicIndex, selectedPracticeIndex, promptType, field, systemPrompt, userPrompt]);
 
   const handleTestPrompt = async () => {
     const courseId = Number.parseInt(selectedCourseId, 10);
@@ -254,6 +268,8 @@ export default function PromptTester({
       const topicIndex = Number.parseInt(selectedTopicIndex, 10);
       if (Number.isNaN(topicIndex)) { setTestError("Індекс теми має бути числом"); return; }
       endpoint = `/api/courses/${courseId}/topics/${topicIndex}/run-prompt`;
+    } else if (promptType === "practice") {
+      endpoint = `/api/courses/${courseId}/topics/${selectedTopicIndex}/practices/${selectedPracticeIndex}/run-prompt`;
     }
 
     const payload: Prompt = {
@@ -294,6 +310,9 @@ export default function PromptTester({
       const topicIndex = Number.parseInt(selectedTopicIndex, 10);
       if (Number.isNaN(topicIndex)) return;
       endpoint = `/api/courses/${courseId}/topics/${topicIndex}/save-prompt-result`;
+    } else if (promptType === "practice") {
+      if (!selectedTopicIndex || !selectedPracticeIndex) return;
+      endpoint = `/api/courses/${courseId}/topics/${selectedTopicIndex}/practices/${selectedPracticeIndex}/save-prompt-result`;
     }
 
     setIsSaving(true);
@@ -374,7 +393,7 @@ export default function PromptTester({
             </Group>
           )}
 
-          {promptType === "topic" && (
+          {promptType !== "course" && (
             <>
               <Select
                 label="Тема дисципліни"
@@ -389,6 +408,17 @@ export default function PromptTester({
               {topicsError && <Text size="xs" c="red">{topicsError}</Text>}
               {!isLoadingTopics && !topicsError && selectedCourseId && topics.length === 0 && (
                 <Text size="xs" c="dimmed">Для цієї дисципліни немає тем.</Text>
+              )}
+              {promptType === "practice" && (
+                <Select
+                  label="Практична"
+                  placeholder="Оберіть заняття"
+                  data={practiceOptions}
+                  value={selectedPracticeIndex || null}
+                  onChange={(value) => setSelectedPracticeIndex(value ?? "")}
+                  disabled={!selectedTopicIndex || practiceOptions.length === 0}
+                  searchable
+                />
               )}
             </>
           )}

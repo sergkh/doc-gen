@@ -20,6 +20,7 @@ type PromptTemplateTextareaProps = {
 const SOURCE_LABELS: Record<PromptVariable["source"], string> = {
   course: "Дисципліна",
   topic: "Тема",
+  practice: "Заняття",
   ai: "AI-поле",
 };
 
