@@ -300,6 +300,25 @@ export default function CourseEdit() {
     const selectedTypes = new Set(selectedResults.map((result) => result.type));
     const missingResultTypes = REQUIRED_RESULT_TYPES.filter((type) => !selectedTypes.has(type));
     const placeholderAttestations = item.data.attestations.filter((attestation) => /^атестація\s+\d+$/i.test(attestation.name.trim()));
+    const topicAttestationIndexes = (item.topics ?? []).map((topic) => topic.data?.attestation ?? 1);
+    const missingTopicAttestations = item.data.attestations
+      .map((_, index) => index + 1)
+      .filter((index) => !topicAttestationIndexes.includes(index));
+    const invalidTopicAttestations = [...new Set(topicAttestationIndexes.filter((index) =>
+      !Number.isInteger(index) || index < 1 || index > item.data.attestations.length
+    ))].sort((a, b) => a - b);
+    const attestationWarnings = [
+      ...(item.data.attestations.length < 2 ? ["Курс має містити щонайменше 2 атестації."] : []),
+      ...(placeholderAttestations.length > 0
+        ? [`Перейменуйте шаблонні атестації: ${placeholderAttestations.map((attestation) => attestation.name).join(", ")}.`]
+        : []),
+      ...(missingTopicAttestations.length > 0
+        ? [`Атестації без призначених тем: ${missingTopicAttestations.join(", ")}.`]
+        : []),
+      ...(invalidTopicAttestations.length > 0
+        ? [`Теми призначено до неіснуючих атестацій: ${invalidTopicAttestations.join(", ")}.`]
+        : []),
+    ];
 
     return [
       ...(item.data.hours > 0 && topicHours !== item.data.hours ? [{
@@ -317,10 +336,10 @@ export default function CourseEdit() {
         label: "Результати",
         tooltip: `Відсутні типи результатів: ${missingResultTypes.join(", ")}. Курс має містити ЗК, СК, РН та ІК.`,
       }] : []),
-      ...(placeholderAttestations.length > 0 ? [{
+      ...(attestationWarnings.length > 0 ? [{
         key: "attestations",
         label: "Атестації",
-        tooltip: `Перейменуйте шаблонні атестації: ${placeholderAttestations.map((attestation) => attestation.name).join(", ")}.`,
+        tooltip: attestationWarnings.join(" "),
       }] : []),
       ...(item.data.credits > 0 && item.data.hours > 0 && item.data.hours !== item.data.credits * 30 ? [{
         key: "credits",
