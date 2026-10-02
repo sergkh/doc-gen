@@ -105,9 +105,9 @@ mock.module("@/ai/generator", () => ({
   runTopicPrompts: mockRunTopicPrompts,
 }));
 
-const mockStartCoursePrompt = mock(() => Promise.resolve({ responseId: "resp-course", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
-const mockStartTopicPrompt = mock(() => Promise.resolve({ responseId: "resp-topic", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
-const mockStartPracticePrompt = mock(() => Promise.resolve({ responseId: "resp-practice", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockStartCoursePrompt = mock(() => Promise.resolve({ jobId: "job-course", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockStartTopicPrompt = mock(() => Promise.resolve({ jobId: "job-topic", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
+const mockStartPracticePrompt = mock(() => Promise.resolve({ jobId: "job-practice", status: "queued", systemPrompt: "System", userPrompt: "Prompt" }));
 const mockPollPromptResponse = mock(() => Promise.resolve({ status: "generating" }));
 
 mock.module("@/ai/background-prompt", () => ({
@@ -375,7 +375,7 @@ describe("generationApi", () => {
       matchParams(startRequest, { courseId: "1", topicId: "5" });
       const startResponse = await generationApi["/api/courses/:courseId/topics/:topicId/run-prompt"].POST(startRequest);
       const { jobId } = await startResponse.json();
-      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ status: "completed", item: "Generated content" }));
+      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ jobId, status: "completed", item: "Generated content", field: "content", system_prompt: "System", prompt: "Prompt" }));
       const req = makeGET("/api/prompt-generation-jobs/test");
       matchParams(req, { jobId });
       const resp = await route().GET(req);
@@ -385,23 +385,19 @@ describe("generationApi", () => {
 
       const retainedRequest = makeGET(`/api/prompt-generation-jobs/${jobId}`);
       matchParams(retainedRequest, { jobId });
+      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ jobId, status: "completed", item: "Generated content", field: "content", system_prompt: "System", prompt: "Prompt" }));
       const retainedResponse = await route().GET(retainedRequest);
       expect(await retainedResponse.json()).toMatchObject({ status: "completed", result: "Generated content" });
-      expect(mockPollPromptResponse).toHaveBeenCalledTimes(1);
+      expect(mockPollPromptResponse).toHaveBeenCalledTimes(2);
     });
 
-    it("recovers a job on another in-memory instance from the browser reference", async () => {
-      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve({ status: "completed", item: "Recovered content" }));
+    it("returns 404 when an in-memory job is no longer available", async () => {
+      mockPollPromptResponse.mockReturnValueOnce(Promise.resolve(null));
       const req = makeGET("/api/prompt-generation-jobs/recovered");
-      req.headers = new Headers({
-        "X-Prompt-Response-Id": "resp-recovered",
-        "X-Prompt-Format": "text",
-        "X-Prompt-Field": "content",
-      });
       matchParams(req, { jobId: "recovered" });
       const resp = await route().GET(req);
-      expect(resp.status).toBe(200);
-      expect(await resp.json()).toMatchObject({ status: "completed", result: "Recovered content", field: "content" });
+      expect(resp.status).toBe(404);
+      expect(mockPollPromptResponse).toHaveBeenCalledTimes(1);
     });
   });
 

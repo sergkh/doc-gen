@@ -70,7 +70,7 @@ export default function GeneratedFieldEditor({
       if (topicId) endpoint = `/api/courses/${courseId}/topics/${topicId}/run-prompt`;
       if (topicId && practiceId) endpoint = `/api/courses/${courseId}/topics/${topicId}/practices/${practiceId}/run-prompt`;
       const job = await startPromptGeneration(endpoint, { ...prompt, type: practiceId ? "practice" : topicId ? "topic" : "course" }, apiKey);
-      const data = await waitForPromptGeneration(job, undefined, apiKey);
+      const data = await waitForPromptGeneration(job);
       if (format === "text" && typeof data.item === "string") onChange(data.item);
       else if (format === "list" && Array.isArray(data.item)) onChange([...listValue, ...data.item.filter((i: any) => typeof i === "string")]);
       else if (format === "quiz" && Array.isArray(data.item)) onChange([...quizValue, ...data.item.filter((i: any) => i?.question && Array.isArray(i.options) && typeof i.answerIndex === "number")]);

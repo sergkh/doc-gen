@@ -291,7 +291,7 @@ export default function PromptTester({
 
     try {
       const job = await startPromptGeneration(endpoint, payload, savedApiKey ?? undefined);
-      setTestResult(await waitForPromptGeneration(job, undefined, savedApiKey ?? undefined));
+      setTestResult(await waitForPromptGeneration(job));
     } catch (error) {
       setTestError(error instanceof Error ? error.message : "Сталася невідома помилка");
     } finally {
@@ -356,7 +356,6 @@ export default function PromptTester({
               setTopicsError(null);
             }}
             disabled={isLoadingSpecialties}
-            searchable
             rightSection={isLoadingSpecialties ? <Loader size="xs" /> : undefined}
           />
           {specialtiesError && (
@@ -375,7 +374,6 @@ export default function PromptTester({
             value={selectedCourseId || null}
             onChange={(v) => setSelectedCourseId(v ?? "")}
             disabled={isLoadingCourses || !selectedSpecialtyId}
-            searchable
             rightSection={isLoadingCourses ? <Loader size="xs" /> : undefined}
           />
           {coursesError && (
@@ -402,7 +400,6 @@ export default function PromptTester({
                 value={selectedTopicIndex || null}
                 onChange={(v) => setSelectedTopicIndex(v ?? "")}
                 disabled={isLoadingTopics || !selectedCourseId}
-                searchable
                 rightSection={isLoadingTopics ? <Loader size="xs" /> : undefined}
               />
               {topicsError && <Text size="xs" c="red">{topicsError}</Text>}
@@ -417,7 +414,6 @@ export default function PromptTester({
                   value={selectedPracticeIndex || null}
                   onChange={(value) => setSelectedPracticeIndex(value ?? "")}
                   disabled={!selectedTopicIndex || practiceOptions.length === 0}
-                  searchable
                 />
               )}
             </>

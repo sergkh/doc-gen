@@ -47,7 +47,7 @@ export async function runPrompts(
   type: Prompt["type"],
   forceRecreate: boolean = false,
   apiKey: string | null,
-  contextProvider: (context: Record<string, any>) => Record<string, any>  
+  contextProvider: (context: Record<string, any>) => Record<string, any>
 ): Promise<PromptResult[]> {
   const client = createOpenAIClient(apiKey);
   const results: PromptResult[] = [];
@@ -119,7 +119,16 @@ export function runTopicPrompts(
   apiKey: string | null,
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {
-  return runPrompts(prompts, topic.generated ?? {}, "topic", forceRecreate, apiKey, (state) => ({
+  return runPrompts(prompts, topic.generated ?? {}, "topic", forceRecreate, apiKey, (state) => topicPromptContext(course, topic, allTopics, state));
+}
+
+export function topicPromptContext(
+  course: Course,
+  topic: CourseTopic,
+  allTopics: CourseTopic[],
+  state: Record<string, any> = {},
+): Record<string, any> {
+  return {
     ...topic.generated ?? {},
     ...state,
     courseName: course.name,
@@ -129,7 +138,7 @@ export function runTopicPrompts(
     topics: allTopics.map(t => t.name).join('", "'),
     subtopics: topic.generated?.subtopics ?? state['subtopics']?.items.join(", ") ?? '',
     course: course
-  }));
+  };
 }
 
 export function runPracticePrompts(
@@ -141,7 +150,17 @@ export function runPracticePrompts(
   apiKey: string | null,
   forceRecreate: boolean = false
 ): Promise<PromptResult[]> {
-  return runPrompts(prompts, practice.generated ?? {}, "practice", forceRecreate, apiKey, (state) => ({
+  return runPrompts(prompts, practice.generated ?? {}, "practice", forceRecreate, apiKey, (state) => practicePromptContext(course, topic, practice, allTopics, state));
+}
+
+export function practicePromptContext(
+  course: Course,
+  topic: CourseTopic,
+  practice: CoursePractice,
+  allTopics: CourseTopic[],
+  state: Record<string, any> = {},
+): Record<string, any> {
+  return {
     ...practice.generated ?? {},
     ...state,
     name: practice.name,
@@ -157,7 +176,7 @@ export function runPracticePrompts(
     courseDescription: course.data.description ?? "",
     topics: allTopics.map((item) => item.name).join('\", \"'),
     course,
-  }));
+  };
 }
 
 export function runCoursePrompts(
@@ -166,8 +185,16 @@ export function runCoursePrompts(
   courseTopics: CourseTopic[],
   apiKey: string | null,
   forceRecreate: boolean = false
-): Promise<PromptResult[]> {  
-  return runPrompts(prompts, course.generated ?? {}, "course", forceRecreate, apiKey, (state) => ({
+): Promise<PromptResult[]> {
+  return runPrompts(prompts, course.generated ?? {}, "course", forceRecreate, apiKey, (state) => coursePromptContext(course, courseTopics, state));
+}
+
+export function coursePromptContext(
+  course: Course,
+  courseTopics: CourseTopic[],
+  state: Record<string, any> = {},
+): Record<string, any> {
+  return {
     ...course.generated ?? {},
     ...state,
     courseName: course.name,
@@ -188,7 +215,7 @@ export function runCoursePrompts(
         srs: courseTopics.map(t => t.data.inabscentia?.srs_hours ?? 0).sum(),
       }
     }
-  }));
+  };
 }
 
 async function updateCourse(old: Course, newCourse: Course, reason: string): Promise<Course> {

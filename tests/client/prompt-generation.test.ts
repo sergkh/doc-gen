@@ -12,7 +12,6 @@ describe("startPromptGeneration", () => {
     globalThis.fetch = async () => new Response(JSON.stringify({
       jobId: "a4c4b97e-a8e0-4276-ae16-f3c7f7077907",
       status: "queued",
-      responseId: "resp_123",
       field: "description",
       format: "text",
       system_prompt: "System",
