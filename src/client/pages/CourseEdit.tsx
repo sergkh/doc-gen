@@ -312,6 +312,7 @@ export default function CourseEdit() {
     const missingLiterature = LITERATURE_TYPES
       .filter(([key]) => !(item.data.literature?.[key] || []).some((entry) => entry.trim()))
       .map(([, label]) => label);
+    const missingDescription = !item.data.description?.trim();
     const selectedTypes = new Set(selectedResults.map((result) => result.type));
     const missingResultTypes = REQUIRED_RESULT_TYPES.filter((type) => !selectedTypes.has(type));
     const placeholderAttestations = item.data.attestations.filter((attestation) => /^атестація\s+\d+$/i.test(attestation.name.trim()));
@@ -340,6 +341,11 @@ export default function CourseEdit() {
         key: "topic-hours",
         label: "Години тем",
         tooltip: `Сума годин усіх тем (${topicHours}) не дорівнює загальній кількості годин курсу (${item.data.hours}).`,
+      }] : []),
+      ...(missingDescription ? [{
+        key: "description",
+        label: "Відсутній опис дисципліни",
+        tooltip: "Додайте короткий опис дисципліни.",
       }] : []),
       ...(missingLiterature.length > 0 ? [{
         key: "literature",
@@ -588,6 +594,7 @@ export default function CourseEdit() {
 
           <Textarea
             label="Додатковий опис"
+            placeholder="Коротко опишіть дисципліну, основні технології та підходи що застосовуються"
             value={item.data.description}
             onChange={(e) => updateData({ description: e.currentTarget.value })}
             onBlur={(e) => updateData({ description: e.currentTarget.value.trim() })}

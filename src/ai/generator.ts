@@ -145,6 +145,7 @@ export function runPracticePrompts(
     ...practice.generated ?? {},
     ...state,
     name: practice.name,
+    type: (course.data.practice_type ?? 'practice') == 'practice' ? 'практична' : 'лабораторна',
     description: practice.description,
     practiceIndex: practice.index,
     practice,
