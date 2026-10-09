@@ -7,6 +7,7 @@ import { courseResults, specialties, teachers } from '@/stores/db';
 import { createHash } from 'crypto';
 import { extractDocTables, findFirstTable, findNextTable, findTableRow, findTableRowExact, findTableRowIndex, type DocTable } from './structured-parser';
 import { extractInformationAI } from "@/ai/extractor";
+import { getInternalPrompt } from "@/ai/internal-prompts";
 import { dropDot, genericNormalize  } from '@/parsing/utils';
 import { docx2text } from "./files";
 
@@ -71,10 +72,6 @@ function parseAcademicTitle(titlePosition: string): AcademicTitle | null {
   if (titlePosition.includes('д.е.н.')) return 'доктор економічних наук';
   return null;
 }
-
-const prepostRequisitesPrompt = `
-  З переданого тексту вибери дисципліни знання з яких використовуються в даній (prerequisites), та дисципліни знання які використовують дану (postrequisites). Якщо щось не вказане, поверни пустий масив.
-`;
 
 const PrepostRequisitesExtraction = z.object({
   prerequisites: z.array(z.string()),
@@ -159,7 +156,8 @@ function parseDescriptionTable(table: DocTable | null): {fulltime: CourseSemeste
 }
 
 async function parsePreAndPostRequisites(text: string): Promise<{prerequisites: string[], postrequisites: string[]}> {
-  const parseResult = await extractInformationAI(prepostRequisitesPrompt, text, PrepostRequisitesExtraction);
+  const prompt = await getInternalPrompt("ai.parse_requisites");
+  const parseResult = await extractInformationAI(prompt.text, text, PrepostRequisitesExtraction, prompt.model);
   
   if (!parseResult) {
     throw Error("Failed to extract prerequisites and postrequisites");

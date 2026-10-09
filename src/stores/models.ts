@@ -280,6 +280,15 @@ export type Prompt = {
   format: "text" | "list" | "quiz",
 }
 
+/** Runtime AI/MCP wording stored outside document templates. Schemas stay in code. */
+export type InternalPrompt = {
+  key: string,
+  text: string,
+  model: string | null,
+  created_at?: string,
+  updated_at?: string,
+}
+
 export type ParsedData = {
   type: 'syllabus' | 'program';
   topics: CourseTopic[],

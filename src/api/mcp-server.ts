@@ -19,6 +19,8 @@ import { registerTeachersResources } from "./resources/teachers-resources";
 import { registerTemplateManifestResources } from "./resources/template-manifest-resources";
 import { registerListTemplateFields } from "./tools/list-template-fields";
 import { registerSetTemplateFields } from "./tools/set-template-fields";
+import { getInternalPrompt, getInternalPrompts } from "@/ai/internal-prompts";
+import { MCP_TOOL_PROMPT_DEFAULTS } from "@/ai/internal-prompts-defaults";
 
 const SERVER_INFO = {
   name: "doc-gen-mcp",
@@ -27,35 +29,80 @@ const SERVER_INFO = {
 
 const transports = new Map<string, WebStandardStreamableHTTPServerTransport>();
 
-function createServer(): McpServer { 
+type McpCallback = (...args: any[]) => unknown;
+
+function errorDetails(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return { message: String(error) };
+}
+
+function logMcpError(event: string, context: Record<string, unknown>, error: unknown) {
+  console.error(`MCP ${event}`, {
+    ...context,
+    error: errorDetails(error),
+  });
+}
+
+function addCallbackErrorLogging(server: McpServer) {
+  const registerTool: any = server.registerTool.bind(server);
+  server.registerTool = ((name: string, config: any, callback: McpCallback) =>
+    registerTool(name, config, async (...args: any[]) => {
+      try {
+        return await callback(...args);
+      } catch (error) {
+        const context = args[1] as { sessionId?: string } | undefined;
+        logMcpError("tool failed", { tool: name, sessionId: context?.sessionId }, error);
+        throw error;
+      }
+    })) as typeof server.registerTool;
+
+  const registerResource: any = server.registerResource.bind(server);
+  server.registerResource = ((name: string, uriOrTemplate: any, config: any, callback: McpCallback) =>
+    registerResource(name, uriOrTemplate, config, async (...args: any[]) => {
+      try {
+        return await callback(...args);
+      } catch (error) {
+        const uri = args[0] instanceof URL ? args[0].href : undefined;
+        logMcpError("resource read failed", { resource: name, uri }, error);
+        throw error;
+      }
+    })) as typeof server.registerResource;
+}
+
+function addToolDescriptionOverrides(server: McpServer, descriptions: Map<string, string>) {
+  const registerTool: any = server.registerTool.bind(server);
+  server.registerTool = ((name: string, config: any, callback: McpCallback) =>
+    registerTool(name, {
+      ...config,
+      description: descriptions.get(`mcp.tool.${name}`) ?? config.description,
+    }, callback)) as typeof server.registerTool;
+}
+
+async function createServer(transport: WebStandardStreamableHTTPServerTransport): Promise<McpServer> {
+  const [instructions, prompts] = await Promise.all([
+    getInternalPrompt("mcp.instructions"),
+    getInternalPrompts(MCP_TOOL_PROMPT_DEFAULTS.map((prompt) => prompt.key)),
+  ]);
   const server = new McpServer(SERVER_INFO, {
     capabilities: {
       tools: {},
       logging: {}
     },
-    instructions:
-      `MCP сервер для роботи з навчальними планами та дисциплінами. Використовуй надані інструменти та відповідай українською.
-      Якщо інструмент повертає помилку або бракує параметрів, попроси користувача уточнити дані.
-      Перед початком роботи необхідно запитати з якою спеціальністю працюємо й встанови її через set_specialty_context.
-      Контекст сесії: set_specialty_context, set_course_context. Інші інструменти використовують спеціальність чи курс з контексту.
-      Доступні інструменти:
-      - set_specialty_context (встановлює активну спеціальність)
-      - set_course_context (встановлює активну курс/дисципліну)
-      - search_disciplines_by_result (пошук курсів за результатом)
-      - list_courses (список курсів за specialtyId)
-      - list_specialties (список спеціальностей і кодів)
-      - get_current_specialty_full_info (повна інформація про поточну спеціальність: дані спеціальності, результати, дисципліни з ОК)
-      - get_current_course_full_info (повна інформація про поточний курс: дані курсу і список тем)
-      - create_course (створення курсу для поточної спеціальності - необхідно попередньо встановити спеціальність; потребує підтвердження користувача, робить дисципліну активною після створення)
-      - update_course_topics (оновлення тем активної дисципліни; потребує confirm=true). Зазвичай кожна тема займає 2 або 4 години лекцій. Та має 0 або 2 години практичних
-      - update_course_results (оновлення результатів активної дисципліни за номерами окремо для ЗК/СК/РН; ІК додається автоматично)
-      - update_course_requisites (оновлення пререквізитів/постреквізитів активної дисципліни; усі реквізити мають бути з тієї ж спеціальності)
-      - update_course_literature (оновлення літератури активної дисципліни: основна, додаткова, інтернет-ресурси, методичні матеріали)
-      - list_templates (список доступних шаблонів для генерації документів з параметрами)
-      - list_template_fields (усі AI-поля доступних шаблонів і їхні поточні значення для активної дисципліни та тем)
-      - set_template_fields (встановлює одне або кілька AI-полів указаного шаблону з перевіркою типів і залежностей)
-      `
+    instructions: instructions.text,
   });
+
+  addCallbackErrorLogging(server);
+  addToolDescriptionOverrides(server, new Map(Array.from(prompts.values()).map((prompt) => [prompt.key, prompt.text])));
+  server.server.onerror = (error) => {
+    logMcpError("protocol error", { sessionId: transport.sessionId }, error);
+  };
 
   registerSearchDisciplinesByResult(server);
   registerListCourses(server);
@@ -83,6 +130,11 @@ function createServer(): McpServer {
 
 export async function handleMcpRequest(req: Request): Promise<Response> {
   const sessionId = req.headers.get("mcp-session-id");
+  const requestContext = {
+    method: req.method,
+    path: new URL(req.url).pathname,
+    sessionId,
+  };
 
   let transport: WebStandardStreamableHTTPServerTransport;
 
@@ -99,12 +151,22 @@ export async function handleMcpRequest(req: Request): Promise<Response> {
         transports.delete(id);
       },
     });
-    
-    const server = createServer();
-    await server.connect(transport);
+
+    try {
+      const server = await createServer(transport);
+      await server.connect(transport);
+    } catch (error) {
+      logMcpError("server initialization failed", requestContext, error);
+      throw error;
+    }
   }
 
-  return await transport.handleRequest(req);
+  try {
+    return await transport.handleRequest(req);
+  } catch (error) {
+    logMcpError("request failed", { ...requestContext, transportSessionId: transport.sessionId }, error);
+    throw error;
+  }
 }
 
 const mcpApi = {

@@ -9,6 +9,7 @@ import templatesApi from "@/api/templates-api.ts";
 import specialtiesApi from "@/api/specialties-api.ts";
 import mcpApi from "@/api/mcp-server.ts";
 import workHoursApi from "@/api/work-hours-api.ts";
+import internalPromptsApi from "@/api/internal-prompts-api.ts";
 import { NotFoundError } from "openai";
 
 const routes = {    
@@ -20,7 +21,8 @@ const routes = {
   ...templatesApi,
   ...specialtiesApi,
   ...mcpApi,
-  ...workHoursApi
+  ...workHoursApi,
+  ...internalPromptsApi,
 };
 
 const server = serve({

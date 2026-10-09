@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { extractInformationAI } from "./extractor";
+import { getInternalPrompt } from "./internal-prompts";
+import { formatPrompt } from "./prompt";
 import type { CourseTopic } from "@/stores/models";
 
 const topicChangeSchema = z.object({
@@ -63,10 +65,12 @@ export async function isTopicContentSubstantiallyChanged(
   }
 
   try {
+    const prompt = await getInternalPrompt("ai.topic_content_change");
     const decision = await extractInformationAI(
-      "Ти оцінюєш зміни в темі університетської дисципліни. Визначай, чи змінився саме навчальний зміст теми настільки, що раніше згенеровані матеріали (план, ключові слова, питання тощо) більше не можна вважати актуальними. Не вважай суттєвими виправлення формулювання, скорочення, перестановку тих самих підтем або невеликі уточнення. Вважай суттєвими перехід до іншої предметної області, інший центральний метод/технологію чи значне оновлення переліку питань.",
-      `Попередня тема:\n${JSON.stringify(before)}\n\nОновлена тема:\n${JSON.stringify(after)}`,
+      formatPrompt(prompt.text, { before: JSON.stringify(before), after: JSON.stringify(after) }),
+      "",
       topicChangeSchema,
+      prompt.model,
     );
 
     return decision?.substantial === true;

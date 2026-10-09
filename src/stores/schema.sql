@@ -116,3 +116,11 @@ CREATE TABLE IF NOT EXISTS prompts (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     model character varying(64) DEFAULT 'gpt-4o'::character varying NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS internal_prompts (
+  key VARCHAR(128) PRIMARY KEY,
+  text TEXT NOT NULL,
+  model VARCHAR(128),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

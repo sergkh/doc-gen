@@ -1,7 +1,7 @@
 import path from "path";
 import { sql } from "bun";
 import { create } from "jsondiffpatch";
-import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, TeacherTimesheet, Template } from "./models";
+import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, InternalPrompt, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, TeacherTimesheet, Template } from "./models";
 import { ConcurrentModificationError } from "@/services/errors";
 
 // Initialize the database connection
@@ -414,6 +414,24 @@ const templates = {
   },
 };
 
+const internalPrompts = {
+  all: async (): Promise<InternalPrompt[]> =>
+    await sql`SELECT * FROM internal_prompts ORDER BY key` as InternalPrompt[],
+
+  get: async (key: string): Promise<InternalPrompt | null> => {
+    const result = await sql`SELECT * FROM internal_prompts WHERE key = ${key}` as InternalPrompt[];
+    return result[0] ?? null;
+  },
+
+  update: async (key: string, text: string, model: string | null): Promise<InternalPrompt | null> => {
+    const result = await sql`UPDATE internal_prompts
+      SET text = ${text}, model = ${model}, updated_at = CURRENT_TIMESTAMP
+      WHERE key = ${key}
+      RETURNING *` as InternalPrompt[];
+    return result[0] ?? null;
+  },
+};
+
 const specialties = {
   all: async (): Promise<Specialty[]> => {
     return await sql`SELECT * FROM specialties ORDER BY code, name` as Specialty[];
@@ -466,4 +484,4 @@ const specialties = {
 };
 
 
-export { courses, teachers, courseTopics , courseResults, templates, specialties, teacherPublications, teacherTimesheets, history };
+export { courses, teachers, courseTopics , courseResults, templates, internalPrompts, specialties, teacherPublications, teacherTimesheets, history };

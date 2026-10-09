@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
 import { extractInformationAI } from "@/ai/extractor";
+import { getInternalPrompt } from "@/ai/internal-prompts";
 import { extractDocTables, findFirstTable, findNextTable, findNextTableRow, findTableRow, type DocTable } from "./structured-parser";
 import { dropDot, normalizeWhitespaces } from "@/parsing/utils";
 import { file2text } from "./files";
@@ -18,10 +19,6 @@ export type OPP ={
   disciplines: SpecialtyDisciplineConfig[];
   specialty: Specialty;
 }
-
-const specialtyPrompt = `
-  З переданого тексту вибери спеціальність (specialty), її код (code), галузь знань (area) та її код (area_code) та кваліфікацію (qualification). Якщо щось не вказане, поверни null.
-`;
 
 const SpecialtyExtraction = z.object({
   specialty: z.string().nullable(),
@@ -111,7 +108,8 @@ export async function parseOPP(filepath: string): Promise<OPP | null> {
     console.log("Extracted text:", text.substring(0, 1000));
     
     const header = text.substring(0, 1000);
-    const extractedSpecialty = await extractInformationAI(specialtyPrompt, header, SpecialtyExtraction);
+    const prompt = await getInternalPrompt("ai.parse_specialty");
+    const extractedSpecialty = await extractInformationAI(prompt.text, header, SpecialtyExtraction, prompt.model);
 
     if (!extractedSpecialty) {
       throw Error("Failed to extract specialty from header");

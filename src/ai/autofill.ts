@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { extractInformationAI } from "./extractor";
+import { formatPrompt } from "./prompt";
+import { getInternalPrompt } from "./internal-prompts";
 import type { Course, CourseResult, CourseTopic } from "@/stores/models.ts";
 
 const autofillResultSchema = z.object({
@@ -19,35 +21,22 @@ export type AutofillResults = AutofillResult[];
 export async function autofillCourseResults(
   results: CourseResult[],
   course: Course,
-  model: string = "gpt-5-2025-08-07",
+  model?: string,
   apiKey?: string
 ): Promise<AutofillResults> {
-  const systemPrompt = `Ти - експерт з аналізу освітніх програм для університетських дисциплін. 
-Твоя задача - визначити, які з вказаних результатів навчання покриваються описаної дисципліною.
-
-Для кожного результату навчання:
-1. Оціни, наскільки дисципліна сприяє формуванню цього результату
-2. Враховуй: назву дисципліни, опис, теми/модулі, ключові слова.
-3. Надай коротке обґрунтування чому ця дисципліна відповідає результату
-
-Вибери ТІЛЬКИ ті результати, які ДІЙСНО формуються під час вивчення цієї дисципліни.`;
-
-  const text = `Дисципліна: ${course.name}
-
-Опис: ${course.data.description || ""}
-
-Теми/модулі: ${course.topics!.map(t => `${t.index} ${t.name}. ${(t.generated.keywords || []).join(", ")}`).join("\n")}
-
-Доступні результати навчання:
-${results.map(r => `[${r.id}] ${r.no}. ${r.name}`).join("\n")}
-
-Для кожного результату, який відповідає цій дисципліні, надай ID та коротке обґрунтування.`;
+  const prompt = await getInternalPrompt("ai.course_results_autofill");
+  const text = formatPrompt(prompt.text, {
+    courseName: course.name,
+    courseDescription: course.data.description || "",
+    topicLines: (course.topics ?? []).map(t => `${t.index} ${t.name}. ${(t.generated.keywords || []).join(", ")}`).join("\n"),
+    resultLines: results.map(r => `[${r.id}] ${r.no}. ${r.name}`).join("\n"),
+  });
 
   const response = await extractInformationAI(
-    systemPrompt,
     text,
+    "",
     autofillResultSchema,
-    model,
+    prompt.model ?? model ?? null,
     apiKey ?? null
   );
 
@@ -81,7 +70,7 @@ const topicPracticesSchema = (count: number) => z.object({
   })).length(count),
 });
 
-export function buildAttestationRenamePrompt(courseName: string, attestationIndex: number, topics: CourseTopic[]): string {
+export function buildAttestationRenamePrompt(template: string, courseName: string, attestationIndex: number, topics: CourseTopic[]): string {
   const topicLines = topics.length > 0
     ? topics.map((topic) => {
         const keywords = (topic.generated?.keywords || []).filter(Boolean);
@@ -90,16 +79,7 @@ export function buildAttestationRenamePrompt(courseName: string, attestationInde
       }).join("\n")
     : "Теми не вказані";
 
-  return `Ти - експерт з розробки освітніх програм для університетських дисциплін.
-Твоя задача - придумати коротку, узагальнюючу назву атестації за темами дисципліни.
-
-Дисципліна: ${courseName}
-Атестація №${attestationIndex}
-
-Тематика цієї атестації:
-${topicLines}
-
-Завдання: на основі наведених тем і ключових слів придумай одну коротку назву українською мовою, яка узагальнює весь зміст атестації. Назва має бути максимально короткою (2–4 слова), загальною, але зрозумілою. Відповідай без пояснень і без лапок.`;
+  return formatPrompt(template, { courseName, attestationIndex, topicLines });
 }
 
 export function normalizeAttestationName(name: string, fallback: string): string {
@@ -112,15 +92,16 @@ export async function renameAttestationName(
   course: Course,
   attestationIndex: number,
   topics: CourseTopic[],
-  model: string = "gpt-5-2025-08-07",
+  model?: string,
   apiKey?: string
 ): Promise<string> {
-  const prompt = buildAttestationRenamePrompt(course.name, attestationIndex, topics);
+  const definition = await getInternalPrompt("ai.attestation_name");
+  const prompt = buildAttestationRenamePrompt(definition.text, course.name, attestationIndex, topics);
   const response = await extractInformationAI(
-    "Ти допомагаєш створювати назви освітніх атестацій для навчальних дисциплін.",
     prompt,
+    "",
     attestationRenameSchema,
-    model,
+    definition.model ?? model ?? null,
     apiKey ?? null
   );
 
@@ -131,20 +112,15 @@ export async function renameAttestationName(
 export async function generateTopicSubtopics(
   course: Course,
   topic: Pick<CourseTopic, "name" | "lection">,
-  model: string = "gpt-5-2025-08-07",
+  model?: string,
   apiKey?: string,
 ): Promise<string[]> {
+  const definition = await getInternalPrompt("ai.topic_subtopics");
   const response = await extractInformationAI(
-    "Ти допомагаєш створювати зміст університетської навчальної дисципліни українською мовою.",
-    `Дисципліна: ${course.name}
-Опис дисципліни: ${course.data.description || "не вказано"}
-
-Тема: ${topic.name}
-Текст лекції: ${topic.lection || "не вказано"}
-
-Запропонуй 2–5 стислих підтем для цієї теми. Підтеми мають конкретизувати тему, не дублювати її назву та бути придатними для навчальної програми.`,
+    formatPrompt(definition.text, { courseName: course.name, courseDescription: course.data.description || "не вказано", topicName: topic.name, lection: topic.lection || "не вказано" }),
+    "",
     topicSubtopicsSchema,
-    model,
+    definition.model ?? model ?? null,
     apiKey ?? null,
   );
 
@@ -154,26 +130,18 @@ export async function generateTopicSubtopics(
 export async function generateTopicPractices(
   course: Course,
   topic: { name: string; subtopics: string[]; practicalHours: number },
-  model: string = "gpt-5-2025-08-07",
+  model?: string,
   apiKey?: string,
 ): Promise<Array<{ name: string; description: string }>> {
   const practiceCount = Math.floor(topic.practicalHours / 2);
   if (practiceCount === 0) return [];
 
+  const definition = await getInternalPrompt("ai.topic_practices");
   const response = await extractInformationAI(
-    "Ти допомагаєш створювати короткі, практичні університетські заняття українською мовою.",
-    `Дисципліна: ${course.name}
-Опис дисципліни: ${course.data.description || "не вказано"}
-
-Тема: ${topic.name}
-Підтеми: ${topic.subtopics.length > 0 ? topic.subtopics.join("; ") : "не вказано"}
-Практичних годин для теми (денна форма): ${topic.practicalHours}
-
-Створи рівно ${practiceCount} ${practiceCount === 1 ? "практичне заняття" : "практичних заняття"}, по 2 години кожне. 
-Для кожного вкажи коротку конкретну назву без номера та опис: завдання студентів і очікуваний результат. 
-Заняття мають бути практичними (для ІТ дисциплін за компʼютерами) й практично закріплюівати цю тему та її підтеми, бути реалістичними для університетського курсу й не дублювати одне одного.`,
+    formatPrompt(definition.text, { courseName: course.name, courseDescription: course.data.description || "не вказано", topicName: topic.name, subtopics: topic.subtopics.length > 0 ? topic.subtopics.join("; ") : "не вказано", practicalHours: topic.practicalHours, practiceCount }),
+    "",
     topicPracticesSchema(practiceCount),
-    model,
+    definition.model ?? model ?? null,
     apiKey ?? null,
   );
 
@@ -187,35 +155,17 @@ export async function generateCourseTopics(
   description: string,
   specialtyName: string,
   credits: number,
-  model: string = "gpt-4o-mini",
+  model?: string,
   apiKey: string | null = null
 ): Promise<GeneratedTopic[]> {
-  const systemPrompt = `Ти - експерт з розробки освітніх програм для університетських дисциплін.
-Твоя задача - створити список тем для навчальної дисципліни.
-
-Правила:
-1. Кількість тем має відповідати кількості кредитів (приблизно 3-4 теми на 1 кредит)
-2. Кожна тема має мати 2-4 підтеми
-3. Теми мають охоплювати весь зміст дисципліни
-4. Теми мають бути логічно пов'язані між собою
-5. Враховуй спеціальність, для якої читається дисципліна
-6. Назви тем мають бути короткими та інформативними`;
-
-  const text = `Дисципліна: ${disciplineName}
-
-Опис: ${description}
-
-Спеціальність: ${specialtyName}
-
-Кількість кредитів: ${credits}
-
-Згенеруй список тем та підтем для цієї дисципліни.`;
+  const prompt = await getInternalPrompt("ai.course_topics");
+  const text = formatPrompt(prompt.text, { disciplineName, description, specialtyName, credits });
 
   const response = await extractInformationAI(
-    systemPrompt,
     text,
+    "",
     generatedTopicsSchema,
-    model,
+    prompt.model ?? model ?? null,
     apiKey
   );
 

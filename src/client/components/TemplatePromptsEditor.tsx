@@ -166,14 +166,24 @@ export default function TemplatePromptsEditor({ prompts, onChange }: TemplatePro
   const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
   const [selectedPromptType, setSelectedPromptType] = useState<Prompt["type"]>("course");
 
-  const handleAddPrompt = () => {
+  const handleAddPrompt = async () => {
+    let systemPrompt = 'Ти асистент викладача з дисципліни "{{courseName}}". Опис: {{courseDescription}}';
+    try {
+      const response = await fetch("/api/internal-prompts");
+      if (response.ok) {
+        const internalPrompts = await response.json() as Array<{ key: string; text: string }>;
+        systemPrompt = internalPrompts.find((prompt) => prompt.key === "ai.template_prompt_preset")?.text ?? systemPrompt;
+      }
+    } catch {
+      // A prompt can still be added when the configurable preset is unavailable.
+    }
     const newPrompt: Prompt = {
       name: "",
       type: selectedPromptType,
       field: "",
       model: DEFAULT_AGENT_MODEL,
       format: "text",
-      system_prompt: 'Ти асистент викладача з дисципліни "{{courseName}}". Опис: {{courseDescription}}',
+      system_prompt: systemPrompt,
       prompt: "",
     };
     onChange([...prompts, newPrompt]);

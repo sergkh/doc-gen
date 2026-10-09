@@ -4,12 +4,17 @@ import { Routes, Route, Link, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import {
   AppShell,
+  ActionIcon,
   MantineProvider,
   Burger,
   Group,
+  Menu,
   NavLink,
   Text,
+  Tooltip,
 } from "@mantine/core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { useDisclosure } from "@mantine/hooks";
 import CoursesList from "./client/pages/CoursesList";
 import GeneratorPage from "./client/pages/GeneratorPage";
@@ -29,6 +34,7 @@ import CourseGeneratedDataEdit from "./client/pages/CourseGeneratedDataEdit";
 import SpecialtiesList from "./client/pages/SpecialtiesList";
 import SpecialtyEdit from "./client/pages/SpecialtyEdit";
 import SpecialtyHistory from "./client/pages/SpecialtyHistory";
+import InternalPrompts from "./client/pages/InternalPrompts";
 import { theme } from "./theme";
 
 const navItems = [
@@ -36,7 +42,11 @@ const navItems = [
   { label: "Дисципліни", to: "/courses", match: (path: string) => path.startsWith("/courses") },
   { label: "Викладачі", to: "/teachers", match: (path: string) => path.startsWith("/teachers") },
   { label: "Спеціальності", to: "/specialties", match: (path: string) => path.startsWith("/specialties") },
-  { label: "Шаблони", to: "/templates", match: (path: string) => path.startsWith("/templates") },
+];
+
+const settingsItems = [
+  { label: "Шаблони", to: "/templates" },
+  { label: "Промпти", to: "/internal-prompts" },
 ];
 
 export function App() {
@@ -56,6 +66,7 @@ export function App() {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />            
             <Group justify="space-between" style={{ flex: 1 }}>
               <Text fw={700} size="lg">Doc Gen</Text>
+              <Group gap="sm">
                 <Group ml="xl" visibleFrom="sm">
                   {navItems.map((item) => (
                     <Link
@@ -72,6 +83,24 @@ export function App() {
                     </Link>
                   ))}
                 </Group>
+                <Menu shadow="md" width={180} position="bottom-end">
+                  <Menu.Target>
+                    <Tooltip label="Налаштування">
+                      <ActionIcon variant="subtle" size="lg" aria-label="Налаштування">
+                        <FontAwesomeIcon icon={faGear} />
+                      </ActionIcon>
+                    </Tooltip>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Label>Налаштування</Menu.Label>
+                    {settingsItems.map((item) => (
+                      <Menu.Item key={item.to} component={Link} to={item.to}>
+                        {item.label}
+                      </Menu.Item>
+                    ))}
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
             </Group>
           </Group>
         </AppShell.Header>
@@ -110,6 +139,7 @@ export function App() {
             <Route path="/specialties/:specialtyId/results/:id" element={<ResultEdit />} />
             <Route path="/templates" element={<TemplatesList />} />
             <Route path="/templates/:id" element={<TemplateEdit />} />
+            <Route path="/internal-prompts" element={<InternalPrompts />} />
           </Routes>
         </AppShell.Main>
       </AppShell>
