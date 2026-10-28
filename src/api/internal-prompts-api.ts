@@ -2,8 +2,8 @@ import type { BunRequest } from "bun";
 import { internalPrompts } from "@/stores/db";
 import { ALL_INTERNAL_PROMPT_DEFAULTS, INTERNAL_PROMPT_DEFAULT_BY_KEY, type InternalPromptKey } from "@/ai/internal-prompts-defaults";
 
-function promptList(stored: Awaited<ReturnType<typeof internalPrompts.all>>) {
-  const byKey = new Map(stored.map((prompt) => [prompt.key, prompt]));
+function promptList(stored: Awaited<ReturnType<typeof internalPrompts.all>> | null | undefined) {
+  const byKey = new Map((stored ?? []).map((prompt) => [prompt.key, prompt]));
   return ALL_INTERNAL_PROMPT_DEFAULTS.map((definition) => {
     const prompt = byKey.get(definition.key);
     return {
@@ -38,6 +38,7 @@ const internalPromptsApi = {
       }
       const model = definition.model !== undefined ? (typeof body.model === "string" ? body.model.trim() || null : null) : null;
       const updated = await internalPrompts.update(key, body.text.trim(), model);
+      if (!updated) return Response.json({ error: "Не вдалося зберегти промпт" }, { status: 500 });
       return Response.json(updated);
     },
   },

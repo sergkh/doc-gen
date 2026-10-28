@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExclamationTriangle, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
-import type { Course, CourseResult, Specialty, SpecialtyDisciplineConfig } from "@/stores/models";
-import { loadAllSpecialties, loadSpecialty } from "../specialties";
+import type { Course, CourseResult, Specialty, SpecialtyBrief, SpecialtyDisciplineConfig } from "@/stores/models";
+import { loadBriefSpecialties, loadSpecialty } from "../specialties";
 import { loadResultsBySpecialty } from "../results";
 import { formatDisciplineCode, loadCoursesBySpecialty } from "../courses";
 import {
@@ -47,7 +47,7 @@ export default function ResultsMatrix() {
   const navigate = useNavigate();
   const { specialtyId: urlSpecialtyId } = useParams<{ specialtyId: string }>();
 
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyBrief[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
   const [results, setResults] = useState<CourseResult[]>([]);
@@ -56,7 +56,7 @@ export default function ResultsMatrix() {
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
 
   useEffect(() => {
-    loadAllSpecialties()
+    loadBriefSpecialties()
       .then((list) => {
         setSpecialties(list);
         if (!list[0]) return;

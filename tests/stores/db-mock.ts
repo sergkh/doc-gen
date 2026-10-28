@@ -9,6 +9,7 @@ mock.module("@/stores/db", () => {
   return {
     specialties: {
       all: emptyArray,
+      brief: emptyArray,
       get: nullValue,
       findByName: nullValue,
       findByCode: nullValue,
@@ -53,6 +54,7 @@ mock.module("@/stores/db", () => {
     },
     teachers: {
       all: emptyArray,
+      brief: emptyArray,
       get: nullValue,
       findByName: nullValue,
       add: emptyObjectArray,

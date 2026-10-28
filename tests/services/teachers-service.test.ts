@@ -7,6 +7,7 @@ describe("teachersService exports", () => {
     
     expect(teachersService).toBeDefined();
     expect(typeof teachersService.getAllTeachers).toBe("function");
+    expect(typeof teachersService.getBriefTeachers).toBe("function");
     expect(typeof teachersService.getTeacherById).toBe("function");
     expect(typeof teachersService.createTeacher).toBe("function");
     expect(typeof teachersService.updateTeacher).toBe("function");
@@ -65,6 +66,12 @@ describe("teachersService return types", () => {
   it("getAllTeachers should return Promise<Teacher[]>", async () => {
     const { teachersService } = await import("@/services/teachers-service");
     const result = teachersService.getAllTeachers();
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("getBriefTeachers should return a Promise", async () => {
+    const { teachersService } = await import("@/services/teachers-service");
+    const result = teachersService.getBriefTeachers();
     expect(result).toBeInstanceOf(Promise);
   });
 

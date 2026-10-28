@@ -1,7 +1,7 @@
 import path from "path";
 import { sql } from "bun";
 import { create } from "jsondiffpatch";
-import type { Course, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, InternalPrompt, KeyValue, ShortCourseInfo, Specialty, Teacher, TeacherPublication, TeacherTimesheet, Template } from "./models";
+import type { Course, CourseBrief, CourseResult, CourseTopic, DocObjectType, DocVersionRecord, InternalPrompt, KeyValue, ShortCourseInfo, Specialty, SpecialtyBrief, Teacher, TeacherBrief, TeacherPublication, TeacherTimesheet, Template } from "./models";
 import { ConcurrentModificationError } from "@/services/errors";
 
 // Initialize the database connection
@@ -113,13 +113,13 @@ const courses = {
     ` as Course[];    
   },
 
-  bySpecialtyBrief: async (specialtyId: number): Promise<KeyValue[]> => {
+  bySpecialtyBrief: async (specialtyId: number): Promise<CourseBrief[]> => {
     return await sql`
-      SELECT c.id, c.name
-      FROM courses c
+      SELECT c.id, c.name, c.data ->> 'ok_no' AS ok_no, t.name AS teacher
+      FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id
       WHERE c.specialty_id = ${specialtyId}
       ORDER BY c.name
-    ` as KeyValue[];
+    ` as CourseBrief[];
   },
 
   add: async (c: Course) => {
@@ -173,6 +173,10 @@ const courses = {
 const teachers = {
   all: async (): Promise<Teacher[]> => {
     return await sql`SELECT * FROM teachers ORDER BY name`;
+  },
+
+  brief: async (): Promise<TeacherBrief[]> => {
+    return await sql`SELECT id, name, email FROM teachers ORDER BY name` as TeacherBrief[];
   },
 
   get: async (id: number): Promise<Teacher | null> => {
@@ -424,9 +428,10 @@ const internalPrompts = {
   },
 
   update: async (key: string, text: string, model: string | null): Promise<InternalPrompt | null> => {
-    const result = await sql`UPDATE internal_prompts
-      SET text = ${text}, model = ${model}, updated_at = CURRENT_TIMESTAMP
-      WHERE key = ${key}
+    const result = await sql`INSERT INTO internal_prompts (key, text, model)
+      VALUES (${key}, ${text}, ${model})
+      ON CONFLICT (key) DO UPDATE
+      SET text = EXCLUDED.text, model = EXCLUDED.model, updated_at = CURRENT_TIMESTAMP
       RETURNING *` as InternalPrompt[];
     return result[0] ?? null;
   },
@@ -435,6 +440,10 @@ const internalPrompts = {
 const specialties = {
   all: async (): Promise<Specialty[]> => {
     return await sql`SELECT * FROM specialties ORDER BY code, name` as Specialty[];
+  },
+
+  brief: async (): Promise<SpecialtyBrief[]> => {
+    return await sql`SELECT id, code, name, area, degree FROM specialties ORDER BY code, name` as SpecialtyBrief[];
   },
 
   get: async (id: number): Promise<Specialty | null> => {

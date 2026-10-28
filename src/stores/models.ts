@@ -15,6 +15,14 @@ export type KeyValue = {
   name: string
 }
 
+/** Fields required by course-list cards without loading course data or topics. */
+export type CourseBrief = {
+  id: number,
+  name: string,
+  ok_no: string | null,
+  teacher: string | null,
+}
+
 export type ShortCourseInfo = {
   id: number,
   name: string,
@@ -127,6 +135,8 @@ export type Teacher = {
   mkr_department_id?: number | null,
   mkr_teacher_id?: number | null,
 }
+
+export type TeacherBrief = Pick<Teacher, "id" | "name" | "email">;
 
 export type TeacherTimesheet = {
   id: number,
@@ -320,6 +330,8 @@ export type Specialty = {
   qualification: string;
   data: SpecialtyData
 }
+
+export type SpecialtyBrief = Pick<Specialty, "id" | "code" | "name" | "area" | "degree">;
 
 export type PromptResult = {
   field: string;

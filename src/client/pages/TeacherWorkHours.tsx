@@ -84,6 +84,8 @@ const DEFAULT_DAILY_TARGET_MINUTES = (7 * 60) + 12;
 const MAX_MANUAL_WORK_MINUTES = (23 * 60) + 59;
 const WORK_SHIFT_MINUTES = 60;
 const MANUAL_LESSON_HOURS = 2;
+const MAX_TEACHING_HOURS_PER_WORKDAY = 6;
+const MAX_LESSONS_PER_WORKDAY = MAX_TEACHING_HOURS_PER_WORKDAY / MANUAL_LESSON_HOURS;
 
 const lessonTypeLabels: Record<LessonType, string> = {
   lection: "Лекція",
@@ -310,8 +312,6 @@ export function App() {
   });
 
   const updateReportMonth = (year: string, month: string) => setReportMonth(`${year}-${month}`);
-  const maxLessonsPerWeekday = Math.floor(dailyTargetMinutes / (MANUAL_LESSON_HOURS * 60));
-
   const needsMkrSelection = Boolean(teacher && (!teacher.mkr_department_id || !teacher.mkr_teacher_id));
 
   const saveMkrSelection = async () => {
@@ -527,7 +527,7 @@ export function App() {
 
     const nextAvailableWeekday = (afterDay: number) => {
       for (let day = afterDay + 1; day <= daysInMonth; day += 1) {
-        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < maxLessonsPerWeekday) {
+        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < MAX_LESSONS_PER_WORKDAY) {
           return day;
         }
       }
@@ -536,7 +536,7 @@ export function App() {
 
     const previousAvailableWeekday = (beforeDay: number) => {
       for (let day = beforeDay - 1; day >= 1; day -= 1) {
-        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < maxLessonsPerWeekday) {
+        if (!isDayOff(year, monthIndex, day, additionalDaysOff) && (lessonsByDay.get(day)?.length ?? 0) < MAX_LESSONS_PER_WORKDAY) {
           return day;
         }
       }
@@ -560,7 +560,7 @@ export function App() {
         continue;
       }
 
-      while (lessons.length > maxLessonsPerWeekday) {
+      while (lessons.length > MAX_LESSONS_PER_WORKDAY) {
         const lesson = lessons.pop();
         const targetDay = nextAvailableWeekday(day) ?? previousAvailableWeekday(day);
         if (!lesson || !targetDay) {
@@ -572,7 +572,7 @@ export function App() {
     }
 
     return lessonsByDay;
-  }, [additionalDaysOff, maxLessonsPerWeekday, reportMonth, sortedSchedule]);
+  }, [additionalDaysOff, reportMonth, sortedSchedule]);
 
   const monthlyWorkload = useMemo(() => {
     const [year = 0, month = 1] = reportMonth.split("-").map(Number);
@@ -806,32 +806,45 @@ export function App() {
       : days;
     const firstHalf = printDays.slice(0, 15);
     const secondHalf = printDays.slice(15);
+    const printData = {
+      teacher,
+      month: getMonthLabel(startDate),
+      year: selectedYear,
+      first: firstHalf,
+      second: secondHalf,
+      firstHalfTotal,
+      secondHalfTotal: advanceOnly ? emptySummary : secondHalfTotal,
+      total: advanceOnly ? emptySummary : total,
+    };
 
-    setIsGeneratingDocx(true);
-    try {
-      const response = await fetch(`/api/teachers/${teacher.id}/timesheet.docx`, {
+    const downloadDocument = async (endpoint: string, filename: string) => {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          teacher,
-          month: getMonthLabel(startDate),
-          year: selectedYear,
-          first: firstHalf,
-          second: secondHalf,
-          firstHalfTotal,
-          secondHalfTotal: advanceOnly ? emptySummary : secondHalfTotal,
-          total: advanceOnly ? emptySummary : total,
-        }),
+        body: JSON.stringify(printData),
       });
       if (!response.ok) throw new Error(await response.text());
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${advanceOnly ? "Табель аванс" : "Табель"} ${teacher.name} ${reportMonth}.docx`;
+      link.download = filename;
       link.click();
       URL.revokeObjectURL(url);
+    };
+
+    setIsGeneratingDocx(true);
+    try {
+      await downloadDocument(
+        `/api/teachers/${teacher.id}/timesheet.docx`,
+        `${advanceOnly ? "Табель аванс" : "Табель"} ${teacher.name} ${reportMonth}.docx`,
+      );
+      if (!advanceOnly) {
+        await downloadDocument(
+          `/api/teachers/${teacher.id}/timesheet-addition.docx`,
+          `Табель ${teacher.name} ${reportMonth} — додаток.docx`,
+        );
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не вдалося сформувати документ Word");
     } finally {
@@ -924,7 +937,7 @@ export function App() {
             <Button leftSection={<FontAwesomeIcon icon={faFloppyDisk} />} onClick={saveTimesheet} loading={isSavingTimesheet} disabled={reportState !== "ready"}>
               Зберегти
             </Button>
-            <Tooltip label="Завантажити табель у Word"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => downloadTimesheetDocx()} loading={isGeneratingDocx} disabled={reportState !== "ready"}>Друк</Button></Tooltip>
+            <Tooltip label="Завантажити табель і додаток окремими файлами"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => downloadTimesheetDocx()} loading={isGeneratingDocx} disabled={reportState !== "ready"}>Друк</Button></Tooltip>
             <Tooltip label="Завантажити авансовий табель за 1–15 дні"><Button variant="default" leftSection={<FontAwesomeIcon icon={faPrint} />} onClick={() => downloadTimesheetDocx(true)} loading={isGeneratingDocx} disabled={reportState !== "ready"}>Друк аванс</Button></Tooltip>
           </Group>
         </Group>

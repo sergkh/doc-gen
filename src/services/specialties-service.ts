@@ -1,11 +1,16 @@
 import { create } from "jsondiffpatch";
 import type { Delta } from "jsondiffpatch";
 import { specialties, courseResults, history } from "@/stores/db";
-import type { DocVersionRecord, Specialty } from "@/stores/models";
+import type { DocVersionRecord, Specialty, SpecialtyBrief } from "@/stores/models";
 
 async function getAllSpecialties(): Promise<Specialty[]> {
   console.log("Fetching all specialties");
   return specialties.all();
+}
+
+async function getBriefSpecialties(): Promise<SpecialtyBrief[]> {
+  console.log("Fetching brief specialties");
+  return specialties.brief();
 }
 
 async function getSpecialtyById(id: number): Promise<Specialty | null> {
@@ -209,6 +214,7 @@ async function revertToHistory(specialtyId: number, historyId: number): Promise<
 
 export const specialtiesService = {
   getAllSpecialties,
+  getBriefSpecialties,
   getSpecialtyById,
   createSpecialty,
   updateSpecialty,

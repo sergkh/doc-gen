@@ -1,7 +1,7 @@
 import type { Teacher } from "@/stores/models";
 import type { BunRequest } from "bun";
 import { teachersService } from "@/services/teachers-service";
-import { renderTimesheetDoc, type TimesheetPrintData } from "@/docx/timesheet";
+import { renderTimesheetAdditionDoc, renderTimesheetDoc, type TimesheetPrintData } from "@/docx/timesheet";
 
 const timesheetDocxResponse = (document: ArrayBuffer, filename: string) => {
   const utf8Filename = encodeURIComponent(filename);
@@ -16,9 +16,12 @@ const timesheetDocxResponse = (document: ArrayBuffer, filename: string) => {
 
 const teachersApi = {
   "/api/teachers": {
-    async GET() {
-      console.log("Fetching all teachers");
-      return Response.json(await teachersService.getAllTeachers());
+    async GET(req: BunRequest) {
+      const brief = new URL(req.url).searchParams.get("brief") === "true";
+      console.log(`Fetching ${brief ? "brief" : "all"} teachers`);
+      return Response.json(await (brief
+        ? teachersService.getBriefTeachers()
+        : teachersService.getAllTeachers()));
     },
     async POST(req: BunRequest) {
       const teacherData = await req.json() as Omit<Teacher, "id">;
@@ -84,12 +87,29 @@ const teachersApi = {
 
       try {
         const data = await req.json() as TimesheetPrintData;
-        const document = await renderTimesheetDoc({ ...data, teacher: teacher });
+        const document = await renderTimesheetDoc({ ...data, teacher });
         const filename = `Табель ${teacher.name} ${data.month} ${data.year}.docx`.replace(/[\\/:*?"<>|]/g, "-");
         return timesheetDocxResponse(document, filename);
       } catch (error) {
         console.error("Failed to render timesheet DOCX", error);
         return new Response(error instanceof Error ? error.message : "Failed to render timesheet DOCX", { status: 500 });
+      }
+    },
+  },
+  "/api/teachers/:id/timesheet-addition.docx": {
+    async POST(req: BunRequest) {
+      const { id } = req.params as { id: string };
+      const teacher = await teachersService.getTeacherById(Number(id));
+      if (!teacher) return new Response("Teacher not found", { status: 404 });
+
+      try {
+        const data = await req.json() as TimesheetPrintData;
+        const document = await renderTimesheetAdditionDoc({ ...data, teacher });
+        const filename = `Табель ${teacher.name} ${data.month} ${data.year} — додаток.docx`.replace(/[\\/:*?"<>|]/g, "-");
+        return timesheetDocxResponse(document, filename);
+      } catch (error) {
+        console.error("Failed to render timesheet addition DOCX", error);
+        return new Response(error instanceof Error ? error.message : "Failed to render timesheet addition DOCX", { status: 500 });
       }
     },
   },

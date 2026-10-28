@@ -8,8 +8,11 @@ import { computeFileHash } from "./utils/files";
 
 const specialtiesApi = {
   "/api/specialties": {
-    async GET() {
-      return Response.json(await specialtiesService.getAllSpecialties());
+    async GET(req: BunRequest) {
+      const brief = new URL(req.url).searchParams.get("brief") === "true";
+      return Response.json(await (brief
+        ? specialtiesService.getBriefSpecialties()
+        : specialtiesService.getAllSpecialties()));
     },
     async POST(req: BunRequest) {
       const specialtyData = await req.json() as Omit<Specialty, "id">;

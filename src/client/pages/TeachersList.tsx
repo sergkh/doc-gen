@@ -2,19 +2,19 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTable } from "@fortawesome/free-solid-svg-icons";
-import type { Teacher } from "@/stores/models";
-import { loadAllTeachers, deleteTeacher } from "../teachers";
+import type { TeacherBrief } from "@/stores/models";
+import { loadBriefTeachers, deleteTeacher } from "../teachers";
 import { Title, Stack, Group, Paper, Text, ActionIcon, Tooltip, Box } from "@mantine/core";
 
 export default function TeachersList() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<Teacher[]>([]);
+  const [items, setItems] = useState<TeacherBrief[]>([]);
 
   useEffect(() => {
-    loadAllTeachers().then(setItems).catch(console.error);
+    loadBriefTeachers().then(setItems).catch(console.error);
   }, []);
 
-  const handleDelete = async (teacher: Teacher) => {
+  const handleDelete = async (teacher: TeacherBrief) => {
     if (!confirm(`Ви впевнені, що хочете видалити викладача "${teacher.name}"?`)) return;
     try {
       await deleteTeacher(teacher.id);

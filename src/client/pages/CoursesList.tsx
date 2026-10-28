@@ -4,9 +4,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPie } from "@fortawesome/free-solid-svg-icons";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
-import type { Course, Specialty } from "@/stores/models";
-import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadCoursesBySpecialty } from "../courses";
-import { loadAllSpecialties } from "../specialties";
+import type { CourseBrief, SpecialtyBrief } from "@/stores/models";
+import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadBriefCoursesBySpecialty } from "../courses";
+import { loadBriefSpecialties } from "../specialties";
 import {
   Title,
   Stack,
@@ -27,15 +27,15 @@ export default function CoursesList() {
   const navigate = useNavigate();
   const { specialtyId: urlSpecialtyId } = useParams<{ specialtyId: string }>();
 
-  const [items, setItems] = useState<Course[]>([]);
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [items, setItems] = useState<CourseBrief[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyBrief[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch] = useDebouncedValue(searchQuery, 200);
 
   useEffect(() => {
-    loadAllSpecialties()
+    loadBriefSpecialties()
       .then((data) => {
         setSpecialties(data);
         if (!data[0]) return;
@@ -65,7 +65,7 @@ export default function CoursesList() {
 
   useEffect(() => {
     if (selectedSpecialtyId) {
-      loadCoursesBySpecialty(Number(selectedSpecialtyId))
+      loadBriefCoursesBySpecialty(Number(selectedSpecialtyId))
         .then(setItems)
         .catch(console.error);
     }
@@ -76,7 +76,7 @@ export default function CoursesList() {
     const query = debouncedSearch.toLowerCase().trim();
     return items.filter((course) => {
       const name = course.name?.toLowerCase() || "";
-      const okNo = course.data.ok_no?.toLowerCase() || "";
+      const okNo = course.ok_no?.toLowerCase() || "";
       const teacher = course.teacher?.toLowerCase() || "";
       return name.includes(query) || okNo.includes(query) || teacher.includes(query);
     });
@@ -103,7 +103,7 @@ export default function CoursesList() {
     try {
       const results = await uploadPromise;
       if (results.length > 0 && selectedSpecialtyId) {
-        const updatedCourses = await loadCoursesBySpecialty(Number(selectedSpecialtyId));
+        const updatedCourses = await loadBriefCoursesBySpecialty(Number(selectedSpecialtyId));
         setItems(updatedCourses);
       }
     } catch (error) {
@@ -129,7 +129,7 @@ export default function CoursesList() {
     onDropRejected: () => toast.error("Будь ласка, перетягніть файли .docx"),
   });
 
-  const handleDelete = async (course: Course) => {
+  const handleDelete = async (course: CourseBrief) => {
     if (!confirm(`Ви впевнені, що хочете видалити дисципліну "${course.name}"?`)) return;
     try {
       await deleteCourse(course.id);
@@ -198,10 +198,10 @@ export default function CoursesList() {
               <Group justify="space-between" wrap="nowrap">
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <Text fw={600} truncate>
-                    {formatDisciplineCode(d.data.ok_no)}. {d.name}
+                    {formatDisciplineCode(d.ok_no)}. {d.name}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    Викладач: {d.teacher ?? d.teacher_id}
+                    Викладач: {d.teacher ?? "Не вказано"}
                   </Text>
                 </Box>
                 <Group gap="xs" wrap="nowrap">

@@ -1,4 +1,4 @@
-import type { Course, CoursePractice, CourseTopic, KeyValue } from "@/stores/models";
+import type { Course, CourseBrief, CoursePractice, CourseTopic, KeyValue } from "@/stores/models";
 
 export const ATTESTATION_COLORS = [
   "var(--mantine-color-blue-light)",
@@ -76,6 +76,15 @@ export async function loadCoursesBySpecialty(specialtyId: number) {
 
   courses.sort((a, b) => compareOks(a.data.ok_no, b.data.ok_no));
 
+  return courses;
+}
+
+export async function loadBriefCoursesBySpecialty(specialtyId: number): Promise<CourseBrief[]> {
+  const res = await fetch(`/api/courses?specialtyId=${specialtyId}&brief=true`);
+  if (!res.ok) throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
+
+  const courses = await res.json() as CourseBrief[];
+  courses.sort((a, b) => compareOks(a.ok_no, b.ok_no));
   return courses;
 }
 

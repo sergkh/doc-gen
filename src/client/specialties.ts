@@ -1,4 +1,4 @@
-import type { DocVersionRecord, Specialty } from "@/stores/models";
+import type { DocVersionRecord, Specialty, SpecialtyBrief } from "@/stores/models";
 
 export async function loadAllSpecialties() {
   const res = await fetch(`/api/specialties`);
@@ -8,6 +8,16 @@ export async function loadAllSpecialties() {
   }
 
   return await res.json() as Specialty[];
+}
+
+export async function loadBriefSpecialties(): Promise<SpecialtyBrief[]> {
+  const res = await fetch(`/api/specialties?brief=true`);
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження спеціальностей: ${res.status}`);
+  }
+
+  return await res.json() as SpecialtyBrief[];
 }
 
 export async function loadSpecialty(id: string): Promise<Specialty> {

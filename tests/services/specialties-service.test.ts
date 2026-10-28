@@ -7,6 +7,7 @@ describe("specialtiesService exports", () => {
     
     expect(specialtiesService).toBeDefined();
     expect(typeof specialtiesService.getAllSpecialties).toBe("function");
+    expect(typeof specialtiesService.getBriefSpecialties).toBe("function");
     expect(typeof specialtiesService.getSpecialtyById).toBe("function");
     expect(typeof specialtiesService.createSpecialty).toBe("function");
     expect(typeof specialtiesService.updateSpecialty).toBe("function");
@@ -129,6 +130,12 @@ describe("specialtiesService return types", () => {
   it("getAllSpecialties should return Promise<Specialty[]>", async () => {
     const { specialtiesService } = await import("@/services/specialties-service");
     const result = specialtiesService.getAllSpecialties();
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it("getBriefSpecialties should return a Promise", async () => {
+    const { specialtiesService } = await import("@/services/specialties-service");
+    const result = specialtiesService.getBriefSpecialties();
     expect(result).toBeInstanceOf(Promise);
   });
 

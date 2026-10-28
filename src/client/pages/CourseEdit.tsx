@@ -1,4 +1,4 @@
-import type { Course, CourseTopic, Teacher, ShortCourseInfo, CourseResult, Specialty } from "@/stores/models";
+import type { Course, CourseTopic, TeacherBrief, ShortCourseInfo, CourseResult, SpecialtyBrief } from "@/stores/models";
 import { useEffect, useMemo, useState } from "react";
 import { Link,  useLocation, useNavigate, useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,9 +7,9 @@ import {
   loadCourse, upsertCourse, loadAllCourses, normalizeCourseName,
   formatDisciplineCode, autofillCourseResults
 } from "../courses";
-import { loadAllTeachers } from "../teachers";
+import { loadBriefTeachers } from "../teachers";
 import { loadResultsBySpecialty } from "../results";
-import { loadAllSpecialties } from "../specialties";
+import { loadBriefSpecialties } from "../specialties";
 import CourseTopicsEditor from "../components/CourseTopicsEditor";
 import toast from "react-hot-toast";
 import AttestationsEditor from "../components/AttestationsEditor";
@@ -74,8 +74,8 @@ export default function CourseEdit() {
   const location = useLocation();
   const navigate = useNavigate();
   const [item, setItem] = useState<Course | null>(null);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [teachers, setTeachers] = useState<TeacherBrief[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyBrief[]>([]);
   const [allResults, setAllResults] = useState<CourseResult[]>([]);
   const [selectedResults, setSelectedResults] = useState<CourseResult[]>([]);
   const [autofillLoading, setAutofillLoading] = useState<Record<AutofillResultType, boolean>>({
@@ -111,8 +111,8 @@ export default function CourseEdit() {
     }).catch(console.error);
   }, [id, clonedCourse]);
   useEffect(() => {
-    loadAllTeachers().then(setTeachers).catch(console.error);
-    loadAllSpecialties().then(setSpecialties).catch(console.error);
+    loadBriefTeachers().then(setTeachers).catch(console.error);
+    loadBriefSpecialties().then(setSpecialties).catch(console.error);
   }, []);
   useEffect(() => {
     if (!item?.specialty_id) {

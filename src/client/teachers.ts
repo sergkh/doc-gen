@@ -1,4 +1,4 @@
-import type { Teacher } from "@/stores/models";
+import type { Teacher, TeacherBrief } from "@/stores/models";
 
 export async function loadAllTeachers() {
   const res = await fetch(`/api/teachers`)
@@ -8,6 +8,16 @@ export async function loadAllTeachers() {
   }
 
   return await res.json() as Teacher[];
+}
+
+export async function loadBriefTeachers(): Promise<TeacherBrief[]> {
+  const res = await fetch(`/api/teachers?brief=true`);
+
+  if (!res.ok) {
+    throw new Error(`Помилка завантаження викладачів: ${res.status}`);
+  }
+
+  return await res.json() as TeacherBrief[];
 }
 
 export async function loadTeacher(id: string): Promise<Teacher> {

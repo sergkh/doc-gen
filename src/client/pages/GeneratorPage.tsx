@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { loadCoursesBySpecialty, formatDisciplineCode } from "../courses";
+import { loadBriefCoursesBySpecialty, formatDisciplineCode } from "../courses";
 import { loadAllTemplates } from "../templates";
-import { loadAllSpecialties } from "../specialties";
-import type { Course, Template, Specialty } from "@/stores/models";
+import { loadBriefSpecialties } from "../specialties";
+import type { CourseBrief, Template, SpecialtyBrief } from "@/stores/models";
 import toast from "react-hot-toast";
 import TemplateParametersInput from "../components/TemplateParametersInput";
 import {
@@ -48,8 +48,8 @@ const SELECTED_SPECIALTY_KEY = "generator_selectedSpecialty";
 
 export default function GeneratorPage() {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [courses, setCourses] = useState<CourseBrief[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyBrief[]>([]);
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -139,7 +139,7 @@ export default function GeneratorPage() {
       try {
         const [allTemplates, allSpecialties] = await Promise.all([
           loadAllTemplates(),
-          loadAllSpecialties(),
+          loadBriefSpecialties(),
         ]);
         setTemplates(allTemplates);
         setSpecialties(allSpecialties);
@@ -172,7 +172,7 @@ export default function GeneratorPage() {
     async function fetchCourses() {
       setIsLoadingCourses(true);
       try {
-        const coursesData = await loadCoursesBySpecialty(Number(selectedSpecialtyId));
+        const coursesData = await loadBriefCoursesBySpecialty(Number(selectedSpecialtyId));
         setCourses(coursesData);
 
         if (!hasRestoredSavedCourseRef.current) {
@@ -344,7 +344,7 @@ export default function GeneratorPage() {
 
   const courseOptions = courses.map((c) => ({
     value: c.id.toString(),
-    label: `${formatDisciplineCode(c.data.ok_no)} ${c.name}`,
+    label: `${formatDisciplineCode(c.ok_no)} ${c.name}`,
   }));
 
   const templateOptions = templates.map((t) => ({

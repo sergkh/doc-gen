@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSave } from "@fortawesome/free-solid-svg-icons";
-import type { Prompt, KeyValue, CourseTopic, PromptResult, Specialty } from "@/stores/models";
+import type { Prompt, KeyValue, CourseTopic, PromptResult, SpecialtyBrief } from "@/stores/models";
 import { loadCoursesBySpecialty } from "@/client/courses";
-import { loadAllSpecialties } from "@/client/specialties";
+import { loadBriefSpecialties } from "@/client/specialties";
 import {
   Stack,
   Group,
@@ -68,7 +68,7 @@ export default function PromptTester({
 }: PromptTesterProps) {
   const [opened, { toggle }] = useDisclosure(false);
 
-  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [specialties, setSpecialties] = useState<SpecialtyBrief[]>([]);
   const [specialtiesError, setSpecialtiesError] = useState<string | null>(null);
   const [isLoadingSpecialties, setIsLoadingSpecialties] = useState(false);
   const [hasRequestedSpecialties, setHasRequestedSpecialties] = useState(false);
@@ -135,7 +135,7 @@ export default function PromptTester({
     setIsLoadingSpecialties(true);
     setSpecialtiesError(null);
     try {
-      const data = await loadAllSpecialties();
+      const data = await loadBriefSpecialties();
       setSpecialties(data);
       setSelectedSpecialtyId((prev) => {
         if (prev && data.some((s) => String(s.id) === prev)) return prev;
