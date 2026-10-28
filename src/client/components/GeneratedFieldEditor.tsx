@@ -28,6 +28,7 @@ type GeneratedFieldEditorProps = {
   practiceId?: number;
   prompt?: Prompt;
   apiKey?: string;
+  quizQuestionAutosize?: boolean;
 };
 
 function GenerateItemButton({ prompt, onGenerate }: { prompt?: Prompt; onGenerate: () => Promise<void> }) {
@@ -47,7 +48,7 @@ function GenerateItemButton({ prompt, onGenerate }: { prompt?: Prompt; onGenerat
 }
 
 export default function GeneratedFieldEditor({
-  field, promptName, format, value, onChange, courseId, topicId, practiceId, prompt, apiKey,
+  field, promptName, format, value, onChange, courseId, topicId, practiceId, prompt, apiKey, quizQuestionAutosize,
 }: GeneratedFieldEditorProps) {
   const [newListItem, setNewListItem] = useState("");
 
@@ -112,7 +113,7 @@ export default function GeneratedFieldEditor({
           </Stack>
         );
       case "quiz":
-        return <QuizEditor quiz={quizValue} onQuizChange={(next) => onChange(next)} />;
+        return <QuizEditor quiz={quizValue} onQuizChange={(next) => onChange(next)} questionAutosize={quizQuestionAutosize} />;
       default:
         return (
           <Textarea

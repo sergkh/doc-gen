@@ -15,9 +15,10 @@ import {
 interface QuizEditorProps {
   quiz: QuizQuestion[];
   onQuizChange: (quiz: QuizQuestion[]) => void;
+  questionAutosize?: boolean;
 }
 
-export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
+export default function QuizEditor({ quiz, onQuizChange, questionAutosize = true }: QuizEditorProps) {
   const handleAddQuestion = () => {
     onQuizChange([...quiz, { question: "", options: ["", "", "", ""], answerIndex: 0 }]);
   };
@@ -45,7 +46,7 @@ export default function QuizEditor({ quiz, onQuizChange }: QuizEditorProps) {
               value={question.question}
               onChange={(e) => onQuizChange(quiz.map((q, i) => i === qIndex ? { ...q, question: e.currentTarget.value } : q))}
               placeholder="Текст питання"
-              autosize
+              autosize={questionAutosize}
               minRows={2}
             />
             <Stack gap={4}>

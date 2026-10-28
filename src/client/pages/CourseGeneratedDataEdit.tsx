@@ -101,6 +101,7 @@ export default function CourseGeneratedDataEdit() {
       <Group justify="space-between">
         <Title order={2}>Згенеровані дані: {course.name}</Title>
         <Group gap="xs">
+          <Button variant="light" onClick={() => navigate(`/courses/${courseId}/tests`)}>Всі тести</Button>
           <Button variant="default" onClick={() => navigate(`/courses/${courseId}`)}>Скасувати</Button>
           <Button onClick={handleSave} loading={isSaving}>Зберегти</Button>
         </Group>
