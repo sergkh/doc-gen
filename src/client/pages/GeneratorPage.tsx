@@ -21,7 +21,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload, faEdit, faLink } from "@fortawesome/free-solid-svg-icons";
+import { faCode, faDownload, faEdit, faLink } from "@fortawesome/free-solid-svg-icons";
 
 type JobStatus = "pending" | "generating" | "rendering" | "completed" | "error";
 
@@ -274,13 +274,22 @@ export default function GeneratorPage() {
     setSelectedCourseId(null);
   };
 
-  const handleCopySynchronousDownloadLink = async () => {
+  const buildSynchronousGenerationUrl = (output: "download" | "data") => {
     if (!selectedCourseId || !selectedTemplateId) return;
 
-    const downloadUrl = new URL(
-      `/api/courses/${selectedCourseId}/generate/${selectedTemplateId}/download`,
+    const generationUrl = new URL(
+      `/api/courses/${selectedCourseId}/generate/${selectedTemplateId}/${output}`,
       window.location.origin
-    ).toString();
+    );
+    if (Object.keys(parameterValues).length > 0) {
+      generationUrl.searchParams.set("parameters", JSON.stringify(parameterValues));
+    }
+    return generationUrl.toString();
+  };
+
+  const handleCopySynchronousDownloadLink = async () => {
+    const downloadUrl = buildSynchronousGenerationUrl("download");
+    if (!downloadUrl) return;
 
     try {
       await navigator.clipboard.writeText(downloadUrl);
@@ -288,6 +297,19 @@ export default function GeneratorPage() {
     } catch (error) {
       console.error("Failed to copy synchronous download link:", error);
       toast.error("Не вдалося скопіювати посилання");
+    }
+  };
+
+  const handleCopyTemplateDataLink = async () => {
+    const dataUrl = buildSynchronousGenerationUrl("data");
+    if (!dataUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(dataUrl);
+      toast.success("Посилання на JSON-дані скопійовано");
+    } catch (error) {
+      console.error("Failed to copy template data link:", error);
+      toast.error("Не вдалося скопіювати посилання на JSON-дані");
     }
   };
 
@@ -460,6 +482,17 @@ export default function GeneratorPage() {
             disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
           >
             <FontAwesomeIcon icon={faLink} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Скопіювати посилання на дані шаблону (JSON)">
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            aria-label="Посилання на дані шаблону у форматі JSON"
+            onClick={handleCopyTemplateDataLink}
+            disabled={isGenerating || !selectedCourseId || !selectedTemplateId}
+          >
+            <FontAwesomeIcon icon={faCode} />
           </ActionIcon>
         </Tooltip>
         {isGenerating && (

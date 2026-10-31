@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Course, GeneratedCourseData, Prompt, QuizQuestion } from "@/stores/models";
 import toast from "react-hot-toast";
 import { dropEmpty } from "../util/util";
 import { loadAllTemplates } from "../templates";
 import GeneratedFieldEditor from "../components/GeneratedFieldEditor";
-import { Title, Stack, Group, Paper, Text, Button, Loader, Center } from "@mantine/core";
+import { Title, Stack, Group, Paper, Text, Button, Loader, Center, Anchor } from "@mantine/core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faVialCircleCheck } from "@fortawesome/free-solid-svg-icons";
 
 interface FieldDescriptor {
   field: string;
@@ -99,9 +101,14 @@ export default function CourseGeneratedDataEdit() {
   return (
     <Stack maw={1200} mx="auto">
       <Group justify="space-between">
-        <Title order={2}>Згенеровані дані: {course.name}</Title>
         <Group gap="xs">
-          <Button variant="light" onClick={() => navigate(`/courses/${courseId}/tests`)}>Всі тести</Button>
+          <Title order={2}>Згенеровані дані: {course.name}</Title>
+            <Anchor component={Link} to={`/courses/${courseId}/tests`} size="sm">
+              <FontAwesomeIcon icon={faVialCircleCheck} /> Всі тести
+            </Anchor>
+        </Group>
+        <Group gap="xs">
+
           <Button variant="default" onClick={() => navigate(`/courses/${courseId}`)}>Скасувати</Button>
           <Button onClick={handleSave} loading={isSaving}>Зберегти</Button>
         </Group>

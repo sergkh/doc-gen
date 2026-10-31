@@ -596,6 +596,34 @@ describe("generationApi", () => {
       expect(mockRenderHandlebarsText).not.toHaveBeenCalled();
     });
 
+    it("should decode JSON template parameters from a synchronous generation URL", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      mockSpecialtiesGet.mockReturnValueOnce(Promise.resolve(specialty));
+      mockLoadFullCourseInfo.mockReturnValueOnce(Promise.resolve({}));
+
+      const params = encodeURIComponent(JSON.stringify({
+        title: "Custom title",
+        includeAppendix: true,
+        sections: [{ id: 4, name: "Section 4" }],
+      }));
+      const req = makeGET(`/api/courses/1/generate/4/data?parameters=${params}`);
+      matchParams(req, { courseId: "1", templateId: "4" });
+
+      expect((await route().GET(req)).status).toBe(200);
+      expect(mockLoadFullCourseInfo).toHaveBeenCalledWith(
+        template,
+        course,
+        specialty,
+        course.topics,
+        {
+          title: "Custom title",
+          includeAppendix: true,
+          sections: [{ id: 4, name: "Section 4" }],
+        }
+      );
+    });
+
     it("should return 404 when required generation data is missing", async () => {
       mockCoursesGet.mockReturnValueOnce(Promise.resolve(null));
       let req = makeGET("/api/courses/1/generate/4/data");
@@ -636,6 +664,48 @@ describe("generationApi", () => {
 
       expect(resp.status).toBe(500);
       expect(await resp.json()).toEqual({ error: "Failed to build data" });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // GET/POST /api/courses/:courseId/generate/:templateId/download
+  // ---------------------------------------------------------------------------
+  describe("GET/POST /api/courses/:courseId/generate/:templateId/download", () => {
+    const route = () => generationApi["/api/courses/:courseId/generate/:templateId/download"];
+    const course = { id: 1, specialty_id: 2, name: "Course", topics: [{ id: 3, name: "Topic" }] };
+    const template = { id: 4, file: "template.docx", name: "Template" };
+    const specialty = { id: 2, name: "Specialty" };
+
+    it("should generate a download from JSON POST parameters", async () => {
+      mockCoursesGet.mockReturnValueOnce(Promise.resolve(course));
+      mockTemplatesGet.mockReturnValueOnce(Promise.resolve(template));
+      mockSpecialtiesGet.mockReturnValueOnce(Promise.resolve(specialty));
+      mockLoadFullCourseInfo.mockReturnValueOnce(Promise.resolve({}));
+      mockRenderDoc.mockReturnValueOnce(new ArrayBuffer(8));
+
+      const req = makePOST("/api/courses/1/generate/4/download", {
+        parameters: { sections: [{ id: 4, name: "Section 4" }], includeAppendix: true },
+      });
+      matchParams(req, { courseId: "1", templateId: "4" });
+
+      const response = await route().POST(req);
+      expect(response.status).toBe(200);
+      expect(mockLoadFullCourseInfo).toHaveBeenCalledWith(
+        template,
+        course,
+        specialty,
+        course.topics,
+        { sections: [{ id: 4, name: "Section 4" }], includeAppendix: true }
+      );
+    });
+
+    it("should reject a non-object parameters POST body", async () => {
+      const req = makePOST("/api/courses/1/generate/4/download", { parameters: [] });
+      matchParams(req, { courseId: "1", templateId: "4" });
+
+      const response = await route().POST(req);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "Параметри шаблону мають бути JSON-об'єктом" });
     });
   });
 

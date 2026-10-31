@@ -37,6 +37,74 @@ function jsonError(message: string, status: number = 400): Response {
   return Response.json({ error: message }, { status });
 }
 
+/**
+ * The synchronous generation URLs need to represent the same parameter types
+ * as the asynchronous JSON request, including lists and selected objects.
+ * Keep individual query parameters working for existing shared links.
+ */
+function getGenerationQueryParameters(req: BunRequest): Record<string, any> {
+  const searchParams = new URL(req.url).searchParams;
+  const parametersJson = searchParams.get("parameters");
+  const legacyParameters = Object.fromEntries(
+    [...searchParams.entries()].filter(([name]) => name !== "parameters")
+  );
+
+  if (!parametersJson) return legacyParameters;
+
+  try {
+    const parameters = JSON.parse(parametersJson);
+    if (typeof parameters !== "object" || parameters === null || Array.isArray(parameters)) {
+      throw new Error("not an object");
+    }
+    return { ...legacyParameters, ...parameters };
+  } catch {
+    throw new Error("Невалідні параметри шаблону в посиланні");
+  }
+}
+
+function isParametersObject(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function generateSynchronousDownload(
+  req: BunRequest,
+  parameters: Record<string, any>
+): Promise<Response> {
+  const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };
+
+  const course = await courses.get(courseId);
+  if (!course) {
+    return jsonError("Дисципліну не знайдено", 404);
+  }
+
+  const template = await templates.get(templateId);
+  if (!template) {
+    return jsonError("Шаблон не знайдено", 404);
+  }
+
+  const topics = course.topics ?? [];
+  if (topics.length === 0) {
+    return jsonError("У дисципліни немає тем", 404);
+  }
+
+  const specialty = await specialties.get(course.specialty_id);
+  if (!specialty) {
+    return jsonError("Спеціальність не знайдено", 404);
+  }
+
+  try {
+    console.log(`Synchronously generating template ${template.name} for ${course.name}`);
+    const renderData = await loadFullCourseInfo(template, course, specialty, topics, parameters);
+    if (template.file.endsWith(".docx")) {
+      return wordResp(await renderDoc(template.file, renderData));
+    }
+    return wordResp(await renderHandlebarsText(template.file, renderData));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Невідома помилка";
+    return jsonError(message, 500);
+  }
+}
+
 async function runGenerationJob(job: Job, course: Course, template: Template, apiKey?: string, parameters?: Record<string, any>) {
   try {
     job.status = "generating";
@@ -363,7 +431,7 @@ const generationApi = {
       }
 
       try {
-        const queryParameters = Object.fromEntries(new URL(req.url).searchParams.entries());
+        const queryParameters = getGenerationQueryParameters(req);
         const renderData = await loadFullCourseInfo(template, course, specialty, topics, queryParameters);
         return Response.json(renderData);
       } catch (error) {
@@ -374,46 +442,30 @@ const generationApi = {
   },
   "/api/courses/:courseId/generate/:templateId/download": {
     async GET(req: BunRequest) {
-      const { courseId, templateId } = req.params as unknown as { courseId: number; templateId: number };
-
-      const course = await courses.get(courseId);
-      if (!course) {
-        return jsonError("Дисципліну не знайдено", 404);
-      }
-
-      const template = await templates.get(templateId);
-      if (!template) {
-        return jsonError("Шаблон не знайдено", 404);
-      }
-
-      const topics = course.topics ?? [];
-      if (topics.length === 0) {
-        return jsonError("У дисципліни немає тем", 404);
-      }
-
-      const specialty = await specialties.get(course.specialty_id);
-      if (!specialty) {
-        return jsonError("Спеціальність не знайдено", 404);
-      }
-
       try {
-        console.log(`Synchronously generating template ${template.name} for ${course.name}`);
-        const queryParameters = Object.fromEntries(new URL(req.url).searchParams.entries());
-        const renderData = await loadFullCourseInfo(template, course, specialty, topics, queryParameters);
-        const ext = template.file.split(".").pop() ?? "docx";
-        const filename = `${template.name}.${ext}`;
-
-        if (template.file.endsWith(".docx")) {
-          const result = await renderDoc(template.file, renderData);
-          return wordResp(result);
-        } else {
-          const result = await renderHandlebarsText(template.file, renderData);
-          return wordResp(result);
-        }
+        return await generateSynchronousDownload(req, getGenerationQueryParameters(req));
       } catch (error) {
         const message = error instanceof Error ? error.message : "Невідома помилка";
-        return jsonError(message, 500);
+        return jsonError(message, 400);
       }
+    },
+    async POST(req: BunRequest) {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return jsonError("Невалідний JSON у запиті", 400);
+      }
+
+      if (!isParametersObject(body)) {
+        return jsonError("Тіло запиту має бути JSON-об'єктом", 400);
+      }
+
+      if (body.parameters !== undefined && !isParametersObject(body.parameters)) {
+        return jsonError("Параметри шаблону мають бути JSON-об'єктом", 400);
+      }
+
+      return generateSynchronousDownload(req, body.parameters ?? {});
     }
   },
   "/api/jobs/:jobId": {
