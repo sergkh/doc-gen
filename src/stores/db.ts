@@ -122,6 +122,16 @@ const courses = {
     ` as CourseBrief[];
   },
 
+  withoutSpecialtyBrief: async (): Promise<CourseBrief[]> => {
+    return await sql`
+      SELECT c.id, c.name, c.data ->> 'ok_no' AS ok_no, t.name AS teacher
+      FROM courses c
+      LEFT JOIN teachers t ON c.teacher_id = t.id
+      WHERE c.specialty_id IS NULL OR c.specialty_id <= 0
+      ORDER BY c.name
+    ` as CourseBrief[];
+  },
+
   add: async (c: Course) => {
     return await sql`INSERT INTO courses 
       (name, teacher_id, specialty_id, data, generated, topics) VALUES (${c.name}, ${c.teacher_id}, ${c.specialty_id}, ${c.data}, ${c.generated}, ${c.topics ?? null}) RETURNING *`;
@@ -134,6 +144,16 @@ const courses = {
 
   findByName: async (name: string): Promise<Course | null> => {
     const result = await sql`SELECT c.*, t.name as teacher FROM courses c LEFT JOIN teachers t ON c.teacher_id = t.id WHERE c.name = ${name}`;
+    return result[0] || null;
+  },
+
+  findByNameAndSpecialty: async (name: string, specialtyId: number): Promise<Course | null> => {
+    const result = await sql`
+      SELECT c.*, t.name as teacher
+      FROM courses c
+      LEFT JOIN teachers t ON c.teacher_id = t.id
+      WHERE c.name = ${name} AND c.specialty_id = ${specialtyId}
+    `;
     return result[0] || null;
   },
 

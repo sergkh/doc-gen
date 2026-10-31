@@ -88,6 +88,15 @@ export async function loadBriefCoursesBySpecialty(specialtyId: number): Promise<
   return courses;
 }
 
+export async function loadBriefCoursesWithoutSpecialty(): Promise<CourseBrief[]> {
+  const res = await fetch("/api/courses?withoutSpecialty=true&brief=true");
+  if (!res.ok) throw new Error(`Помилка завантаження дисциплін: ${res.status}`);
+
+  const courses = await res.json() as CourseBrief[];
+  courses.sort((a, b) => compareOks(a.ok_no, b.ok_no));
+  return courses;
+}
+
 export async function loadAllCoursesWithTopics(specialtyId: number) {
   const res = await fetch(`/api/courses?specialtyId=${specialtyId}&topics=true`)
 

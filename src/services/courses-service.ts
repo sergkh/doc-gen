@@ -15,10 +15,15 @@ async function getCourses(
   specialtyId?: number,
   brief: boolean = false,
   topics: boolean = false,
+  withoutSpecialty: boolean = false,
 ): Promise<Course[]> {
   let loadedCourses: Course[];
 
-  if (specialtyId) {
+  if (withoutSpecialty) {
+    loadedCourses = brief ? await courses.withoutSpecialtyBrief() as Course[] : await courses.all().then((courses) =>
+      courses.filter((course) => !course.specialty_id || course.specialty_id <= 0),
+    );
+  } else if (specialtyId) {
     loadedCourses = brief ? await courses.bySpecialtyBrief(specialtyId) as Course[] : await courses.bySpecialty(specialtyId);
   } else {
     loadedCourses = brief ? await courses.brief() as Course[] : await courses.all();
@@ -327,9 +332,9 @@ async function parseCourseDataUpload(filepath: string, okNo: string | null): Pro
             
   if (!course) return null;
 
-  const dbCourse = await courses.findByName(course.name);
+  const dbCourse = await courses.findByNameAndSpecialty(course.name, course.specialty_id);
 
-  console.log("Searching by name:", course.name, "Found in DB:", dbCourse);
+  console.log("Searching by name and specialty:", course.name, course.specialty_id, "Found in DB:", dbCourse);
 
   const { issues } = verifyCourse(course);
   const warnings = [...course.parse_warnings, ...issues];        

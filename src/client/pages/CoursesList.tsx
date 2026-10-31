@@ -5,7 +5,7 @@ import { faPlus, faTrash, faPen, faTableCells, faListCheck, faSitemap, faChartPi
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
 import type { CourseBrief, SpecialtyBrief } from "@/stores/models";
-import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadBriefCoursesBySpecialty } from "../courses";
+import { deleteCourse, formatDisciplineCode, uploadMultipleCourses, loadBriefCoursesBySpecialty, loadBriefCoursesWithoutSpecialty } from "../courses";
 import { loadBriefSpecialties } from "../specialties";
 import {
   Title,
@@ -22,6 +22,7 @@ import {
 import { useDebouncedValue } from "@mantine/hooks";
 
 const LAST_SELECTED_SPECIALTY_KEY = "courses:lastSelectedSpecialtyId";
+const WITHOUT_SPECIALTY_VALUE = "without-specialty";
 
 export default function CoursesList() {
   const navigate = useNavigate();
@@ -38,8 +39,6 @@ export default function CoursesList() {
     loadBriefSpecialties()
       .then((data) => {
         setSpecialties(data);
-        if (!data[0]) return;
-
         const idFromUrl = urlSpecialtyId && data.some((s) => String(s.id) === urlSpecialtyId)
           ? urlSpecialtyId
           : null;
@@ -49,23 +48,28 @@ export default function CoursesList() {
         } else {
           const savedSpecialtyId = localStorage.getItem(LAST_SELECTED_SPECIALTY_KEY);
           const hasSavedSpecialty = savedSpecialtyId
-            ? data.some((specialty) => String(specialty.id) === savedSpecialtyId)
+            ? savedSpecialtyId === WITHOUT_SPECIALTY_VALUE || data.some((specialty) => String(specialty.id) === savedSpecialtyId)
             : false;
-          setSelectedSpecialtyId(hasSavedSpecialty ? savedSpecialtyId : String(data[0].id));
+          setSelectedSpecialtyId(hasSavedSpecialty ? savedSpecialtyId : (data[0] ? String(data[0].id) : WITHOUT_SPECIALTY_VALUE));
         }
       })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
-    if (selectedSpecialtyId) {
+    if (selectedSpecialtyId && selectedSpecialtyId !== WITHOUT_SPECIALTY_VALUE) {
       localStorage.setItem(LAST_SELECTED_SPECIALTY_KEY, selectedSpecialtyId);
+    } else if (selectedSpecialtyId === WITHOUT_SPECIALTY_VALUE) {
+      localStorage.setItem(LAST_SELECTED_SPECIALTY_KEY, WITHOUT_SPECIALTY_VALUE);
     }
   }, [selectedSpecialtyId]);
 
   useEffect(() => {
     if (selectedSpecialtyId) {
-      loadBriefCoursesBySpecialty(Number(selectedSpecialtyId))
+      const loadCourses = selectedSpecialtyId === WITHOUT_SPECIALTY_VALUE
+        ? loadBriefCoursesWithoutSpecialty()
+        : loadBriefCoursesBySpecialty(Number(selectedSpecialtyId));
+      loadCourses
         .then(setItems)
         .catch(console.error);
     }
@@ -103,7 +107,9 @@ export default function CoursesList() {
     try {
       const results = await uploadPromise;
       if (results.length > 0 && selectedSpecialtyId) {
-        const updatedCourses = await loadBriefCoursesBySpecialty(Number(selectedSpecialtyId));
+        const updatedCourses = selectedSpecialtyId === WITHOUT_SPECIALTY_VALUE
+          ? await loadBriefCoursesWithoutSpecialty()
+          : await loadBriefCoursesBySpecialty(Number(selectedSpecialtyId));
         setItems(updatedCourses);
       }
     } catch (error) {
@@ -141,26 +147,31 @@ export default function CoursesList() {
     }
   };
 
-  const specialtyOptions = specialties.map((s) => ({
+  const specialtyOptions = [
+    { value: WITHOUT_SPECIALTY_VALUE, label: "Без спеціальності" },
+    ...specialties.map((s) => ({
     value: String(s.id),
     label: `${s.code} ${s.name} (${s.degree === "master" ? "маг" : "бак"})`,
-  }));
+    })),
+  ];
+
+  const isWithoutSpecialty = selectedSpecialtyId === WITHOUT_SPECIALTY_VALUE;
 
   return (
     <Stack maw={1200} mx="auto">
       <Group justify="space-between" align="flex-start">
         <Group align="center" gap="xs">
           <Title order={2}>Дисципліни</Title>
-          <Tooltip label="Матриця результатів">
+          {!isWithoutSpecialty && <Tooltip label="Матриця результатів">
               <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/results/matrix`)}>
               <FontAwesomeIcon icon={faTableCells} />
             </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Дисципліни з результатами">
+          </Tooltip>}
+          {!isWithoutSpecialty && <Tooltip label="Дисципліни з результатами">
             <ActionIcon variant="subtle" onClick={() => navigate(`/specialties/${selectedSpecialtyId}/courses/results`)}>
               <FontAwesomeIcon icon={faListCheck} />
             </ActionIcon>
-          </Tooltip>
+          </Tooltip>}
         </Group>
 
         <Group gap="sm">
@@ -169,7 +180,8 @@ export default function CoursesList() {
             value={selectedSpecialtyId}
             onChange={(value) => {
               setSelectedSpecialtyId(value);
-              if (value) navigate(`/specialties/${value}/courses`);
+              if (value && value !== WITHOUT_SPECIALTY_VALUE) navigate(`/specialties/${value}/courses`);
+              else if (value === WITHOUT_SPECIALTY_VALUE) navigate("/courses");
             }}
             w={280}
           />
@@ -179,11 +191,11 @@ export default function CoursesList() {
             onChange={(e) => setSearchQuery(e.currentTarget.value)}
             w={160}
           />
-          <Tooltip label="Нова дисципліна">
+          {!isWithoutSpecialty && <Tooltip label="Нова дисципліна">
             <ActionIcon variant="default" onClick={() => navigate("/courses/new", { state: { specialtyId: selectedSpecialtyId } })}>
               <FontAwesomeIcon icon={faPlus} />
             </ActionIcon>
-          </Tooltip>
+          </Tooltip>}
         </Group>
       </Group>
 

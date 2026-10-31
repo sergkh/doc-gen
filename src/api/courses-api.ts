@@ -53,10 +53,13 @@ const coursesApi = {
         const brief = new URL(req.url).searchParams.get("brief") === "true";
         const topics = new URL(req.url).searchParams.get("topics") === "true";
         const specialtyId = new URL(req.url).searchParams.get("specialtyId");
+        const withoutSpecialty = new URL(req.url).searchParams.get("withoutSpecialty") === "true";
 
-        console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}. specialtyId: ${specialtyId || "all"}`);
+        console.log(`Fetching all courses ${brief ? "brief" : ""}. ${topics ? "with topics" : ""}. specialtyId: ${specialtyId || (withoutSpecialty ? "none" : "all")}`);
         
-        const loadedCourses = await coursesService.getCourses(specialtyId ? Number(specialtyId) : undefined, brief, topics);
+        const loadedCourses = withoutSpecialty
+          ? await coursesService.getCourses(undefined, brief, topics, true)
+          : await coursesService.getCourses(specialtyId ? Number(specialtyId) : undefined, brief, topics);
 
         return Response.json(loadedCourses);
       },
