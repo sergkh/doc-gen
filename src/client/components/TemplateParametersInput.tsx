@@ -37,7 +37,7 @@ function normalizeOptions(data: unknown): SelectOption[] {
     const option = typeof item === "object" && item !== null
       ? {
           ...item,
-          id: item.id ?? item.value ?? item.name ?? item.label ?? index,
+          id: index,
           name: item.name ?? item.label ?? String(item.id ?? item.value ?? index),
         }
       : { id: item, name: String(item) };
